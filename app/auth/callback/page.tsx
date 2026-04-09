@@ -2,20 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     const run = async () => {
-      const code = searchParams.get("code");
-      const next = searchParams.get("next") || "/";
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const next = params.get("next") || "/";
       if (!code) {
         if (active) setError("Lien invalide : code de vérification manquant.");
         return;
@@ -31,7 +31,7 @@ export default function AuthCallbackPage() {
     return () => {
       active = false;
     };
-  }, [router, searchParams, supabase]);
+  }, [router, supabase]);
 
   if (error) {
     return (
