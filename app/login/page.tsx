@@ -115,8 +115,10 @@ export default function LoginPage() {
     setSuccess(null);
     setSendingReset(true);
     try {
+      const configuredBaseUrl =
+        process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") || window.location.origin;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-        redirectTo: `${window.location.origin}/login/reset-password`,
+        redirectTo: `${configuredBaseUrl}/auth/callback?next=/login/reset-password`,
       });
       if (resetError) throw resetError;
       setSuccess("Email envoyé. Ouvrez le lien reçu pour définir un nouveau mot de passe.");

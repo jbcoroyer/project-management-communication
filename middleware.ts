@@ -7,6 +7,7 @@ export async function middleware(request: NextRequest) {
   // Laisser passer les routes publiques
   if (
     pathname.startsWith("/login") ||
+    pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".")
