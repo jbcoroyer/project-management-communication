@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -59,6 +60,7 @@ export default function LoginPage() {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -99,6 +101,29 @@ export default function LoginPage() {
       setError(translateAuthError(err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
+    }
+  };
+
+  /* ── Mot de passe oublié ── */
+  const handleForgotPassword = async () => {
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setError("Indiquez votre adresse email pour recevoir le lien de réinitialisation.");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    setSendingReset(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: `${window.location.origin}/login/reset-password`,
+      });
+      if (resetError) throw resetError;
+      setSuccess("Email envoyé. Ouvrez le lien reçu pour définir un nouveau mot de passe.");
+    } catch (err: unknown) {
+      setError(translateAuthError(err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -232,6 +257,16 @@ export default function LoginPage() {
                 onToggleShow={() => setShowPassword((v) => !v)}
                 autoComplete="current-password"
               />
+              <div className="-mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handleForgotPassword()}
+                  disabled={sendingReset || loading}
+                  className="ui-transition text-xs font-semibold text-[color:var(--foreground)]/60 hover:text-[color:var(--foreground)]/85 disabled:opacity-60"
+                >
+                  {sendingReset ? "Envoi..." : "Mot de passe oublié ?"}
+                </button>
+              </div>
               <AlertBox error={error} success={success} />
               <SubmitBtn loading={loading} label="Se connecter" />
             </form>
@@ -386,6 +421,12 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-[11px] text-[color:var(--foreground)]/45">
           Outil interne — IDENA · Service Communication
+        </p>
+        <p className="mt-2 text-center text-[11px] text-[color:var(--foreground)]/35">
+          Réinitialisation directe:{" "}
+          <Link href="/login/reset-password" className="underline hover:text-[color:var(--foreground)]/60">
+            définir un nouveau mot de passe
+          </Link>
         </p>
       </div>
     </div>
