@@ -58,6 +58,14 @@ type EventDocument = {
   publicUrl: string;
 };
 
+type StorageListItem = {
+  name: string;
+  created_at?: string | null;
+  metadata?: {
+    size?: number;
+  } | null;
+};
+
 function getFileExtension(name: string): string {
   const idx = name.lastIndexOf(".");
   if (idx < 0) return "";
@@ -168,7 +176,7 @@ export default function EventDetailPage() {
         sortBy: { column: "created_at", order: "desc" },
       });
       if (error) throw error;
-      const rows = (data ?? [])
+      const rows = ((data ?? []) as StorageListItem[])
         .filter((file) => !!file.name)
         .map((file) => {
           const path = `${id}/${file.name}`;
