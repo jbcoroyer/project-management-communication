@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Eye, EyeOff, KeyRound } from "lucide-react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "../../../components/IdenaBrand";
 
@@ -39,7 +40,7 @@ export default function ResetPasswordPage() {
     };
     void init();
 
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         setCanReset(Boolean(session));
       }
