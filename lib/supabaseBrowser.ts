@@ -16,6 +16,12 @@ export function getSupabaseBrowser() {
   client = createBrowserClient(
     requireEnv(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL"),
     requireEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    {
+      auth: {
+        flowType: "pkce",
+        detectSessionInUrl: true,
+      },
+    },
   );
   return client;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -64,6 +64,32 @@ export default function LoginPage() {
   const [sendingReset, setSendingReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  /** Erreurs renvoyées par /auth/callback (ex. otp_expired) après redirection Supabase. */
+  const [urlAuthError, setUrlAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorCode = params.get("error_code");
+    const accessDenied = params.get("error");
+    let desc = params.get("error_description");
+    if (!errorCode && !accessDenied) return;
+    if (desc) {
+      try {
+        desc = decodeURIComponent(desc);
+      } catch {
+        desc = desc.replace(/\+/g, " ");
+      }
+    }
+    if (errorCode === "otp_expired" || accessDenied === "access_denied") {
+      setUrlAuthError(
+        desc ||
+          "Ce lien a expiré ou a déjà été utilisé (certains webmails ouvrent le lien en avant-première). Utilisez « Mot de passe oublié » pour recevoir un nouvel email, puis ouvrez le lien une seule fois.",
+      );
+    } else {
+      setUrlAuthError(desc || "Impossible de valider le lien de connexion ou de réinitialisation.");
+    }
+    window.history.replaceState(null, "", "/login");
+  }, []);
 
   /* ── Changement de photo ── */
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,6 +248,11 @@ export default function LoginPage() {
         </ServiceCommunicationIdenaHeading>
 
         <div className="ui-surface rounded-2xl p-6">
+          {urlAuthError && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+              {urlAuthError}
+            </div>
+          )}
           {/* Tabs */}
           <div className="mb-6 flex overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
             {(["signin", "signup"] as AuthMode[]).map((m) => (

@@ -14,3 +14,9 @@
 --    http://localhost:3000/login/reset-password
 --
 -- Sans cela, Supabase peut ignorer redirectTo et retomber sur la Site URL (souvent localhost en dev).
+--
+-- 3) Erreur otp_expired / « Email link is invalid or has expired »
+--    - Les liens à usage unique : un anti-virus ou la prévisualisation du webmail peut consommer le lien
+--      avant vous → demandez un NOUVEL email et ouvrez le lien une seule fois.
+--    - Authentication > Emails : si une option « OTP expiry » / durée de validité existe, augmentez-la (ex. 1 h).
+--    - Le flux côté app utilise GET /auth/callback (serveur) pour poser correctement les cookies de session.
