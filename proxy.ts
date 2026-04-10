@@ -1,11 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const pkceCode = request.nextUrl.searchParams.get("code");
 
-  // Si Supabase a renvoyé le code PKCE sur / ou /login (redirect_to = Site URL), envoyer vers le handler d’échange.
+  // Si Supabase a renvoyé le code PKCE sur / ou /login (redirect_to = Site URL), envoyer vers le handler d'échange.
   if (pkceCode && (pathname === "/" || pathname === "/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/callback";
