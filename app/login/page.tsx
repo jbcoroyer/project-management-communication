@@ -147,8 +147,10 @@ export default function LoginPage() {
         setError("URL de l’application inconnue. Définissez NEXT_PUBLIC_APP_URL sur Vercel.");
         return;
       }
+      // Sans query string : la liste « Redirect URLs » Supabase doit matcher exactement l’URL de base.
+      // Si on ajoute ?next=..., Supabase peut rejeter l’URL et retomber sur la Site URL (racine) → le ?code= se perd au login.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-        redirectTo: `${configuredBaseUrl}/auth/callback?next=/login/reset-password`,
+        redirectTo: `${configuredBaseUrl}/auth/callback`,
       });
       if (resetError) throw resetError;
       setSuccess("Email envoyé. Ouvrez le lien reçu pour définir un nouveau mot de passe.");
