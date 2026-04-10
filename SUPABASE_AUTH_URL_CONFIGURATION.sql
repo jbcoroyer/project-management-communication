@@ -1,0 +1,16 @@
+-- Configuration Auth Supabase (à faire dans le Dashboard, pas en SQL exécutable sur public.*)
+--
+-- Authentication > URL configuration
+--
+-- 1) Site URL : l’URL de production de l’app (ex. https://project-management-communication.vercel.app)
+--    Évite que les liens magiques / reset pointent vers http://localhost:3000
+--
+-- 2) Redirect URLs : ajouter exactement (adapter le domaine si besoin) :
+--    https://project-management-communication.vercel.app/auth/callback
+--    https://project-management-communication.vercel.app/login/reset-password
+--    https://*.vercel.app/auth/callback
+--    https://*.vercel.app/login/reset-password
+--    http://localhost:3000/auth/callback
+--    http://localhost:3000/login/reset-password
+--
+-- Sans cela, Supabase peut ignorer redirectTo et retomber sur la Site URL (souvent localhost en dev).

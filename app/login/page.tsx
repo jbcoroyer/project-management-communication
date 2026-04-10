@@ -16,6 +16,7 @@ import {
   User,
   UserRound,
 } from "lucide-react";
+import { getPublicAppOrigin } from "../../lib/publicAppUrl";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "../../components/IdenaBrand";
 
@@ -115,8 +116,11 @@ export default function LoginPage() {
     setSuccess(null);
     setSendingReset(true);
     try {
-      const configuredBaseUrl =
-        process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") || window.location.origin;
+      const configuredBaseUrl = getPublicAppOrigin();
+      if (!configuredBaseUrl) {
+        setError("URL de l’application inconnue. Définissez NEXT_PUBLIC_APP_URL sur Vercel.");
+        return;
+      }
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
         redirectTo: `${configuredBaseUrl}/auth/callback?next=/login/reset-password`,
       });
