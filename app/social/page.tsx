@@ -645,7 +645,7 @@ export default function SocialPage() {
               <div>
                 <p className="font-semibold">Schéma Supabase manquant ou incomplet</p>
                 <p className="mt-1">
-                  {schemaError} Le fichier à exécuter est <code>SUPABASE_SOCIAL_MIGRATION.sql</code>.
+                  {schemaError} Complétez le schéma des tables réseaux sociaux dans Supabase (SQL Editor ou migrations).
                 </p>
               </div>
             </div>
@@ -674,7 +674,7 @@ export default function SocialPage() {
               </p>
               {!linkedinHistoricalAvailable && (
                 <p className="mt-2 text-xs text-[color:var(--foreground)]/55">
-                  Pour activer les variations mensuelles persistées, exécutez le script SQL <code>SUPABASE_LINKEDIN_METRICS_MIGRATION.sql</code>.
+                  Pour activer les variations mensuelles persistées, ajoutez les tables métriques LinkedIn dans Supabase.
                 </p>
               )}
             </div>

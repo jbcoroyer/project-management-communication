@@ -129,7 +129,7 @@ function mapSocialTargetRow(row: SocialTargetRow): SocialMonthlyTarget {
 function formatSupabaseErrorMessage(error: { code?: string; message?: string } | null): string | null {
   if (!error) return null;
   if (error.code === "42P01") {
-    return "Les tables Réseaux sociaux n'existent pas encore. Exécutez le fichier SUPABASE_SOCIAL_MIGRATION.sql dans Supabase.";
+    return "Les tables Réseaux sociaux n'existent pas encore. Créez-les dans votre projet Supabase (SQL Editor ou migrations).";
   }
   return error.message ?? "Une erreur Supabase est survenue.";
 }
