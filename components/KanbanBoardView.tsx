@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  LayoutGrid,
   ListTodo,
   Plus,
   ShieldCheck,
@@ -104,7 +105,7 @@ function DroppableColumn(props: {
         className={[
           "flex flex-1 flex-col gap-2 rounded-2xl border border-dashed p-2 transition-all duration-150",
           isOver
-            ? "border-[var(--line-strong)] bg-[var(--surface-soft)] shadow-[inset_0_0_0_2px_rgba(26,26,26,0.08)]"
+            ? "border-[var(--line-strong)] bg-[var(--surface-soft)]/50 shadow-[inset_0_0_0_2px_rgba(26,26,26,0.08)]"
             : "border-[var(--line)] bg-[var(--surface)]/70",
         ].join(" ")}
         style={{ minHeight: 140 }}
@@ -125,6 +126,7 @@ function DraggableCard(props: {
   onOpen: () => void;
   isMyTask?: boolean;
   cardRef?: (el: HTMLDivElement | null) => void;
+  cardVariant?: "full" | "compact";
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: props.task.id,
@@ -153,7 +155,7 @@ function DraggableCard(props: {
       <KanbanCardUI
         task={props.task}
         currentNow={props.now}
-        variant="compact"
+        variant={props.cardVariant ?? "compact"}
         isMyTask={props.isMyTask}
         companyLogoUrl={props.companyLogoUrl}
         onArchive={props.onArchive}
@@ -213,6 +215,7 @@ export default function KanbanBoardView(props: {
   const [filterAdmin, setFilterAdmin] = useState<AdminId | "Tous">("Tous");
   const [filterCompany, setFilterCompany] = useState<string>("Toutes");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [cardDensity, setCardDensity] = useState<"compact" | "detailed">("detailed");
   const [collapsedEventIds, setCollapsedEventIds] = useState<Set<string>>(() =>
     loadCollapsedEventGroupIds(),
   );
@@ -392,6 +395,15 @@ export default function KanbanBoardView(props: {
         <span className="ml-auto rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/65">
           {filteredTasks.length} tâche{filteredTasks.length !== 1 ? "s" : ""}
         </span>
+        <button
+          type="button"
+          onClick={() => setCardDensity((v) => (v === "compact" ? "detailed" : "compact"))}
+          className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)]"
+          title="Basculer la densité d'affichage des cartes"
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          Vue {cardDensity === "compact" ? "compacte" : "détaillée"}
+        </button>
       </div>
 
       {/* ── Tableau Kanban ── */}
@@ -439,6 +451,7 @@ export default function KanbanBoardView(props: {
                       cardRef={(el) => {
                         props.taskCardRefs.current[task.id] = el;
                       }}
+                      cardVariant={cardDensity === "compact" ? "compact" : "full"}
                     />
                   ))}
                   {groups.map(([eventId, evTasks]) => {
@@ -503,6 +516,7 @@ export default function KanbanBoardView(props: {
                                   cardRef={(el) => {
                                     props.taskCardRefs.current[task.id] = el;
                                   }}
+                                  cardVariant={cardDensity === "compact" ? "compact" : "full"}
                                 />
                               ))}
                             </div>
@@ -512,8 +526,12 @@ export default function KanbanBoardView(props: {
                     );
                   })}
                   {colTasks.length === 0 && (
-                    <div className="flex flex-1 items-center justify-center py-10 text-center">
-                      <p className="text-xs text-[color:var(--foreground)]/35">Aucune tâche</p>
+                    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center">
+                      <ListTodo className="h-8 w-8 text-[color:var(--foreground)]/20" />
+                      <p className="text-xs text-[color:var(--foreground)]/45">Aucune tâche ici.</p>
+                      <p className="text-[11px] text-[color:var(--foreground)]/35">
+                        Créez-en une avec le bouton + ou la touche N.
+                      </p>
                     </div>
                   )}
                 </DroppableColumn>
@@ -528,7 +546,7 @@ export default function KanbanBoardView(props: {
                   <KanbanCardUI
                     task={activeTask}
                     currentNow={props.now}
-                    variant="compact"
+                    variant={cardDensity === "compact" ? "compact" : "full"}
                     isOverlay
                     onArchive={() => {}}
                     onEdit={() => {}}

@@ -36,6 +36,20 @@ function SubtaskBadge(props: { subtasks: Task[] }) {
   );
 }
 
+function PriorityBadge({ priority }: { priority: Task["priority"] }) {
+  const cls = {
+    Haute: "border-rose-200 bg-rose-50 text-rose-700",
+    Moyenne: "border-amber-200 bg-amber-50 text-amber-700",
+    Basse: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  }[priority] ?? "border-[var(--line)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/65";
+
+  return (
+    <span className={["inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold", cls].join(" ")}>
+      {priority}
+    </span>
+  );
+}
+
 function CardBody(props: {
   task: Task;
   currentNow: number;
@@ -138,59 +152,93 @@ function CardBody(props: {
       </div>
 
       {/* ── Ligne 2 : Nom du projet ── */}
-      <p className="truncate pl-0.5 text-[14px] font-semibold leading-tight tracking-tight text-[var(--foreground)]">
+      <p className="line-clamp-2 pl-0.5 text-[14px] font-semibold leading-tight tracking-tight text-[var(--foreground)]">
         {task.projectName || "Projet sans titre"}
       </p>
 
-      {/* ── Ligne 3 : Métadonnées ── */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[color:var(--foreground)]/65">
-        <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)]/80 px-1.5 py-0.5">
-          <CompanyAvatar
-            name={task.company}
-            logoUrl={props.companyLogoUrl}
-            className="h-3.5 w-3.5 shrink-0 rounded-sm object-contain"
-            fallbackClassName="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[color:var(--foreground)]/40"
-            iconClassName="h-3 w-3"
-          />
-          <span className="max-w-[100px] truncate">{task.company}</span>
-        </span>
-        {task.deadline && (
-          <span
-            className={[
-              "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
-              isOverdue
-                ? "border-rose-200 bg-rose-50 text-rose-700"
-                : isUrgent48h
-                  ? "border-amber-200 bg-amber-50 text-amber-700"
-                  : "border-[var(--line)] bg-[var(--surface-soft)]/80",
-            ].join(" ")}
-          >
-            <CalendarDays className="h-3 w-3 shrink-0" />
-            {task.deadline}
-          </span>
-        )}
-        {(task.estimatedHours > 0 || task.estimatedDays > 0) && (
-          <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)]/80 px-1.5 py-0.5 text-[color:var(--foreground)]/70">
-            <Clock3 className="h-3 w-3 shrink-0" />
-            {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.estimatedDays}j`}
-          </span>
-        )}
-      </div>
+      {props.variant === "compact" ? (
+        <div className="flex items-center justify-between">
+          <PriorityBadge priority={task.priority} />
+          {task.subtasks && task.subtasks.length > 0 && <SubtaskBadge subtasks={task.subtasks} />}
+        </div>
+      ) : (
+        <>
+          {/* ── Ligne 3 : Métadonnées ── */}
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[color:var(--foreground)]/65">
+            <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)]/80 px-1.5 py-0.5">
+              <CompanyAvatar
+                name={task.company}
+                logoUrl={props.companyLogoUrl}
+                className="h-3.5 w-3.5 shrink-0 rounded-sm object-contain"
+                fallbackClassName="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[color:var(--foreground)]/40"
+                iconClassName="h-3 w-3"
+              />
+              <span className="max-w-[100px] truncate">{task.company}</span>
+            </span>
+            {task.deadline && (
+              <span
+                className={[
+                  "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
+                  isOverdue
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : isUrgent48h
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-[var(--line)] bg-[var(--surface-soft)]/80",
+                ].join(" ")}
+              >
+                <CalendarDays className="h-3 w-3 shrink-0" />
+                {task.deadline}
+              </span>
+            )}
+            {(task.estimatedHours > 0 || task.estimatedDays > 0) && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)]/80 px-1.5 py-0.5 text-[color:var(--foreground)]/70">
+                <Clock3 className="h-3 w-3 shrink-0" />
+                {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.estimatedDays}j`}
+              </span>
+            )}
+          </div>
 
-      {/* ── Ligne 4 : Domaine + indicateur sous-tâches ── */}
-      <div className="flex items-center justify-between">
-        <span
-          className={[
-            "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
-            domainClass,
-          ].join(" ")}
-        >
-          {task.domain}
-        </span>
-        {task.subtasks && task.subtasks.length > 0 && (
-          <SubtaskBadge subtasks={task.subtasks} />
-        )}
-      </div>
+          {/* ── Ligne 4 : Domaine + priorité + sous-tâches ── */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={[
+                  "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+                  domainClass,
+                ].join(" ")}
+              >
+                {task.domain}
+              </span>
+              <PriorityBadge priority={task.priority} />
+            </div>
+            {task.subtasks && task.subtasks.length > 0 && <SubtaskBadge subtasks={task.subtasks} />}
+          </div>
+        </>
+      )}
+
+      {/* Barre de progression minimale (sous-tâches ou temps) */}
+      {(task.subtasks?.length || task.estimatedHours > 0 || task.elapsedMs > 0) && (
+        <div className="mt-0.5 h-[3px] w-full overflow-hidden rounded-full bg-[var(--line)]">
+          <span
+            className="block h-full rounded-full bg-[var(--accent)]/70"
+            style={{
+              width: `${Math.max(
+                6,
+                Math.min(
+                  100,
+                  task.subtasks && task.subtasks.length > 0
+                    ? Math.round(
+                        (task.subtasks.filter((s) => s.column === "Terminé").length / task.subtasks.length) * 100,
+                      )
+                    : task.estimatedHours > 0
+                      ? Math.round((task.elapsedMs / (task.estimatedHours * 60 * 60 * 1000)) * 100)
+                      : 0,
+                ),
+              )}%`,
+            }}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -229,7 +277,7 @@ export function KanbanCardUI(props: {
         "group relative flex flex-col rounded-2xl border border-[var(--line)] text-xs text-[var(--foreground)] ui-transition",
         isMyTask ? "bg-[var(--surface)] shadow-[0_0_0_2px_var(--accent)]/20" : "bg-[var(--surface)]",
         isOverlay
-          ? "pointer-events-none shadow-[0_18px_34px_rgba(20,17,13,0.14)]"
+          ? "pointer-events-none rotate-2 shadow-2xl ring-1 ring-[var(--line)]/40"
           : "hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-[0_16px_30px_rgba(20,17,13,0.12)]",
         variant === "compact" ? "gap-2 p-3" : "gap-2.5 p-4",
       ].join(" ")}

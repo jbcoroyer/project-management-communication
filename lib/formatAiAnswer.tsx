@@ -36,32 +36,52 @@ function looksLikeSectionTitle(line: string): string | null {
   return null;
 }
 
-function splitFrenchQuoteSegments(text: string): ReactNode[] {
+function splitFrenchQuoteSegments(
+  text: string,
+  options?: { onTaskClick?: (taskId: string) => void; resolveTaskId?: (quotedTitle: string) => string | null },
+): ReactNode[] {
   const parts = text.split(/(«[^»]+»)/g).filter(Boolean);
   return parts.map((part, idx) => {
     if (/^«[^»]+»$/.test(part)) {
+      const rawTitle = part.replace(/^«|»$/g, "");
+      const taskId = options?.resolveTaskId?.(rawTitle) ?? null;
       return (
-        <span
-          key={`q-${idx}`}
-          className="mx-0.5 inline-flex rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/12 px-2 py-[1px] text-[12px] font-semibold text-[var(--foreground)]"
-        >
-          {part}
-        </span>
+        taskId && options?.onTaskClick ? (
+          <button
+            key={`q-${idx}`}
+            type="button"
+            onClick={() => options.onTaskClick?.(taskId)}
+            className="mx-0.5 inline-flex rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/12 px-2 py-[1px] text-[12px] font-semibold text-[var(--foreground)] hover:bg-[var(--accent)]/20"
+            title="Ouvrir la tâche"
+          >
+            {part}
+          </button>
+        ) : (
+          <span
+            key={`q-${idx}`}
+            className="mx-0.5 inline-flex rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/12 px-2 py-[1px] text-[12px] font-semibold text-[var(--foreground)]"
+          >
+            {part}
+          </span>
+        )
       );
     }
     return <span key={`t-${idx}`}>{part}</span>;
   });
 }
 
-function renderRichText(text: string): ReactNode {
+function renderRichText(
+  text: string,
+  options?: { onTaskClick?: (taskId: string) => void; resolveTaskId?: (quotedTitle: string) => string | null },
+): ReactNode {
   const parts = text.split(/\*\*/);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
       <strong key={i} className="font-semibold text-[var(--foreground)]">
-        {splitFrenchQuoteSegments(part)}
+        {splitFrenchQuoteSegments(part, options)}
       </strong>
     ) : (
-      <span key={i}>{splitFrenchQuoteSegments(part)}</span>
+      <span key={i}>{splitFrenchQuoteSegments(part, options)}</span>
     ),
   );
 }
@@ -80,7 +100,15 @@ export function normalizeAiLineBreaks(raw: string): string {
   return t.replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export function AiAnswerContent({ text }: { text: string }) {
+export function AiAnswerContent({
+  text,
+  onTaskClick,
+  resolveTaskId,
+}: {
+  text: string;
+  onTaskClick?: (taskId: string) => void;
+  resolveTaskId?: (quotedTitle: string) => string | null;
+}) {
   const normalized = normalizeAiLineBreaks(text);
   const lines = normalized
     .split("\n")
@@ -128,7 +156,7 @@ export function AiAnswerContent({ text }: { text: string }) {
                   return (
                     <li key={li} className="flex gap-2 text-[13px] leading-relaxed">
                       <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]/65" />
-                      <span>{renderRichText(cleaned)}</span>
+                      <span>{renderRichText(cleaned, { onTaskClick, resolveTaskId })}</span>
                     </li>
                   );
                 })}
@@ -140,7 +168,7 @@ export function AiAnswerContent({ text }: { text: string }) {
             {lines.map((line, idx) => (
               <li key={idx} className="flex gap-2 text-[13px] leading-relaxed">
                 <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]/65" />
-                <span>{renderRichText(line)}</span>
+                <span>{renderRichText(line, { onTaskClick, resolveTaskId })}</span>
               </li>
             ))}
           </ul>

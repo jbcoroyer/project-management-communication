@@ -236,10 +236,16 @@ export default function ArchivesView(props: {
 
       {/* ─── Grille des archives ─── */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/60">
-          {archivedTasks.length === 0
-            ? "Aucune tâche archivée."
-            : "Aucun résultat pour ces filtres."}
+        <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center">
+          <FolderArchive className="mx-auto h-10 w-10 text-[color:var(--foreground)]/20" />
+          <p className="mt-3 text-sm font-medium text-[color:var(--foreground)]/65">
+            {archivedTasks.length === 0 ? "Aucune tâche archivée." : "Aucun résultat pour ces filtres."}
+          </p>
+          <p className="mt-1 text-xs text-[color:var(--foreground)]/45">
+            {archivedTasks.length === 0
+              ? "Votre tableau est propre. Créez une nouvelle tâche depuis le dashboard."
+              : "Essayez d'élargir la période ou de réinitialiser les filtres."}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   env: {
     ...(publicAppUrl ? { NEXT_PUBLIC_APP_URL: publicAppUrl } : {}),
   },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "recharts",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+    ],
+  },
 };
 
 export default nextConfig;

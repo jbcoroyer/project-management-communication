@@ -6,6 +6,7 @@ import {
   Archive,
   Building2,
   Check,
+  Focus,
   Layers,
   Plus,
   Pencil,
@@ -79,6 +80,7 @@ export default function TaskDetailPanel(props: {
   const { task } = props;
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Champs éditables
   const [editTitle, setEditTitle] = useState(task.projectName);
@@ -192,7 +194,10 @@ export default function TaskDetailPanel(props: {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-40 bg-slate-950/24 backdrop-blur-[1px]"
+        className={[
+          "fixed inset-0 z-40 bg-slate-950/24 backdrop-blur-[1px]",
+          isFocusMode ? "bg-slate-950/35" : "",
+        ].join(" ")}
         onClick={props.onClose}
       />
 
@@ -204,7 +209,12 @@ export default function TaskDetailPanel(props: {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 42 }}
         transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
-        className="fixed right-0 top-[64px] z-50 flex h-[calc(100vh-64px)] w-full max-w-xl flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--surface)]/97 shadow-[0_34px_90px_rgba(20,17,13,0.24)] backdrop-blur"
+        className={[
+          "fixed z-50 flex w-full flex-col overflow-hidden bg-[var(--surface)]/97 shadow-[0_34px_90px_rgba(20,17,13,0.24)] backdrop-blur",
+          isFocusMode
+            ? "left-1/2 top-1/2 h-[86vh] max-w-3xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--line)]"
+            : "right-0 top-[64px] h-[calc(100vh-64px)] max-w-xl border-l border-[var(--line)]",
+        ].join(" ")}
       >
         {/* ── En-tête ── */}
         <div className="shrink-0 border-b border-[var(--line)] px-5 py-4">
@@ -227,6 +237,15 @@ export default function TaskDetailPanel(props: {
               )}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsFocusMode((v) => !v)}
+                className="ui-transition inline-flex items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]"
+                title={isFocusMode ? "Quitter le mode focus" : "Passer en mode focus"}
+              >
+                <Focus className="h-3.5 w-3.5" />
+                {isFocusMode ? "Quitter focus" : "Mode focus"}
+              </button>
               {!isEditing ? (
                 <button
                   type="button"

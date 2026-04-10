@@ -6,9 +6,11 @@ import { AiAnswerContent } from "../lib/formatAiAnswer";
 
 type QuickAiAssistantProps = {
   context: string;
+  taskTitleToId?: Record<string, string>;
+  onOpenTask?: (taskId: string) => void;
 };
 
-export default function QuickAiAssistant({ context }: QuickAiAssistantProps) {
+export default function QuickAiAssistant({ context, taskTitleToId, onOpenTask }: QuickAiAssistantProps) {
   const [prompt, setPrompt] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,7 +80,13 @@ export default function QuickAiAssistant({ context }: QuickAiAssistantProps) {
             {error}
           </div>
         )}
-        {answer && <AiAnswerContent text={answer} />}
+        {answer && (
+          <AiAnswerContent
+            text={answer}
+            onTaskClick={onOpenTask}
+            resolveTaskId={(quotedTitle) => taskTitleToId?.[quotedTitle] ?? null}
+          />
+        )}
       </div>
     </section>
   );

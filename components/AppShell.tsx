@@ -19,7 +19,7 @@ type AppShellProps = {
 };
 
 const navItems = [
-  { href: "/", label: "Tableau de bord", icon: LayoutGrid },
+  { href: "/dashboard/kanban", label: "Tableau de bord", icon: LayoutGrid },
   { href: "/events/dashboard", label: "Événements", icon: CalendarRange },
   { href: "/social", label: "Réseaux sociaux", icon: Megaphone },
   { href: "/stock", label: "Stock", icon: Package },
@@ -56,6 +56,8 @@ export default function AppShell({
               const active =
                 item.href === "/events/dashboard"
                   ? pathname.startsWith("/events")
+                  : item.href === "/dashboard/kanban"
+                    ? pathname === "/" || pathname.startsWith("/dashboard")
                   : pathname === item.href;
               return (
                 <Link
