@@ -16,6 +16,7 @@ import AdminAvatar from "./AdminAvatar";
 import type { Task, AdminId, ColumnId } from "../lib/types";
 import { adminBadgeClassFor } from "../lib/kanbanStyles";
 import { completedAtPatchForColumnChange } from "../lib/completedAt";
+import { markTaskMutatedLocally } from "../lib/taskMutatedLocally";
 import { DONE_COLUMN_NAME } from "../lib/workflowConstants";
 
 /* ─── Mini formulaire inline pour ajouter une sous-tâche ─── */
@@ -71,6 +72,7 @@ function AddSubtaskForm(props: {
       return;
     }
 
+    markTaskMutatedLocally((data as { id?: string }).id);
     const { mapTaskRow } = await import("../lib/taskMappers");
     props.onCreated(mapTaskRow(data));
     setSaving(false);
@@ -270,6 +272,7 @@ export default function SubtasksPanel(props: {
     }
     const dbPatch = { column_id: DONE_COLUMN_NAME, ...colMerge };
     props.onSubtaskUpdated(subtask.id, patch, dbPatch);
+    markTaskMutatedLocally(subtask.id);
     await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
   };
 
@@ -281,6 +284,7 @@ export default function SubtasksPanel(props: {
     }
     const dbPatch = { column_id: col, ...colMerge };
     props.onSubtaskUpdated(subtask.id, patch, dbPatch);
+    markTaskMutatedLocally(subtask.id);
     await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
   };
 

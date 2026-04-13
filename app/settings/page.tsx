@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Archive,
@@ -26,7 +26,8 @@ import { toastError, toastSuccess } from "../../lib/toast";
 import { useIdenaMark } from "../../lib/idenaMarkContext";
 import { getIdenaMarkStaticSrc } from "../../lib/idenaMarkSrc";
 import { useCurrentUser } from "../../lib/useCurrentUser";
-import { adminSolidColorFor } from "../../lib/kanbanStyles";
+import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
+import { adminSolidColorFor, getAdminColorPaletteSize } from "../../lib/kanbanStyles";
 import type { AdminId } from "../../lib/types";
 
 /** Couleur unique des badges domaine (bleu IDENA, non personnalisable). */
@@ -265,6 +266,11 @@ export default function SettingsPage() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadAll]);
+
+  useLayoutEffect(() => {
+    const names = admins.map((r) => r.display_name.trim()).filter(Boolean);
+    syncAdminColorAssignments(names, getAdminColorPaletteSize());
+  }, [admins]);
 
   /* ─── Sort order ─── */
   const updateSortOrder = async (

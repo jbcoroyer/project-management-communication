@@ -230,7 +230,12 @@ function TaskRow(props: { task: Task; now: number }) {
 
       {/* Nom du projet */}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-[var(--foreground)]">
+        {task.parentTaskId ? (
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--foreground)]/45">
+            Sous-tâche
+          </p>
+        ) : null}
+        <p className="truncate text-base font-semibold text-[var(--foreground)]">
           {task.projectName || "Projet sans titre"}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">

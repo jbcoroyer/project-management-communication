@@ -4,7 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ClipboardList, Download, FileText, PiggyBank, Trash2, Upload, Warehouse } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardList,
+  Download,
+  FileText,
+  KanbanSquare,
+  PiggyBank,
+  Trash2,
+  Upload,
+  Warehouse,
+} from "lucide-react";
 import AppShell from "../../../components/AppShell";
 import BudgetGauge from "../../../components/events/BudgetGauge";
 import EventTaskPlanningModal from "../../../components/events/EventTaskPlanningModal";
@@ -23,6 +33,8 @@ import { useEventTasks } from "../../../lib/useEventTasks";
 import { useReferenceData } from "../../../lib/useReferenceData";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { deleteEvent } from "../../actions/events";
+import { completedAtIsoForNewTaskInColumn, completedAtPatchForColumnChange } from "../../../lib/completedAt";
+import { markTaskMutatedLocally } from "../../../lib/taskMutatedLocally";
 
 type Tab = "tasks" | "stock" | "budget" | "documents";
 const EVENT_DOCUMENTS_BUCKET = "event-documents";
@@ -252,6 +264,7 @@ export default function EventDetailPage() {
   const updateTaskDb = useCallback(
     async (taskId: string, dbPatch: Record<string, unknown>) => {
       const supabase = getSupabaseBrowser();
+      markTaskMutatedLocally(taskId);
       const { error } = await supabase.from("tasks").update(dbPatch).eq("id", taskId);
       if (error) {
         toastError(getInventoryErrorMessage(error, "Mise à jour impossible."));
@@ -346,30 +359,37 @@ export default function EventDetailPage() {
     try {
       const supabase = getSupabaseBrowser();
       const eventDomain = defaultDomains.find((d) => d.includes("Event")) ?? defaultDomains[0];
-      const { error } = await supabase.from("tasks").insert({
-        project_name: title,
-        event_category: newTaskCategory.trim() || null,
-        event_id: id,
-        company: defaultCompanies[0],
-        domain: eventDomain,
-        admin: assignedName,
-        lane: assignedName,
-        is_client_request: false,
-        client_name: "",
-        deadline: null,
-        budget: "",
-        description: "",
-        column_id: "À faire",
-        priority: "Moyenne",
-        projected_work: [],
-        elapsed_ms: 0,
-        is_running: false,
-        last_start_time_ms: null,
-        is_archived: false,
-        estimated_hours: 0,
-        estimated_days: 0,
-      });
+      const initialColumn = "À faire" as const;
+      const { data: createdRow, error } = await supabase
+        .from("tasks")
+        .insert({
+          project_name: title,
+          event_category: newTaskCategory.trim() || null,
+          event_id: id,
+          company: defaultCompanies[0],
+          domain: eventDomain,
+          admin: assignedName,
+          lane: assignedName,
+          is_client_request: false,
+          client_name: "",
+          deadline: null,
+          budget: "",
+          description: "",
+          column_id: initialColumn,
+          priority: "Moyenne",
+          projected_work: [],
+          elapsed_ms: 0,
+          is_running: false,
+          last_start_time_ms: null,
+          is_archived: false,
+          estimated_hours: 0,
+          estimated_days: 0,
+          completed_at: completedAtIsoForNewTaskInColumn(initialColumn),
+        })
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      markTaskMutatedLocally((createdRow as { id?: string } | null)?.id);
       toastSuccess("Tâche ajoutée");
       setNewTaskTitle("");
       setNewTaskCategory("");
@@ -460,7 +480,20 @@ export default function EventDetailPage() {
 
             {tab === "tasks" && (
               <section className="ui-surface rounded-[24px] p-5">
-                <h2 className="text-lg font-semibold text-[var(--foreground)]">To-do list de l&apos;événement</h2>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">To-do list de l&apos;événement</h2>
+                  <Link
+                    href="/dashboard/kanban"
+                    className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)] hover:bg-[var(--surface)]"
+                  >
+                    <KanbanSquare className="h-4 w-4 text-[var(--accent)]" />
+                    Ouvrir le Kanban principal
+                  </Link>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--foreground)]/55">
+                  Les tâches créées ici sont enregistrées comme sur le tableau Kanban : elles apparaissent dans les colonnes
+                  « À faire », « En cours », etc., dans la charge de travail et les vues événements.
+                </p>
                 <div className="mt-4 grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_220px_auto]">
                   <input
                     value={newTaskTitle}
@@ -498,11 +531,13 @@ export default function EventDetailPage() {
                           <input
                             type="checkbox"
                             checked={task.column === "Terminé"}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const nextCol = e.target.checked ? "Terminé" : "À faire";
                               void updateTaskDb(task.id, {
-                                column_id: e.target.checked ? "Terminé" : "À faire",
-                              }).catch(() => {})
-                            }
+                                column_id: nextCol,
+                                ...completedAtPatchForColumnChange(task.column, nextCol),
+                              }).catch(() => {});
+                            }}
                             className="h-4 w-4 rounded border-[var(--line)]"
                           />
                         </label>

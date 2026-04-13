@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import {
+  clearInvalidSupabaseSession,
+  isInvalidRefreshTokenError,
+} from "./supabaseAuthRecovery";
 
 export type CurrentUser = {
   id: string;
@@ -21,7 +25,17 @@ export function useCurrentUser() {
   const loadUser = useCallback(async () => {
     const {
       data: { user: authUser },
+      error: authError,
     } = await supabase.auth.getUser();
+
+    if (authError && isInvalidRefreshTokenError(authError)) {
+      const redirected = await clearInvalidSupabaseSession(supabase);
+      if (!redirected) {
+        setUser(null);
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!authUser) {
       setUser(null);

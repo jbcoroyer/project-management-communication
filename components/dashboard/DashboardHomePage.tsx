@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
@@ -32,6 +32,11 @@ import { useEvents } from "../../lib/useEvents";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { useTaskManager } from "../../lib/useTaskManager";
+import { DONE_COLUMN_NAME } from "../../lib/workflowConstants";
+import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
+import { getAdminColorPaletteSize } from "../../lib/kanbanStyles";
+import AiChatPopup from "../AiChatPopup";
+import DashboardNotificationBell from "../DashboardNotificationBell";
 
 type MainTab = "kanban" | "todo" | "calendar" | "analytics" | "archives" | "workload";
 const MAIN_TAB_SET = new Set<MainTab>(["kanban", "todo", "calendar", "analytics", "archives", "workload"]);
@@ -52,7 +57,6 @@ const CalendarView = dynamic(() => import("../CalendarView"));
 const WorkloadView = dynamic(() => import("../WorkloadView"));
 const TaskDetailPanel = dynamic(() => import("../TaskDetailPanel"));
 const NewTaskModal = dynamic(() => import("../NewTaskModal"));
-const QuickAiAssistant = dynamic(() => import("../QuickAiAssistant"));
 const CommandBar = dynamic(() => import("../CommandBar"));
 
 export default function DashboardHomePage() {
@@ -104,6 +108,38 @@ export default function DashboardHomePage() {
   const lastFocusedTaskIdRef = useRef<string | null>(null);
 
   const admins = useMemo(() => adminRecords.map((item) => item.name), [adminRecords]);
+
+  const adminNamesForPalette = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const r of adminRecords) {
+      const t = r.name.trim();
+      if (t && !seen.has(t)) {
+        seen.add(t);
+        ordered.push(t);
+      }
+    }
+    const extras: string[] = [];
+    for (const t of tasks) {
+      for (const a of t.admins) {
+        const x = a?.trim();
+        if (x && !seen.has(x)) extras.push(x);
+      }
+    }
+    extras.sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+    for (const x of extras) {
+      if (!seen.has(x)) {
+        seen.add(x);
+        ordered.push(x);
+      }
+    }
+    return ordered;
+  }, [adminRecords, tasks]);
+
+  useLayoutEffect(() => {
+    syncAdminColorAssignments(adminNamesForPalette, getAdminColorPaletteSize());
+  }, [adminNamesForPalette]);
+
   const columns = useMemo(() => columnRecords.map((item) => item.name), [columnRecords]);
   const companies = useMemo(() => companyRecords.map((item) => item.name), [companyRecords]);
 
@@ -142,6 +178,21 @@ export default function DashboardHomePage() {
       toastError("Impossible de charger les taches. Veuillez reessayer.");
     });
   }, [loadTasks]);
+
+  useEffect(() => {
+    const taskFromUrl = searchParams.get("task");
+    if (!taskFromUrl || tasks.length === 0) return;
+    if (!tasks.some((t) => t.id === taskFromUrl)) return;
+    setSelectedTaskId(taskFromUrl);
+    const next = new URLSearchParams();
+    const q = searchParams.get("q");
+    if (q) next.set("q", q);
+    const target =
+      next.toString().length > 0 ? `/dashboard/kanban?${next.toString()}` : "/dashboard/kanban";
+    if (pathname !== "/dashboard/kanban" || searchParams.has("task")) {
+      router.replace(target, { scroll: false });
+    }
+  }, [tasks, searchParams, pathname, router]);
 
   const defaultAdminName = useMemo(() => {
     const name = currentUser?.teamMemberName ?? currentUser?.displayName ?? null;
@@ -251,6 +302,12 @@ export default function DashboardHomePage() {
     [tasks],
   );
 
+  /** Tâches actives à plat (y compris sous-tâches) pour la charge de travail. */
+  const workloadFlatTasks = useMemo(
+    () => tasks.filter((t) => !t.isArchived && t.column !== DONE_COLUMN_NAME),
+    [tasks],
+  );
+
   const filteredActiveTasks = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return activeTasks.filter((task) => {
@@ -270,6 +327,7 @@ export default function DashboardHomePage() {
   }, [activeTasks, searchQuery]);
 
   const analyticsTasks = useMemo(() => [...activeTasks, ...archivedTasks], [activeTasks, archivedTasks]);
+
   const taskTitleToId = useMemo(
     () => Object.fromEntries(activeTasks.map((t) => [t.projectName, t.id])),
     [activeTasks],
@@ -449,28 +507,23 @@ export default function DashboardHomePage() {
           </div>
         }
         toolbarRight={
-          <button
-            type="button"
-            onClick={handleOpenForm}
-            title="Nouvelle tache (N)"
-            className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/25 text-white">
-              <Plus className="h-3.5 w-3.5" />
-            </span>
-            <span>Nouvelle tache</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <DashboardNotificationBell />
+            <button
+              type="button"
+              onClick={handleOpenForm}
+              title="Nouvelle tache (N)"
+              className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/25 text-white">
+                <Plus className="h-3.5 w-3.5" />
+              </span>
+              <span>Nouvelle tache</span>
+            </button>
+          </div>
         }
       >
         <div className="space-y-5">
-          <QuickAiAssistant
-            context={aiContext}
-            taskTitleToId={taskTitleToId}
-            onOpenTask={(taskId) => {
-              lastFocusedTaskIdRef.current = null;
-              setSelectedTaskId(taskId);
-            }}
-          />
           <header className="ui-surface rounded-2xl p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -584,7 +637,7 @@ export default function DashboardHomePage() {
           )}
 
           {activeTab === "workload" && (
-            <WorkloadView tasks={activeTasks} admins={admins} adminRecords={adminRecords} now={now} />
+            <WorkloadView tasks={workloadFlatTasks} admins={admins} adminRecords={adminRecords} now={now} />
           )}
 
           {activeTab === "analytics" && <AnalyticsView tasks={analyticsTasks} />}
@@ -650,6 +703,15 @@ export default function DashboardHomePage() {
           actions={commandActions}
         />
       </AppShell>
+
+      <AiChatPopup
+        context={aiContext}
+        taskTitleToId={taskTitleToId}
+        onOpenTask={(taskId) => {
+          lastFocusedTaskIdRef.current = null;
+          setSelectedTaskId(taskId);
+        }}
+      />
     </AdminAvatarContext.Provider>
   );
 }

@@ -90,7 +90,7 @@ export default function EventTasksKanban(props: EventTasksKanbanProps) {
                       href={task.eventId ? `/events/${task.eventId}` : "#"}
                       className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5 text-left hover:border-[var(--line)]/90 hover:bg-[var(--surface-soft)]"
                     >
-                      <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
+                      <p className="text-base font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
                       {task.eventCategory && (
                         <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
                           {task.eventCategory}
@@ -125,7 +125,7 @@ export default function EventTasksKanban(props: EventTasksKanbanProps) {
                           href={`/events/${eventId}`}
                           className="ui-transition block rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5 text-left hover:border-[var(--line)]/90 hover:bg-[var(--surface-soft)]"
                         >
-                          <p className="text-sm font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
+                          <p className="text-base font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
                           {task.eventCategory && (
                             <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
                               {task.eventCategory}

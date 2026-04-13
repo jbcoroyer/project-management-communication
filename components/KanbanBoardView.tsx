@@ -42,6 +42,28 @@ import {
 } from "../lib/eventGroupCollapse";
 import { partitionTasksByEvent, sortTasksByDeadline } from "../lib/eventTaskGroups";
 
+/** Au-dessus de ce seuil, les cartes passent en mode compact (même en « vue détaillée »). */
+const KANBAN_AUTO_COMPACT_MIN = 8;
+/** Colonnes très remplies : cartes encore plus denses. */
+const KANBAN_DENSE_MIN = 14;
+
+type KanbanCardDisplayMode = "full" | "compact" | "dense";
+
+function resolveKanbanCardDisplayMode(
+  density: "compact" | "detailed",
+  columnTaskCount: number,
+): KanbanCardDisplayMode {
+  const many = columnTaskCount >= KANBAN_AUTO_COMPACT_MIN;
+  const veryMany = columnTaskCount >= KANBAN_DENSE_MIN;
+
+  if (density === "compact") {
+    return veryMany ? "dense" : "compact";
+  }
+  if (!many) return "full";
+  if (veryMany) return "dense";
+  return "compact";
+}
+
 const COLUMN_META: Record<
   string,
   { icon: typeof ListTodo; subtitle: string }
@@ -59,6 +81,8 @@ function DroppableColumn(props: {
   children: React.ReactNode;
   count: number;
   onAddTask?: () => void;
+  /** Colonne chargée : espacement vertical réduit entre les cartes */
+  tightList?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: props.id });
   const meta = COLUMN_META[props.id] ?? FALLBACK_META;
@@ -103,7 +127,8 @@ function DroppableColumn(props: {
       <div
         ref={setNodeRef}
         className={[
-          "flex flex-1 flex-col gap-2 rounded-2xl border border-dashed p-2 transition-all duration-150",
+          "flex flex-1 flex-col rounded-2xl border border-dashed transition-all duration-150",
+          props.tightList ? "gap-1 p-1.5" : "gap-2 p-2",
           isOver
             ? "border-[var(--line-strong)] bg-[var(--surface-soft)]/50 shadow-[inset_0_0_0_2px_rgba(26,26,26,0.08)]"
             : "border-[var(--line)] bg-[var(--surface)]/70",
@@ -126,7 +151,7 @@ function DraggableCard(props: {
   onOpen: () => void;
   isMyTask?: boolean;
   cardRef?: (el: HTMLDivElement | null) => void;
-  cardVariant?: "full" | "compact";
+  cardVariant?: KanbanCardDisplayMode;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: props.task.id,
@@ -276,6 +301,13 @@ export default function KanbanBoardView(props: {
 
   const activeGroup = activeId ? groupedDragMap[activeId] : undefined;
 
+  const overlayDisplayMode: KanbanCardDisplayMode = activeTask
+    ? resolveKanbanCardDisplayMode(
+        cardDensity,
+        filteredTasks.filter((t) => t.column === activeTask.column).length,
+      )
+    : "compact";
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
@@ -399,7 +431,11 @@ export default function KanbanBoardView(props: {
           type="button"
           onClick={() => setCardDensity((v) => (v === "compact" ? "detailed" : "compact"))}
           className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)]"
-          title="Basculer la densité d'affichage des cartes"
+          title={
+            cardDensity === "compact"
+              ? "Toutes les cartes en mode compact (dense si 14+ tâches dans la colonne)."
+              : `Cartes détaillées si moins de ${KANBAN_AUTO_COMPACT_MIN} tâches par colonne ; au-delà, affichage compact automatique.`
+          }
         >
           <LayoutGrid className="h-3.5 w-3.5" />
           Vue {cardDensity === "compact" ? "compacte" : "détaillée"}
@@ -419,11 +455,14 @@ export default function KanbanBoardView(props: {
                 .filter((t) => t.column === col)
                 .sort(sortTasksByDeadline);
               const { standalone, groups } = partitionTasksByEvent(colTasks);
+              const columnDisplayMode = resolveKanbanCardDisplayMode(cardDensity, colTasks.length);
+              const tightColumn = colTasks.length >= KANBAN_AUTO_COMPACT_MIN;
               return (
                 <DroppableColumn
                   key={col}
                   id={col}
                   count={colTasks.length}
+                  tightList={tightColumn}
                   onAddTask={
                     props.onAddTaskForColumn
                       ? () => props.onAddTaskForColumn!(col as ColumnId)
@@ -451,7 +490,7 @@ export default function KanbanBoardView(props: {
                       cardRef={(el) => {
                         props.taskCardRefs.current[task.id] = el;
                       }}
-                      cardVariant={cardDensity === "compact" ? "compact" : "full"}
+                      cardVariant={columnDisplayMode}
                     />
                   ))}
                   {groups.map(([eventId, evTasks]) => {
@@ -461,8 +500,9 @@ export default function KanbanBoardView(props: {
                       <DraggableEventGroup key={eventId} dragId={eventDragId}>
                         <div
                           className={[
-                            "rounded-2xl border border-[var(--line)]/85 bg-[var(--surface-soft)] p-2",
-                            collapsed ? "" : "space-y-2",
+                            "rounded-2xl border border-[var(--line)]/85 bg-[var(--surface-soft)]",
+                            tightColumn ? "p-1.5" : "p-2",
+                            collapsed ? "" : tightColumn ? "space-y-1" : "space-y-2",
                           ].join(" ")}
                         >
                           <div className="flex items-center gap-1.5 px-0.5 pb-1 pt-0.5">
@@ -516,7 +556,7 @@ export default function KanbanBoardView(props: {
                                   cardRef={(el) => {
                                     props.taskCardRefs.current[task.id] = el;
                                   }}
-                                  cardVariant={cardDensity === "compact" ? "compact" : "full"}
+                                  cardVariant={columnDisplayMode}
                                 />
                               ))}
                             </div>
@@ -546,7 +586,7 @@ export default function KanbanBoardView(props: {
                   <KanbanCardUI
                     task={activeTask}
                     currentNow={props.now}
-                    variant={cardDensity === "compact" ? "compact" : "full"}
+                    variant={overlayDisplayMode}
                     isOverlay
                     onArchive={() => {}}
                     onEdit={() => {}}

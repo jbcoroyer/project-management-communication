@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarRange, LayoutGrid, LogOut, Megaphone, Package, Settings2, UserCircle2 } from "lucide-react";
+import { CalendarRange, LayoutGrid, Lightbulb, LogOut, Megaphone, Package, Settings2, UserCircle2 } from "lucide-react";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "./IdenaBrand";
 
@@ -23,8 +23,9 @@ const navItems = [
   { href: "/events/dashboard", label: "Événements", icon: CalendarRange },
   { href: "/social", label: "Réseaux sociaux", icon: Megaphone },
   { href: "/stock", label: "Stock", icon: Package },
+  { href: "/ideas", label: "Boîte à idées", icon: Lightbulb },
   { href: "/settings", label: "Paramètres", icon: Settings2 },
-];
+] as const;
 
 export default function AppShell({
   children,
@@ -58,18 +59,20 @@ export default function AppShell({
                   ? pathname.startsWith("/events")
                   : item.href === "/dashboard/kanban"
                     ? pathname === "/" || pathname.startsWith("/dashboard")
-                  : pathname === item.href;
+                    : item.href === "/stock"
+                      ? pathname.startsWith("/stock")
+                      : item.href === "/ideas"
+                        ? pathname.startsWith("/ideas")
+                        : pathname === item.href;
+              const linkClass = [
+                "ui-transition flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm",
+                active
+                  ? "border-[var(--line-strong)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/75 shadow-[0_6px_20px_rgba(28,24,20,0.07)]"
+                  : "border-transparent text-[color:var(--foreground)]/65 hover:border-[var(--line)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
+              ].join(" ");
+
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={[
-                    "ui-transition flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm",
-                    active
-                      ? "border-[var(--line-strong)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/75 shadow-[0_6px_20px_rgba(28,24,20,0.07)]"
-                      : "border-transparent text-[color:var(--foreground)]/65 hover:border-[var(--line)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
-                  ].join(" ")}
-                >
+                <Link key={item.href} href={item.href} className={linkClass}>
                   <Icon className="h-4 w-4" />
                   <span className="font-medium">{item.label}</span>
                 </Link>

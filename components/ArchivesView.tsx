@@ -254,7 +254,7 @@ export default function ArchivesView(props: {
               key={task.id}
               className="flex flex-col rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_8px_18px_rgba(20,17,13,0.07)]"
             >
-              <h3 className="text-sm font-semibold tracking-tight text-[var(--foreground)]">
+              <h3 className="text-base font-semibold tracking-tight text-[var(--foreground)]">
                 {task.projectName || "Sans titre"}
               </h3>
               <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/55">

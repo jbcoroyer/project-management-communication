@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { markTaskMutatedLocally } from "./taskMutatedLocally";
 import { mapTaskRow } from "./taskMappers";
 import { TASK_SELECT_WITH_EVENT } from "./taskQueries";
 import type { Task } from "./types";
@@ -76,6 +77,7 @@ export function useTasks() {
       const previous = tasksRef.current.find((task) => task.id === taskId);
       if (!previous) return false;
 
+      markTaskMutatedLocally(taskId);
       setTasks((prev) => prev.map((task) => (task.id === taskId ? nextTask : task)));
 
       const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);

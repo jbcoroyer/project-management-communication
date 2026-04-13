@@ -40,6 +40,7 @@ import {
 import AppShell from "../../components/AppShell";
 import CompanyAvatar from "../../components/CompanyAvatar";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
+import { markTaskMutatedLocally } from "../../lib/taskMutatedLocally";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { useReferenceData } from "../../lib/useReferenceData";
@@ -387,27 +388,32 @@ export default function SocialPage() {
     const workDate = format(new Date(post.scheduledAt), "yyyy-MM-dd");
 
     try {
-      const { error } = await supabase.from("tasks").insert({
-        project_name: `[RS] ${post.title}`,
-        company: companyName,
-        domain: domainName,
-        admin: adminName,
-        is_client_request: false,
-        client_name: "",
-        deadline: workDate,
-        budget: "",
-        description: toTaskDescription(post),
-        column_id: "À faire",
-        priority: "Moyenne",
-        projected_work: [{ date: workDate, hours: 1 }],
-        elapsed_ms: 0,
-        is_running: false,
-        last_start_time_ms: null,
-        is_archived: false,
-        estimated_hours: 1,
-        estimated_days: 0,
-      });
+      const { data: createdRow, error } = await supabase
+        .from("tasks")
+        .insert({
+          project_name: `[RS] ${post.title}`,
+          company: companyName,
+          domain: domainName,
+          admin: adminName,
+          is_client_request: false,
+          client_name: "",
+          deadline: workDate,
+          budget: "",
+          description: toTaskDescription(post),
+          column_id: "À faire",
+          priority: "Moyenne",
+          projected_work: [{ date: workDate, hours: 1 }],
+          elapsed_ms: 0,
+          is_running: false,
+          last_start_time_ms: null,
+          is_archived: false,
+          estimated_hours: 1,
+          estimated_days: 0,
+        })
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      markTaskMutatedLocally((createdRow as { id?: string } | null)?.id);
       toastSuccess("Tâche Kanban créée depuis le post");
     } catch (error) {
       toastError(getSupabaseErrorMessage(error, "Impossible de créer la tâche Kanban"));

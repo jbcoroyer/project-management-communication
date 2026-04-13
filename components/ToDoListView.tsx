@@ -111,7 +111,7 @@ function TodoTaskRow(props: {
       <div className={["h-9 w-1 shrink-0 rounded-full", meta.accentClass].join(" ")} />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+        <p className="truncate text-base font-semibold text-[var(--foreground)]">
           {task.projectName || "Projet sans titre"}
         </p>
         <div className="mt-0.5 flex items-center gap-2">

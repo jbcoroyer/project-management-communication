@@ -15,10 +15,18 @@ import { adminBadgeClassFor, adminSolidColorFor, domainTagStyles } from "../lib/
 import AdminAvatar from "./AdminAvatar";
 import CompanyAvatar from "./CompanyAvatar";
 
-function SubtaskBadge(props: { subtasks: Task[] }) {
+function SubtaskBadge(props: { subtasks: Task[]; minimal?: boolean }) {
   const done = props.subtasks.filter((t) => t.column === "Terminé").length;
   const total = props.subtasks.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  if (props.minimal) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold tabular-nums text-[color:var(--foreground)]/55">
+        <ListChecks className="h-2.5 w-2.5 shrink-0" />
+        {done}/{total}
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/65">
       <ListChecks className="h-3 w-3 shrink-0" />
@@ -36,7 +44,7 @@ function SubtaskBadge(props: { subtasks: Task[] }) {
   );
 }
 
-function PriorityBadge({ priority }: { priority: Task["priority"] }) {
+function PriorityBadge({ priority, dense }: { priority: Task["priority"]; dense?: boolean }) {
   const cls = {
     Haute: "border-rose-200 bg-rose-50 text-rose-700",
     Moyenne: "border-amber-200 bg-amber-50 text-amber-700",
@@ -44,8 +52,14 @@ function PriorityBadge({ priority }: { priority: Task["priority"] }) {
   }[priority] ?? "border-[var(--line)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/65";
 
   return (
-    <span className={["inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold", cls].join(" ")}>
-      {priority}
+    <span
+      className={[
+        "inline-flex items-center rounded-full border font-bold",
+        dense ? "px-1 py-px text-[8px] leading-none" : "px-2 py-0.5 text-[10px]",
+        cls,
+      ].join(" ")}
+    >
+      {dense ? priority.slice(0, 1) : priority}
     </span>
   );
 }
@@ -55,7 +69,7 @@ function CardBody(props: {
   currentNow: number;
   onEdit: () => void;
   onDelete: () => void;
-  variant: "full" | "compact";
+  variant: "full" | "compact" | "dense";
   interactive: boolean;
   isMyTask?: boolean;
   companyLogoUrl?: string | null;
@@ -75,49 +89,85 @@ function CardBody(props: {
   return (
     <>
       {/* ── Ligne 1 : Admins + boutons actions ── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div
+        className={[
+          "flex items-center justify-between gap-2",
+          props.variant === "dense" ? "min-w-0" : "",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "flex items-center gap-1.5",
+            props.variant === "dense"
+              ? "min-w-0 flex-1 flex-nowrap overflow-x-auto [scrollbar-width:none] max-w-full [&::-webkit-scrollbar]:hidden"
+              : "flex-wrap",
+          ].join(" ")}
+        >
           {task.admins.map((admin) => (
             <span
               key={admin}
               className={[
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "inline-flex shrink-0 items-center rounded-full border font-semibold",
+                props.variant === "dense"
+                  ? "gap-0.5 px-1 py-px text-[8px]"
+                  : "gap-1 px-2 py-0.5 text-[10px]",
                 adminBadgeClassFor(admin),
                 isMyTask && task.admins[0] === admin
-                  ? "ring-1 ring-offset-1 ring-[var(--line-strong)]"
+                  ? props.variant === "dense"
+                    ? "ring-1 ring-[var(--line-strong)]"
+                    : "ring-1 ring-offset-1 ring-[var(--line-strong)]"
                   : "",
               ].join(" ")}
             >
               <AdminAvatar admin={admin} />
-              {admin.split(" ")[0]}
+              {props.variant === "dense"
+                ? admin.split(" ")[0]?.slice(0, 10) ?? admin
+                : admin.split(" ")[0]}
             </span>
           ))}
 
           {/* Indicateurs d'état urgence / retard */}
           {isOverdue && (
-            <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
-              retard
+            <span
+              className={[
+                "shrink-0 rounded-full bg-rose-100 font-bold uppercase text-rose-700",
+                props.variant === "dense" ? "px-1 py-px text-[7px]" : "px-1.5 py-0.5 text-[9px] tracking-wide",
+              ].join(" ")}
+            >
+              {props.variant === "dense" ? "ret." : "retard"}
             </span>
           )}
           {isUrgent48h && !isOverdue && (
-            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+            <span
+              className={[
+                "shrink-0 rounded-full bg-amber-100 font-bold uppercase text-amber-700",
+                props.variant === "dense" ? "px-1 py-px text-[7px]" : "px-1.5 py-0.5 text-[9px] tracking-wide",
+              ].join(" ")}
+            >
               48h
             </span>
           )}
           {task.priority === "Haute" && (
             <span title="Priorité haute">
-              <AlertTriangle className="h-3 w-3 text-amber-500" />
+              <AlertTriangle
+                className={props.variant === "dense" ? "h-2.5 w-2.5 text-amber-500" : "h-3 w-3 text-amber-500"}
+              />
             </span>
           )}
           {isMyTask && (
-            <span className="rounded-full bg-[color:var(--foreground)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/75">
+            <span
+              className={[
+                "shrink-0 rounded-full bg-[color:var(--foreground)]/10 font-bold uppercase text-[color:var(--foreground)]/75",
+                props.variant === "dense" ? "px-1 py-px text-[7px]" : "px-1.5 py-0.5 text-[9px] tracking-wide",
+              ].join(" ")}
+            >
               moi
             </span>
           )}
         </div>
 
         {/* Boutons d'action (hover) */}
-        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-[220ms] group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-[220ms] group-hover:opacity-100">
           <div className="flex items-center gap-0.5 rounded-full border border-[var(--line)] bg-[var(--surface)]/90 p-0.5 shadow-sm">
             <button
               type="button"
@@ -126,12 +176,13 @@ function CardBody(props: {
                 onEdit();
               }}
               className={[
-                "inline-flex h-5 w-5 items-center justify-center rounded-full text-[color:var(--foreground)]/55 transition-colors",
+                "inline-flex items-center justify-center rounded-full text-[color:var(--foreground)]/55 transition-colors",
+                props.variant === "dense" ? "h-4 w-4" : "h-5 w-5",
                 interactive ? "hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75" : "pointer-events-none",
               ].join(" ")}
               title="Modifier"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className={props.variant === "dense" ? "h-2.5 w-2.5" : "h-3 w-3"} />
             </button>
             <button
               type="button"
@@ -140,26 +191,94 @@ function CardBody(props: {
                 onDelete();
               }}
               className={[
-                "inline-flex h-5 w-5 items-center justify-center rounded-full text-[color:var(--foreground)]/45 transition-colors",
+                "inline-flex items-center justify-center rounded-full text-[color:var(--foreground)]/45 transition-colors",
+                props.variant === "dense" ? "h-4 w-4" : "h-5 w-5",
                 interactive ? "hover:bg-rose-50 hover:text-rose-600" : "pointer-events-none",
               ].join(" ")}
               title="Archiver"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className={props.variant === "dense" ? "h-2.5 w-2.5" : "h-3 w-3"} />
             </button>
           </div>
         </div>
       </div>
 
       {/* ── Ligne 2 : Nom du projet ── */}
-      <p className="line-clamp-2 pl-0.5 text-[14px] font-semibold leading-tight tracking-tight text-[var(--foreground)]">
+      <p
+        className={[
+          "line-clamp-2 pl-0.5 font-semibold leading-tight tracking-tight text-[var(--foreground)]",
+          props.variant === "dense"
+            ? "text-[13px] leading-snug"
+            : props.variant === "compact"
+              ? "text-[15px]"
+              : "text-[17px]",
+        ].join(" ")}
+      >
         {task.projectName || "Projet sans titre"}
       </p>
 
       {props.variant === "compact" ? (
-        <div className="flex items-center justify-between">
-          <PriorityBadge priority={task.priority} />
+        <div className="flex min-w-0 items-center justify-between gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
+            <PriorityBadge priority={task.priority} />
+            <span
+              className={[
+                "inline-flex max-w-[7rem] truncate rounded border px-1 py-px text-[9px] font-semibold",
+                domainClass,
+              ].join(" ")}
+            >
+              {task.domain}
+            </span>
+          </div>
           {task.subtasks && task.subtasks.length > 0 && <SubtaskBadge subtasks={task.subtasks} />}
+        </div>
+      ) : props.variant === "dense" ? (
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1 text-[9px] text-[color:var(--foreground)]/60">
+            <span className="inline-flex max-w-[5.5rem] items-center gap-0.5 truncate rounded border border-[var(--line)] bg-[var(--surface-soft)]/90 px-1 py-px">
+              <CompanyAvatar
+                name={task.company}
+                logoUrl={props.companyLogoUrl}
+                className="h-3 w-3 shrink-0 rounded-sm object-contain"
+                fallbackClassName="flex h-3 w-3 shrink-0 items-center justify-center text-[color:var(--foreground)]/40"
+                iconClassName="h-2.5 w-2.5"
+              />
+              <span className="truncate">{task.company}</span>
+            </span>
+            {task.deadline && (
+              <span
+                className={[
+                  "inline-flex shrink-0 items-center gap-0.5 rounded border px-1 py-px",
+                  isOverdue
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : isUrgent48h
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-[var(--line)] bg-[var(--surface-soft)]/80",
+                ].join(" ")}
+              >
+                <CalendarDays className="h-2.5 w-2.5 shrink-0" />
+                {task.deadline.length >= 10 ? task.deadline.slice(5) : task.deadline}
+              </span>
+            )}
+            {(task.estimatedHours > 0 || task.estimatedDays > 0) && (
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-[var(--line)] bg-[var(--surface-soft)]/80 px-1 py-px">
+                <Clock3 className="h-2.5 w-2.5 shrink-0" />
+                {task.estimatedHours > 0 ? `${task.estimatedHours}h` : `${task.estimatedDays}j`}
+              </span>
+            )}
+            <span
+              className={[
+                "inline-flex max-w-[4.5rem] truncate rounded border px-1 py-px text-[8px] font-semibold leading-tight",
+                domainClass,
+              ].join(" ")}
+            >
+              {task.domain}
+            </span>
+            <PriorityBadge priority={task.priority} dense />
+            {task.subtasks && task.subtasks.length > 0 && (
+              <SubtaskBadge subtasks={task.subtasks} minimal />
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -215,30 +334,6 @@ function CardBody(props: {
           </div>
         </>
       )}
-
-      {/* Barre de progression minimale (sous-tâches ou temps) */}
-      {(task.subtasks?.length || task.estimatedHours > 0 || task.elapsedMs > 0) && (
-        <div className="mt-0.5 h-[3px] w-full overflow-hidden rounded-full bg-[var(--line)]">
-          <span
-            className="block h-full rounded-full bg-[var(--accent)]/70"
-            style={{
-              width: `${Math.max(
-                6,
-                Math.min(
-                  100,
-                  task.subtasks && task.subtasks.length > 0
-                    ? Math.round(
-                        (task.subtasks.filter((s) => s.column === "Terminé").length / task.subtasks.length) * 100,
-                      )
-                    : task.estimatedHours > 0
-                      ? Math.round((task.elapsedMs / (task.estimatedHours * 60 * 60 * 1000)) * 100)
-                      : 0,
-                ),
-              )}%`,
-            }}
-          />
-        </div>
-      )}
     </>
   );
 }
@@ -249,7 +344,7 @@ export function KanbanCardUI(props: {
   onArchive: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  variant?: "full" | "compact";
+  variant?: "full" | "compact" | "dense";
   isOverlay?: boolean;
   isMyTask?: boolean;
   companyLogoUrl?: string | null;
@@ -262,24 +357,28 @@ export function KanbanCardUI(props: {
   const primaryAdmin = task.admins[0] ?? "";
   const adminColor = adminSolidColorFor(primaryAdmin);
 
+  const borderLeft = variant === "dense" ? 3 : 4;
+
   return (
     <motion.article
       style={{
         ...props.style,
         borderLeftColor: adminColor,
-        borderLeftWidth: 4,
+        borderLeftWidth: borderLeft,
       }}
       layout={!isOverlay}
       initial={isOverlay ? false : { opacity: 0, y: 4 }}
       animate={isOverlay ? undefined : { opacity: 1, y: 0 }}
       transition={isOverlay ? undefined : { duration: 0.2 }}
       className={[
-        "group relative flex flex-col rounded-2xl border border-[var(--line)] text-xs text-[var(--foreground)] ui-transition",
+        "group relative flex flex-col border border-[var(--line)] text-xs text-[var(--foreground)] ui-transition",
+        variant === "dense" ? "gap-1 rounded-xl p-2" : variant === "compact" ? "gap-1.5 rounded-2xl p-2.5" : "gap-2.5 rounded-2xl p-4",
         isMyTask ? "bg-[var(--surface)] shadow-[0_0_0_2px_var(--accent)]/20" : "bg-[var(--surface)]",
         isOverlay
           ? "pointer-events-none rotate-2 shadow-2xl ring-1 ring-[var(--line)]/40"
-          : "hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-[0_16px_30px_rgba(20,17,13,0.12)]",
-        variant === "compact" ? "gap-2 p-3" : "gap-2.5 p-4",
+          : variant === "dense"
+            ? "hover:border-[var(--line-strong)] hover:shadow-[0_8px_20px_rgba(20,17,13,0.1)]"
+            : "hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-[0_16px_30px_rgba(20,17,13,0.12)]",
       ].join(" ")}
     >
       <CardBody
@@ -302,7 +401,7 @@ export default function KanbanCard(props: {
   onArchive: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  variant?: "full" | "compact";
+  variant?: "full" | "compact" | "dense";
   isMyTask?: boolean;
 }) {
   return <KanbanCardUI {...props} />;

@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { completedAtPatchForColumnChange, completedAtIsoForNewTaskInColumn } from "./completedAt";
 import { mapTaskRow } from "./taskMappers";
 import { normalizeProjectName } from "./normalize";
+import { markTaskMutatedLocally, markTasksMutatedLocally } from "./taskMutatedLocally";
 import { toastError, toastSuccess } from "./toast";
 import { DONE_COLUMN_NAME } from "./workflowConstants";
 import type { ColumnId, Task } from "./types";
@@ -106,6 +107,7 @@ export function useTaskManager({
           return;
         }
         if (!data) return;
+        markTaskMutatedLocally(editingTaskId);
         setTasks((prev) => prev.map((task) => (task.id === editingTaskId ? mapTaskRow(data) : task)));
         onTaskFormDone();
         return;
@@ -128,6 +130,7 @@ export function useTaskManager({
         return;
       }
       if (!data) return;
+      markTaskMutatedLocally(data.id as string);
       const newTask = mapTaskRow(data);
       setTasks((prev) => [...prev, newTask]);
 
@@ -154,6 +157,7 @@ export function useTaskManager({
         if (subError) {
           toastError(`Sous-tâches non créées : ${subError.message}`);
         } else if (subData) {
+          markTasksMutatedLocally(subData.map((r) => (r as { id: string }).id).filter(Boolean));
           setTasks((prev) => [...prev, ...subData.map(mapTaskRow)]);
         }
       }
@@ -232,6 +236,7 @@ export function useTaskManager({
     async (taskId: string, patch: Partial<Task>, dbPatch: Record<string, unknown>) => {
       const current = tasks.find((t) => t.id === taskId);
       if (!current) return;
+      markTaskMutatedLocally(taskId);
       const next = { ...current, ...patch };
       setTasks((prev) => prev.map((t) => (t.id === taskId ? next : t)));
       const { error } = await supabase.from("tasks").update(dbPatch).eq("id", taskId);
@@ -248,6 +253,7 @@ export function useTaskManager({
   const handleRestoreTask = useCallback(
     async (taskId: string) => {
       const task = tasks.find((t) => t.id === taskId);
+      markTaskMutatedLocally(taskId);
       const restorePatch: Record<string, unknown> = { is_archived: false };
       if (task?.column === DONE_COLUMN_NAME) {
         restorePatch.completed_at = new Date().toISOString();
