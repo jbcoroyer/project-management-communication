@@ -10,6 +10,7 @@ import {
   CalendarDays,
   ClipboardList,
   KanbanSquare,
+  PartyPopper,
   Plus,
   Search,
   Users,
@@ -32,6 +33,7 @@ import { useEvents } from "../../lib/useEvents";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { useTaskManager } from "../../lib/useTaskManager";
+import { celebrateTaskManually } from "../../lib/celebrateTaskDone";
 import { DONE_COLUMN_NAME } from "../../lib/workflowConstants";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { getAdminColorPaletteSize } from "../../lib/kanbanStyles";
@@ -508,6 +510,15 @@ export default function DashboardHomePage() {
         }
         toolbarRight={
           <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => celebrateTaskManually()}
+              title="Lancer les confettis"
+              aria-label="Lancer l’animation de confettis"
+              className="ui-transition flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 shadow-sm hover:border-[var(--line-strong)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+            >
+              <PartyPopper className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </button>
             <DashboardNotificationBell />
             <button
               type="button"

@@ -16,6 +16,7 @@ import AdminAvatar from "./AdminAvatar";
 import type { Task, AdminId, ColumnId } from "../lib/types";
 import { adminBadgeClassFor } from "../lib/kanbanStyles";
 import { completedAtPatchForColumnChange } from "../lib/completedAt";
+import { celebrateTaskDone } from "../lib/celebrateTaskDone";
 import { markTaskMutatedLocally } from "../lib/taskMutatedLocally";
 import { DONE_COLUMN_NAME } from "../lib/workflowConstants";
 
@@ -273,7 +274,8 @@ export default function SubtasksPanel(props: {
     const dbPatch = { column_id: DONE_COLUMN_NAME, ...colMerge };
     props.onSubtaskUpdated(subtask.id, patch, dbPatch);
     markTaskMutatedLocally(subtask.id);
-    await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
+    const { error } = await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
+    if (!error) celebrateTaskDone();
   };
 
   const handleColumnChange = async (subtask: Task, col: ColumnId) => {
@@ -285,7 +287,9 @@ export default function SubtasksPanel(props: {
     const dbPatch = { column_id: col, ...colMerge };
     props.onSubtaskUpdated(subtask.id, patch, dbPatch);
     markTaskMutatedLocally(subtask.id);
-    await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
+    const movingToDone = col === DONE_COLUMN_NAME && subtask.column !== DONE_COLUMN_NAME;
+    const { error } = await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
+    if (!error && movingToDone) celebrateTaskDone();
   };
 
   const handleDelete = async (subtaskId: string) => {

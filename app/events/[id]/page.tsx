@@ -34,6 +34,7 @@ import { useReferenceData } from "../../../lib/useReferenceData";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { deleteEvent } from "../../actions/events";
 import { completedAtIsoForNewTaskInColumn, completedAtPatchForColumnChange } from "../../../lib/completedAt";
+import { celebrateTaskDone } from "../../../lib/celebrateTaskDone";
 import { markTaskMutatedLocally } from "../../../lib/taskMutatedLocally";
 
 type Tab = "tasks" | "stock" | "budget" | "documents";
@@ -533,10 +534,18 @@ export default function EventDetailPage() {
                             checked={task.column === "Terminé"}
                             onChange={(e) => {
                               const nextCol = e.target.checked ? "Terminé" : "À faire";
-                              void updateTaskDb(task.id, {
-                                column_id: nextCol,
-                                ...completedAtPatchForColumnChange(task.column, nextCol),
-                              }).catch(() => {});
+                              const wasTermine = task.column === "Terminé";
+                              void (async () => {
+                                try {
+                                  await updateTaskDb(task.id, {
+                                    column_id: nextCol,
+                                    ...completedAtPatchForColumnChange(task.column, nextCol),
+                                  });
+                                  if (nextCol === "Terminé" && !wasTermine) celebrateTaskDone();
+                                } catch {
+                                  /* toast déjà affiché */
+                                }
+                              })();
                             }}
                             className="h-4 w-4 rounded border-[var(--line)]"
                           />
