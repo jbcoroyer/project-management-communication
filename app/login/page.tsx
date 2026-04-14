@@ -19,6 +19,7 @@ import {
 import { getPublicAppOrigin } from "../../lib/publicAppUrl";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "../../components/IdenaBrand";
+import LoginInlineDemo from "../../components/LoginInlineDemo";
 
 type AuthMode = "signin" | "signup";
 type SignupStep = 1 | 2;
@@ -237,42 +238,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-12">
-      <div className="w-full max-w-md">
-        <ServiceCommunicationIdenaHeading size="login">
-          <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-            {mode === "signin"
-              ? "Connectez-vous à votre espace Service Communication IDENA."
-              : step === 1
-                ? "Parlez-nous de vous."
-                : "Créez vos identifiants de connexion."}
-          </p>
-        </ServiceCommunicationIdenaHeading>
+    <div className="min-h-screen bg-[var(--background)] px-4 py-8 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[minmax(400px,500px)_1fr] lg:items-start">
+        <div className="lg:pr-2">
+          <ServiceCommunicationIdenaHeading size="login">
+            <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
+              {mode === "signin"
+                ? "Connectez-vous à votre espace Service Communication IDENA."
+                : step === 1
+                  ? "Parlez-nous de vous."
+                  : "Créez vos identifiants de connexion."}
+            </p>
+          </ServiceCommunicationIdenaHeading>
 
-        <div className="ui-surface rounded-2xl p-6">
-          {urlAuthError && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-              {urlAuthError}
+          <div className="ui-surface rounded-2xl p-6 lg:p-7">
+            {urlAuthError && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                {urlAuthError}
+              </div>
+            )}
+            {/* Tabs */}
+            <div className="mb-6 flex overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
+              {(["signin", "signup"] as AuthMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => resetMode(m)}
+                  className={[
+                    "flex-1 rounded-lg py-2 text-sm font-semibold transition",
+                    mode === m
+                      ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                      : "text-[color:var(--foreground)]/60 hover:text-[var(--foreground)]",
+                  ].join(" ")}
+                >
+                  {m === "signin" ? "Connexion" : "Inscription"}
+                </button>
+              ))}
             </div>
-          )}
-          {/* Tabs */}
-          <div className="mb-6 flex overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
-            {(["signin", "signup"] as AuthMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => resetMode(m)}
-                className={[
-                  "flex-1 rounded-lg py-2 text-sm font-semibold transition",
-                  mode === m
-                    ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
-                    : "text-[color:var(--foreground)]/60 hover:text-[var(--foreground)]",
-                ].join(" ")}
-              >
-                {m === "signin" ? "Connexion" : "Inscription"}
-              </button>
-            ))}
-          </div>
 
           {/* ── CONNEXION ── */}
           {mode === "signin" && (
@@ -456,17 +458,22 @@ export default function LoginPage() {
               <SubmitBtn loading={loading} label="Créer mon compte" />
             </form>
           )}
+          </div>
+
+          <p className="mt-6 text-center text-[11px] text-[color:var(--foreground)]/45">
+            Outil interne — IDENA · Service Communication
+          </p>
+          <p className="mt-2 text-center text-[11px] text-[color:var(--foreground)]/35">
+            Réinitialisation directe:{" "}
+            <Link href="/login/reset-password" className="underline hover:text-[color:var(--foreground)]/60">
+              définir un nouveau mot de passe
+            </Link>
+          </p>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-[color:var(--foreground)]/45">
-          Outil interne — IDENA · Service Communication
-        </p>
-        <p className="mt-2 text-center text-[11px] text-[color:var(--foreground)]/35">
-          Réinitialisation directe:{" "}
-          <Link href="/login/reset-password" className="underline hover:text-[color:var(--foreground)]/60">
-            définir un nouveau mot de passe
-          </Link>
-        </p>
+        <div className="pb-4">
+          <LoginInlineDemo />
+        </div>
       </div>
     </div>
   );
