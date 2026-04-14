@@ -19,6 +19,8 @@ function dedupeKey(parts: string[]) {
   return `idena-inapp-notif:${parts.join(":")}`;
 }
 
+const REALTIME_STATUS_DEDUPE_TTL_MS = 6 * 60 * 60 * 1000;
+
 function shouldDedupe(key: string, ttlMs: number): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -161,6 +163,9 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
       .subscribe((status: string, err?: Error) => {
         if (realtimeWarnedRef.current || status === "SUBSCRIBED") return;
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          const realtimeDedupe = dedupeKey(["realtime-unavailable"]);
+          if (shouldDedupe(realtimeDedupe, REALTIME_STATUS_DEDUPE_TTL_MS)) return;
+          rememberDedupe(realtimeDedupe);
           realtimeWarnedRef.current = true;
           const detail = err?.message ? String(err.message) : "";
           pushRef.current({
