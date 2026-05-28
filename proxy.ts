@@ -47,11 +47,14 @@ export async function proxy(request: NextRequest) {
     },
   );
 
+  // Lecture rapide de la session via cookies (sans round-trip vers Supabase Auth).
+  // `getUser()` aurait ajout\u00e9 80\u2013200ms \u00e0 chaque navigation ; on garde getUser()
+  // pour les actions sensibles c\u00f4t\u00e9 server actions / route handlers.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

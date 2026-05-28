@@ -9,6 +9,7 @@ import CreateEventModal from "../../../components/events/CreateEventModal";
 import EventTasksKanban from "../../../components/events/EventTasksKanban";
 import EventTimeline from "../../../components/events/EventTimeline";
 import EventsSectionNav from "../../../components/events/EventsSectionNav";
+import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useEvents } from "../../../lib/useEvents";
 import { useTasks } from "../../../lib/useTasks";
@@ -22,6 +23,7 @@ export default function EventsDashboardPage() {
   const { user: currentUser } = useCurrentUser();
   const { events, loading: eventsLoading, loadEvents } = useEvents();
   const { tasks, loadTasks } = useTasks();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [yearEngaged, setYearEngaged] = useState<number | null>(null);
 
@@ -35,7 +37,18 @@ export default function EventsDashboardPage() {
   const handleDeleteEvent = async (eventId: string) => {
     const ev = events.find((e) => e.id === eventId);
     const label = ev?.name ?? "cet événement";
-    if (!window.confirm(`Supprimer « ${label} » et toutes ses tâches ?`)) return;
+    const ok = await confirm({
+      title: "Supprimer cet événement ?",
+      description: (
+        <>
+          <span className="font-semibold text-[var(--foreground)]">« {label} »</span> et toutes ses
+          tâches seront supprimés. Cette action est irréversible.
+        </>
+      ),
+      confirmLabel: "Supprimer définitivement",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const r = await deleteEvent(eventId);
     if (!r.ok) {
       toastError(r.error);

@@ -32,7 +32,6 @@ export default function AdminAvatar(props: {
           width={dim}
           height={dim}
           className="h-full w-full object-cover"
-          unoptimized
         />
       </span>
     );

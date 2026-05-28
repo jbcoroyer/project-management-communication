@@ -50,10 +50,16 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
   const { user, loading } = useCurrentUser();
   const supabase = getSupabaseBrowser();
   const pushRef = useRef(pushNotification);
-  pushRef.current = pushNotification;
   const userRef = useRef(user);
-  userRef.current = user;
   const realtimeWarnedRef = useRef(false);
+
+  // Refs synchronisées via effect (jamais mutées pendant le render)
+  useEffect(() => {
+    pushRef.current = pushNotification;
+  }, [pushNotification]);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     if (loading || !user) return;

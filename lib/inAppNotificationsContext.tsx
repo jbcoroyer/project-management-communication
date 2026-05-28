@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import Link from "next/link";
 import { Bell, X } from "lucide-react";
 import TaskRealtimeNotifications from "../components/TaskRealtimeNotifications";
 import type { InAppNotificationHistoryEntry, InAppNotificationInput } from "./inAppNotificationTypes";
+import { useIsClient } from "./useIsClient";
 
 export type { InAppNotificationInput, InAppNotificationHistoryEntry } from "./inAppNotificationTypes";
 
@@ -51,9 +53,7 @@ function NotificationStack(props: {
   onDismiss: (id: string) => void;
 }) {
   const { items, onDismiss } = props;
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
 
   if (!mounted || items.length === 0) return null;
 
@@ -113,20 +113,18 @@ function NotificationStack(props: {
 export function InAppNotificationProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [history, setHistory] = useState<InAppNotificationHistoryEntry[]>([]);
-  const timers = useMemo(() => new Map<string, ReturnType<typeof setTimeout>>(), []);
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const unreadCount = useMemo(() => history.filter((h) => !h.read).length, [history]);
 
-  const clearTimer = useCallback(
-    (id: string) => {
-      const t = timers.get(id);
-      if (t) {
-        clearTimeout(t);
-        timers.delete(id);
-      }
-    },
-    [timers],
-  );
+  const clearTimer = useCallback((id: string) => {
+    const timers = timersRef.current;
+    const t = timers.get(id);
+    if (t) {
+      clearTimeout(t);
+      timers.delete(id);
+    }
+  }, []);
 
   const dismissToast = useCallback(
     (id: string) => {
@@ -144,38 +142,36 @@ export function InAppNotificationProvider({ children }: { children: ReactNode })
     setHistory([]);
   }, []);
 
-  const pushNotification = useCallback(
-    (input: InAppNotificationInput) => {
-      const id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `n-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const toast: ToastItem = { ...input, id };
-      const entry: InAppNotificationHistoryEntry = {
-        ...input,
-        id,
-        at: Date.now(),
-        read: false,
-      };
+  const pushNotification = useCallback((input: InAppNotificationInput) => {
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `n-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const toast: ToastItem = { ...input, id };
+    const entry: InAppNotificationHistoryEntry = {
+      ...input,
+      id,
+      at: Date.now(),
+      read: false,
+    };
 
-      setHistory((prev) => [entry, ...prev].slice(0, MAX_HISTORY));
-      setToasts((prev) => [toast, ...prev].slice(0, MAX_TOASTS));
+    setHistory((prev) => [entry, ...prev].slice(0, MAX_HISTORY));
+    setToasts((prev) => [toast, ...prev].slice(0, MAX_TOASTS));
 
-      const t = setTimeout(() => {
-        timers.delete(id);
-        setToasts((prev) => prev.filter((x) => x.id !== id));
-      }, AUTO_DISMISS_MS);
-      timers.set(id, t);
-    },
-    [timers],
-  );
+    const t = setTimeout(() => {
+      timersRef.current.delete(id);
+      setToasts((prev) => prev.filter((x) => x.id !== id));
+    }, AUTO_DISMISS_MS);
+    timersRef.current.set(id, t);
+  }, []);
 
   useEffect(() => {
+    const timers = timersRef.current;
     return () => {
       for (const t of timers.values()) clearTimeout(t);
       timers.clear();
     };
-  }, [timers]);
+  }, []);
 
   const value = useMemo(
     () => ({

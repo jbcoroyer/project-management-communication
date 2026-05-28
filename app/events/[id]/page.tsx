@@ -21,6 +21,7 @@ import EventTaskPlanningModal from "../../../components/events/EventTaskPlanning
 import EventStockReserve from "../../../components/events/EventStockReserve";
 import EventsSectionNav from "../../../components/events/EventsSectionNav";
 import ExpenseModal from "../../../components/events/ExpenseModal";
+import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import type { EventRow } from "../../../lib/eventTypes";
 import { stockMovementCostEuros } from "../../../lib/eventBudget";
 import { defaultCompanies, defaultDomains } from "../../../lib/types";
@@ -117,6 +118,7 @@ export default function EventDetailPage() {
   const { user: currentUser } = useCurrentUser();
   const { tasks, loading: tasksLoading, loadTasks } = useEventTasks(id || null);
   const { admins: teamMemberRecords } = useReferenceData();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("tasks");
   const [event, setEvent] = useState<EventRow | null>(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
@@ -287,9 +289,18 @@ export default function EventDetailPage() {
 
   const handleDeleteEvent = async () => {
     if (!event || !id) return;
-    const ok = window.confirm(
-      `Supprimer « ${event.name} » ? Toutes les tâches de cet événement seront supprimées. Cette action est irréversible.`,
-    );
+    const ok = await confirm({
+      title: `Supprimer l'événement ?`,
+      description: (
+        <>
+          <span className="font-semibold text-[var(--foreground)]">« {event.name} »</span> et{" "}
+          <span className="font-semibold text-rose-600">toutes ses tâches</span> seront définitivement
+          supprimés. Cette action est irréversible.
+        </>
+      ),
+      confirmLabel: "Supprimer définitivement",
+      variant: "destructive",
+    });
     if (!ok) return;
     setDeletingEvent(true);
     try {
@@ -329,7 +340,17 @@ export default function EventDetailPage() {
   };
 
   const handleDeleteDocument = async (doc: EventDocument) => {
-    const ok = window.confirm(`Supprimer le document « ${doc.name} » ?`);
+    const ok = await confirm({
+      title: "Supprimer ce document ?",
+      description: (
+        <>
+          <span className="font-semibold text-[var(--foreground)]">« {doc.name} »</span> sera retiré
+          de l&apos;événement.
+        </>
+      ),
+      confirmLabel: "Supprimer",
+      variant: "destructive",
+    });
     if (!ok) return;
     const supabase = getSupabaseBrowser();
     const { error } = await supabase.storage.from(EVENT_DOCUMENTS_BUCKET).remove([doc.path]);
@@ -743,8 +764,8 @@ export default function EventDetailPage() {
                               alt={doc.name}
                               width={240}
                               height={340}
+                              sizes="240px"
                               className="h-full w-full object-cover"
-                              unoptimized
                             />
                           ) : isPdfDocument(doc.name) ? (
                             <iframe

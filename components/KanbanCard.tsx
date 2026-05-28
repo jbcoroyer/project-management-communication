@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import type { Task } from "../lib/types";
 import {
@@ -338,7 +338,7 @@ function CardBody(props: {
   );
 }
 
-export function KanbanCardUI(props: {
+function KanbanCardUIComponent(props: {
   task: Task;
   currentNow: number;
   onArchive: () => void;
@@ -394,6 +394,26 @@ export function KanbanCardUI(props: {
     </motion.article>
   );
 }
+
+/**
+ * Carte Kanban mémoïsée pour éviter les re-renders inutiles quand
+ * le parent re-rend (charge initiale, filtrage, etc.).
+ *
+ * La fonction de comparaison custom ignore les changements de callbacks
+ * (qui sont régénérés à chaque render parent) et compare uniquement
+ * les valeurs métier qui influencent le rendu visuel.
+ */
+export const KanbanCardUI = memo(KanbanCardUIComponent, (prev, next) => {
+  if (prev.task !== next.task) return false;
+  if (prev.currentNow !== next.currentNow) return false;
+  if (prev.variant !== next.variant) return false;
+  if (prev.isOverlay !== next.isOverlay) return false;
+  if (prev.isMyTask !== next.isMyTask) return false;
+  if (prev.companyLogoUrl !== next.companyLogoUrl) return false;
+  if (prev.style !== next.style) return false;
+  return true;
+});
+KanbanCardUI.displayName = "KanbanCardUI";
 
 export default function KanbanCard(props: {
   task: Task;

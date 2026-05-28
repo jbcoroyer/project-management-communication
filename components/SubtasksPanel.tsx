@@ -19,6 +19,7 @@ import { completedAtPatchForColumnChange } from "../lib/completedAt";
 import { celebrateTaskDone } from "../lib/celebrateTaskDone";
 import { markTaskMutatedLocally } from "../lib/taskMutatedLocally";
 import { DONE_COLUMN_NAME } from "../lib/workflowConstants";
+import { useConfirm } from "./ui/ConfirmDialog";
 
 /* ─── Mini formulaire inline pour ajouter une sous-tâche ─── */
 function AddSubtaskForm(props: {
@@ -252,6 +253,7 @@ export default function SubtasksPanel(props: {
   onSubtaskDeleted: (taskId: string) => void;
 }) {
   const supabase = getSupabaseBrowser();
+  const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
@@ -293,10 +295,12 @@ export default function SubtasksPanel(props: {
   };
 
   const handleDelete = async (subtaskId: string) => {
-    const confirmed =
-      typeof window !== "undefined"
-        ? window.confirm("Supprimer cette étape définitivement ?")
-        : true;
+    const confirmed = await confirm({
+      title: "Supprimer cette étape ?",
+      description: "L'étape sera définitivement retirée de cette tâche.",
+      confirmLabel: "Supprimer",
+      variant: "destructive",
+    });
     if (!confirmed) return;
     props.onSubtaskDeleted(subtaskId);
     await supabase.from("tasks").delete().eq("id", subtaskId);

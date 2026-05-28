@@ -26,6 +26,7 @@ import InventoryPrintModal from "../../components/InventoryPrintModal";
 import InventoryReorderModal from "../../components/InventoryReorderModal";
 import StockMovementModal from "../../components/StockMovementModal";
 import StockSectionNav from "../../components/StockSectionNav";
+import { useConfirm } from "../../components/ui/ConfirmDialog";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { decodePrintItemType, type PrintSpeciesValue } from "../../lib/printSpecies";
@@ -167,6 +168,7 @@ export default function StockPage() {
     deleteItem,
   } = useInventory();
   const { projects } = useStockProjects();
+  const confirm = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
@@ -330,10 +332,19 @@ export default function StockPage() {
   };
 
   const handleDeleteItem = async (item: InventoryItem) => {
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm(`Supprimer l'article « ${item.name} » ?`);
-      if (!confirmed) return;
-    }
+    const confirmed = await confirm({
+      title: "Supprimer cet article ?",
+      description: (
+        <>
+          L&apos;article{" "}
+          <span className="font-semibold text-[var(--foreground)]">« {item.name} »</span> sera retiré
+          du stock. Cette action est irréversible.
+        </>
+      ),
+      confirmLabel: "Supprimer",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
     try {
       await deleteItem(item.id);
       toastSuccess("Article supprimé");

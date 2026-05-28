@@ -181,10 +181,16 @@ export default function DashboardHomePage() {
     });
   }, [loadTasks]);
 
+  const lastHandledTaskFromUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const taskFromUrl = searchParams.get("task");
     if (!taskFromUrl || tasks.length === 0) return;
+    if (lastHandledTaskFromUrlRef.current === taskFromUrl) return;
     if (!tasks.some((t) => t.id === taskFromUrl)) return;
+    lastHandledTaskFromUrlRef.current = taskFromUrl;
+    // Synchronisation URL → état interne : cas l\u00e9gitime de setState dans un effet
+    // (la donn\u00e9e source est l\u2019URL, pas un autre state React).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedTaskId(taskFromUrl);
     const next = new URLSearchParams();
     const q = searchParams.get("q");

@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import AppShell from "../../components/AppShell";
 import CompanyAvatar from "../../components/CompanyAvatar";
+import { useConfirm } from "../../components/ui/ConfirmDialog";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { markTaskMutatedLocally } from "../../lib/taskMutatedLocally";
 import { toastError, toastSuccess } from "../../lib/toast";
@@ -138,6 +139,7 @@ export default function SocialPage() {
   const { admins, companies, domains } = useReferenceData();
   const { posts, loading, schemaError, loadData, createPosts, updatePost, deletePost } =
     useSocialPosts();
+  const confirm = useConfirm();
 
   const [displayMode, setDisplayMode] = useState<DisplayMode>("month");
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -361,10 +363,18 @@ export default function SocialPage() {
   };
 
   const handleDeletePost = async (post: SocialPost) => {
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm(`Supprimer le post « ${post.title} » ?`);
-      if (!confirmed) return;
-    }
+    const confirmed = await confirm({
+      title: "Supprimer ce post ?",
+      description: (
+        <>
+          Le post <span className="font-semibold text-[var(--foreground)]">« {post.title} »</span>{" "}
+          sera définitivement supprimé.
+        </>
+      ),
+      confirmLabel: "Supprimer",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
     try {
       await deletePost(post.id);
       toastSuccess("Post supprimé");

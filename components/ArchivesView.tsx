@@ -20,6 +20,9 @@ const PERIODS = [
   { label: "Tout", days: 0 },
 ] as const;
 
+/** Pagination soft : limite l'affichage initial pour éviter de rendre des centaines de cartes. */
+const ARCHIVES_PAGE_SIZE = 60;
+
 export default function ArchivesView(props: {
   tasks: Task[];
   admins: string[];
@@ -33,6 +36,7 @@ export default function ArchivesView(props: {
   const [filterPeriodDays, setFilterPeriodDays] = useState<number>(0);
   const [showFilters, setShowFilters] = useState(false);
   const [now] = useState(() => Date.now());
+  const [visibleCount, setVisibleCount] = useState(ARCHIVES_PAGE_SIZE);
 
   const archivedTasks = useMemo(
     () => props.tasks.filter((t) => t.isArchived && !t.parentTaskId),
@@ -78,7 +82,21 @@ export default function ArchivesView(props: {
     setFilterCompany("Toutes");
     setFilterDomain("Tous");
     setFilterPeriodDays(0);
+    setVisibleCount(ARCHIVES_PAGE_SIZE);
   };
+
+  // Réinitialiser la pagination quand les filtres changent
+  // Pattern officiel React 19 : storing information from previous renders
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const filterSignature = `${query}|${filterAdmin}|${filterCompany}|${filterDomain}|${filterPeriodDays}`;
+  const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
+  if (prevFilterSignature !== filterSignature) {
+    setPrevFilterSignature(filterSignature);
+    setVisibleCount(ARCHIVES_PAGE_SIZE);
+  }
+
+  const displayedTasks = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
 
   return (
     <div className="space-y-4">
@@ -249,7 +267,7 @@ export default function ArchivesView(props: {
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((task) => (
+          {displayedTasks.map((task) => (
             <article
               key={task.id}
               className="flex flex-col rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_8px_18px_rgba(20,17,13,0.07)]"
@@ -321,6 +339,21 @@ export default function ArchivesView(props: {
               </div>
             </article>
           ))}
+        </div>
+      )}
+
+      {hasMore && (
+        <div className="flex items-center justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((v) => v + ARCHIVES_PAGE_SIZE)}
+            className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)]/75 shadow-sm hover:bg-[var(--surface-soft)]"
+          >
+            Voir {Math.min(ARCHIVES_PAGE_SIZE, filtered.length - visibleCount)} archives de plus
+            <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-bold text-[color:var(--foreground)]/55">
+              {filtered.length - visibleCount} restantes
+            </span>
+          </button>
         </div>
       )}
     </div>

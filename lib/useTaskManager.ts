@@ -9,6 +9,7 @@ import { celebrateTaskDone } from "./celebrateTaskDone";
 import { markTaskMutatedLocally, markTasksMutatedLocally } from "./taskMutatedLocally";
 import { toastError, toastSuccess } from "./toast";
 import { DONE_COLUMN_NAME } from "./workflowConstants";
+import { useConfirm } from "../components/ui/ConfirmDialog";
 import type { ColumnId, Task } from "./types";
 import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
 
@@ -64,6 +65,7 @@ export function useTaskManager({
   editingTaskId,
   onTaskFormDone,
 }: UseTaskManagerParams) {
+  const confirm = useConfirm();
   useEffect(() => {
     const toArchive = tasks.filter((t) => {
       if (t.column !== DONE_COLUMN_NAME || t.isArchived || t.parentTaskId) return false;
@@ -169,28 +171,32 @@ export function useTaskManager({
   );
 
   const handleArchiveTask = useCallback(
-    (taskId: string) => {
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm(
-          "Archiver cette tâche ? Elle restera disponible dans l'onglet Archives.",
-        );
-        if (!confirmed) return;
-      }
+    async (taskId: string) => {
+      const confirmed = await confirm({
+        title: "Archiver cette tâche ?",
+        description: "Elle restera disponible dans l'onglet Archives, prête à être restaurée.",
+        confirmLabel: "Archiver",
+        variant: "warning",
+      });
+      if (!confirmed) return;
       const current = tasks.find((task) => task.id === taskId);
       if (!current) return;
       void optimisticUpdate(taskId, { ...current, isArchived: true }, { is_archived: true })
         .then(() => toastSuccess("Tâche archivée"))
         .catch(() => toastError("Impossible d'archiver la tâche. Veuillez réessayer."));
     },
-    [optimisticUpdate, tasks],
+    [confirm, optimisticUpdate, tasks],
   );
 
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm("Supprimer définitivement cette tâche ?");
-        if (!confirmed) return;
-      }
+      const confirmed = await confirm({
+        title: "Supprimer définitivement cette tâche ?",
+        description: "Cette action est irréversible. Préférez l'archivage si possible.",
+        confirmLabel: "Supprimer",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
       const previous = tasks;
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
       const { data, error } = await supabase
@@ -209,17 +215,18 @@ export function useTaskManager({
       }
       toastSuccess("Tâche supprimée");
     },
-    [setTasks, supabase, tasks],
+    [confirm, setTasks, supabase, tasks],
   );
 
   const handlePermanentDelete = useCallback(
     async (taskId: string) => {
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm(
-          "Supprimer définitivement cette tâche ? Cette action est irréversible.",
-        );
-        if (!confirmed) return;
-      }
+      const confirmed = await confirm({
+        title: "Supprimer définitivement cette tâche ?",
+        description: "Cette action est irréversible.",
+        confirmLabel: "Supprimer définitivement",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
       const previous = tasks;
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
@@ -230,7 +237,7 @@ export function useTaskManager({
       }
       toastSuccess("Tâche supprimée définitivement.");
     },
-    [setTasks, supabase, tasks],
+    [confirm, setTasks, supabase, tasks],
   );
 
   const handleInlineSave = useCallback(

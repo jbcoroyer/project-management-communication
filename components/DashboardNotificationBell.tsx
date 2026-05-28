@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { useInAppNotifications } from "../lib/inAppNotificationsContext";
+import { useIsClient } from "../lib/useIsClient";
 
 function formatNotifTime(at: number): string {
   try {
@@ -24,12 +25,10 @@ type PanelPos = { top: number; right: number; width: number; maxHeight: number }
 export default function DashboardNotificationBell() {
   const { history, markHistoryRead, clearHistory, unreadCount } = useInAppNotifications();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
   const [panelPos, setPanelPos] = useState<PanelPos>({ top: 0, right: 16, width: 380, maxHeight: 420 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMounted(true), []);
 
   const updatePanelPosition = useCallback(() => {
     const btn = buttonRef.current;

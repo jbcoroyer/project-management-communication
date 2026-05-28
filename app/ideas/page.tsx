@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import AppShell from "../../components/AppShell";
+import { useConfirm } from "../../components/ui/ConfirmDialog";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import {
   type StockIdea,
@@ -68,6 +69,7 @@ function categoryLabel(c: StockIdeaCategory): string {
 export default function IdeasPage() {
   const { user: currentUser } = useCurrentUser();
   const { ideas, hydrated, addIdea, updateIdea, removeIdea, exportJson } = useStockIdeas();
+  const confirm = useConfirm();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<StockIdeaCategory>("materiel");
@@ -250,8 +252,14 @@ export default function IdeasPage() {
                         key={idea.id}
                         idea={idea}
                         onStatus={(s) => updateIdea(idea.id, { status: s })}
-                        onRemove={() => {
-                          if (window.confirm("Retirer cette idée ?")) removeIdea(idea.id);
+                        onRemove={async () => {
+                          const ok = await confirm({
+                            title: "Retirer cette idée ?",
+                            description: "L'idée sera supprimée pour tous les utilisateurs.",
+                            confirmLabel: "Retirer",
+                            variant: "destructive",
+                          });
+                          if (ok) removeIdea(idea.id);
                         }}
                       />
                     ))
