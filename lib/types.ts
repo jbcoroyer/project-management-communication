@@ -1,6 +1,6 @@
 // Types et constantes partagés pour le projet Kanban
 
-export const defaultColumns = ["À faire", "En cours", "En validation", "Terminé"];
+export const defaultColumns = ["À faire", "En cours", "En validation", "Terminé"] as const;
 /** Plus de noms « fantômes » : les assignés viennent uniquement de `team_members` (Paramètres). */
 export const defaultAdmins: readonly string[] = [];
 export const defaultCompanies = [
@@ -12,7 +12,7 @@ export const defaultCompanies = [
   "SECOPALM",
   "STI biotechnologie",
   "VERTAL",
-];
+] as const;
 export const defaultDomains = [
   "🖥️ Digitale",
   "📮 Client",
@@ -20,14 +20,14 @@ export const defaultDomains = [
   "🌎 General",
   "🖨️ Print",
   "📰 Presse",
-];
+] as const;
 export const priorities = ["Basse", "Moyenne", "Haute"] as const;
 
 // Alias de compatibilité: le code existant importe encore ces noms.
-export const columns = defaultColumns;
+export const columns: readonly string[] = defaultColumns;
 export const admins = defaultAdmins;
-export const companies = defaultCompanies;
-export const domains = defaultDomains;
+export const companies: readonly string[] = defaultCompanies;
+export const domains: readonly string[] = defaultDomains;
 
 export type ColumnId = string;
 export type AdminId = string;
@@ -110,15 +110,3 @@ export const initialFormState: NewTaskFormState = {
   estimatedHours: "",
   estimatedDays: "",
 };
-
-export function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return [
-    hours.toString().padStart(2, "0"),
-    minutes.toString().padStart(2, "0"),
-    seconds.toString().padStart(2, "0"),
-  ].join(":");
-}

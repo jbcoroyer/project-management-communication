@@ -269,9 +269,10 @@ export default function TaskDetailPanel(props: {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
+                    aria-label="Annuler l'édition"
                     className="ui-transition inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)]"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </>
               )}

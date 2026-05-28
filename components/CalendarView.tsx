@@ -162,9 +162,10 @@ function Toolbar(props: {
         <button
           type="button"
           onClick={() => props.onNavigate("PREV")}
+          aria-label="Période précédente"
           className="ui-transition flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" aria-hidden />
         </button>
         <button
           type="button"
@@ -176,9 +177,10 @@ function Toolbar(props: {
         <button
           type="button"
           onClick={() => props.onNavigate("NEXT")}
+          aria-label="Période suivante"
           className="ui-transition flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
         <span className="text-sm font-bold text-[color:var(--foreground)]/85">{props.label}</span>
       </div>

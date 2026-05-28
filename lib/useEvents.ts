@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { useRealtimeReload } from "./useRealtimeReload";
 import type { EventRow, EventStatus } from "./eventTypes";
 
 type EventDbRow = {
@@ -52,17 +53,13 @@ export function useEvents() {
     void loadEvents().catch(() => setEvents([]));
   }, [loadEvents]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("events-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
-        void loadEvents().catch(() => {});
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadEvents, supabase]);
+  useRealtimeReload({
+    table: "events",
+    channelName: "events-realtime",
+    onChange: useCallback(() => {
+      void loadEvents().catch(() => {});
+    }, [loadEvents]),
+  });
 
   return useMemo(
     () => ({

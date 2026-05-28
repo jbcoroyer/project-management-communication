@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { useRealtimeReload } from "./useRealtimeReload";
 import { projectStatuses, type ProjectStatus, type StockProject, type StockProjectDraft } from "./stockTypes";
 
 type StockProjectRow = {
@@ -50,18 +51,13 @@ export function useStockProjects() {
     });
   }, [loadProjects]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("stock-projects-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => {
-        void loadProjects().catch(() => {});
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadProjects, supabase]);
+  useRealtimeReload({
+    table: "projects",
+    channelName: "stock-projects-realtime",
+    onChange: useCallback(() => {
+      void loadProjects().catch(() => {});
+    }, [loadProjects]),
+  });
 
   const createProject = useCallback(
     async (draft: StockProjectDraft) => {

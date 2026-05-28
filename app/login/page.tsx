@@ -427,9 +427,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setStep(1); setError(null); }}
+                  aria-label="Retour à l'étape précédente"
                   className="ui-transition shrink-0 rounded-lg border border-[var(--line)] px-2 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)]"
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-3 w-3" aria-hidden />
                 </button>
               </div>
 

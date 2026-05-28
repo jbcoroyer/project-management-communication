@@ -55,9 +55,10 @@ export default function EventTaskPlanningModal(props: Props) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Fermer le planning"
             className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-1.5 text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
 

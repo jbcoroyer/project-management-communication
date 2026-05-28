@@ -126,7 +126,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"
+        className="fixed inset-0 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"
+        style={{ zIndex: "var(--z-dialog)" }}
         onClick={(event) => {
           if (event.target === event.currentTarget) close(false);
         }}

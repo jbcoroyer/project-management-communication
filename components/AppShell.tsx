@@ -134,7 +134,10 @@ export default function AppShell({
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-4 lg:px-6">
         {/* Sidebar desktop ≥ lg */}
-        <aside className="ui-surface fixed bottom-4 left-6 top-6 z-30 hidden w-60 flex-col rounded-2xl p-4 lg:flex">
+        <aside
+          className="ui-surface fixed bottom-4 left-6 top-6 hidden w-60 flex-col rounded-2xl p-4 lg:flex"
+          style={{ zIndex: "var(--z-sidebar)" }}
+        >
           <ServiceCommunicationIdenaHeading />
 
           <nav className="space-y-1">
@@ -174,14 +177,16 @@ export default function AppShell({
             <button
               type="button"
               aria-label="Fermer le menu"
-              className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm lg:hidden"
+              style={{ zIndex: "var(--z-overlay)" }}
               onClick={() => setMobileNavOpen(false)}
             />
             <aside
               role="dialog"
               aria-modal="true"
               aria-label="Navigation principale"
-              className="ui-surface fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col rounded-none rounded-r-2xl p-4 shadow-[0_24px_80px_rgba(20,17,13,0.22)] lg:hidden"
+              className="ui-surface fixed inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col rounded-none rounded-r-2xl p-4 shadow-[0_24px_80px_rgba(20,17,13,0.22)] lg:hidden"
+              style={{ zIndex: "calc(var(--z-overlay) + 1)" }}
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <ServiceCommunicationIdenaHeading />

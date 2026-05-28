@@ -630,9 +630,10 @@ export default function WorkloadView(props: {
           <button
             type="button"
             onClick={() => setAnchorDate((d) => subWeeks(d, 1))}
+            aria-label="Semaine précédente"
             className="ui-transition flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] hover:bg-[var(--surface)]"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
 
           <div className="min-w-[220px] text-center">
@@ -649,9 +650,10 @@ export default function WorkloadView(props: {
           <button
             type="button"
             onClick={() => setAnchorDate((d) => addWeeks(d, 1))}
+            aria-label="Semaine suivante"
             className="ui-transition flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] hover:bg-[var(--surface)]"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
 
           {!isCurrentWeek && (

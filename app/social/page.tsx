@@ -837,9 +837,10 @@ export default function SocialPage() {
               <button
                 type="button"
                 onClick={() => setCalendarDate((prev) => (displayMode === "week" ? subWeeks(prev, 1) : subMonths(prev, 1)))}
+                aria-label={displayMode === "week" ? "Semaine précédente" : "Mois précédent"}
                 className="ui-transition flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-soft)]"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" aria-hidden />
               </button>
               <button
                 type="button"
@@ -851,9 +852,10 @@ export default function SocialPage() {
               <button
                 type="button"
                 onClick={() => setCalendarDate((prev) => (displayMode === "week" ? addWeeks(prev, 1) : addMonths(prev, 1)))}
+                aria-label={displayMode === "week" ? "Semaine suivante" : "Mois suivant"}
                 className="ui-transition flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-soft)]"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
               <p className="ml-2 text-base font-semibold capitalize text-[var(--foreground)]">
                 {formatCalendarLabel(calendarDate, displayMode)}

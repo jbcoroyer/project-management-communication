@@ -624,9 +624,10 @@ export default function NewTaskModal(props: {
                       <button
                         type="button"
                         onClick={() => setPendingSubtasks((prev) => prev.filter((_, i) => i !== idx))}
+                        aria-label="Retirer cette étape"
                         className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-rose-400 hover:bg-rose-50 hover:text-rose-600"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3" aria-hidden />
                       </button>
                     </div>
                   ))}

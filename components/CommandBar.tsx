@@ -86,9 +86,10 @@ export default function CommandBar(props: {
               <button
                 type="button"
                 onClick={props.onClose}
+                aria-label="Fermer la palette de commandes"
                 className="ui-transition rounded-md border border-[var(--line)] p-1 text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)]"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
             <div className="max-h-[55vh] overflow-y-auto p-2">

@@ -59,11 +59,12 @@ function NotificationStack(props: {
 
   return createPortal(
     <div
-      className="pointer-events-none fixed z-[200] flex flex-col gap-3 p-0"
+      className="pointer-events-none fixed flex flex-col gap-3 p-0"
       style={{
         top: "max(5.25rem, env(safe-area-inset-top, 0px))",
         right: "max(1rem, env(safe-area-inset-right, 0px))",
         width: "min(calc(100vw - 2rem), 400px)",
+        zIndex: "var(--z-toast)",
       }}
       aria-live="polite"
       aria-relevant="additions"

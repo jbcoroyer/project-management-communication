@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { useRealtimeReload } from "./useRealtimeReload";
 import type { StockMovement } from "./stockTypes";
 
 type StockMovementRow = {
@@ -78,24 +79,13 @@ export function useStockMovements(limit = 500) {
     });
   }, [loadMovements]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`stock-movements-${limit}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "stock_movements" }, () => {
-        void loadMovements().catch(() => {});
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "inventory_items" }, () => {
-        void loadMovements().catch(() => {});
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => {
-        void loadMovements().catch(() => {});
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [limit, loadMovements, supabase]);
+  useRealtimeReload({
+    tables: ["stock_movements", "inventory_items", "projects"],
+    channelName: `stock-movements-${limit}`,
+    onChange: useCallback(() => {
+      void loadMovements().catch(() => {});
+    }, [loadMovements]),
+  });
 
   return useMemo(
     () => ({

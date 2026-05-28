@@ -17,7 +17,7 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function toReferenceRecords(values: string[]): ReferenceRecord[] {
+export function toReferenceRecords(values: readonly string[]): ReferenceRecord[] {
   return values.map((name) => ({
     id: slugify(name) || name,
     name,
