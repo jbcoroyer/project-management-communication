@@ -5,6 +5,12 @@ import { Plus, Trash2, X } from "lucide-react";
 import { printDocumentTypeOptions } from "../lib/printDocumentTypes";
 import { PRINT_LANGUAGES_FR, PRINT_LANGUAGES_FEATURED_FR } from "../lib/printLanguages";
 import type { InventoryItem, InventoryItemDraft } from "../lib/inventoryTypes";
+import {
+  decodePrintItemType,
+  encodePrintItemType,
+  PRINT_SPECIES_OPTIONS,
+  type PrintSpeciesValue,
+} from "../lib/printSpecies";
 import { toastError } from "../lib/toast";
 
 type Props = {
@@ -50,6 +56,7 @@ export default function InventoryPrintModal(props: Props) {
 
   const [docSelect, setDocSelect] = useState("");
   const [customDocType, setCustomDocType] = useState("");
+  const [species, setSpecies] = useState<PrintSpeciesValue>("general");
   const [language, setLanguage] = useState("Français");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("0");
@@ -62,10 +69,12 @@ export default function InventoryPrintModal(props: Props) {
     if (!open) return;
     const source = initialItem;
     if (source) {
-      const t = source.itemType?.trim() ?? "";
+      const decoded = decodePrintItemType(source.itemType ?? "");
+      const t = decoded.docType.trim();
       const inList = docOptions.includes(t);
       setDocSelect(inList ? t : OTHER_DOC);
       setCustomDocType(inList ? "" : t);
+      setSpecies(decoded.species);
       setLanguage(source.language?.trim() || "Français");
       setName(source.name);
       setQuantity(String(source.quantity));
@@ -74,6 +83,7 @@ export default function InventoryPrintModal(props: Props) {
     } else {
       setDocSelect(docOptions[0] ?? "Fiches Commerciales");
       setCustomDocType("");
+      setSpecies("general");
       setLanguage("Français");
       setName("");
       setQuantity("0");
@@ -104,6 +114,7 @@ export default function InventoryPrintModal(props: Props) {
       return;
     }
 
+    const encodedType = encodePrintItemType(doc, species);
     if (isEditing) {
       if (!language.trim()) {
         toastError("La langue est obligatoire.");
@@ -114,7 +125,7 @@ export default function InventoryPrintModal(props: Props) {
         await onSubmit({
           id: initialItem?.id,
           category: "Print",
-          itemType: doc,
+          itemType: encodedType,
           name: name.trim(),
           quantity: Math.max(0, Math.round(Number(quantity) || 0)),
           unitPrice: parsePrice(unitPrice),
@@ -141,7 +152,7 @@ export default function InventoryPrintModal(props: Props) {
       seenLang.add(key);
       drafts.push({
         category: "Print",
-        itemType: doc,
+        itemType: encodedType,
         name: name.trim(),
         quantity: Math.max(0, Math.round(Number(row.quantity) || 0)),
         unitPrice: parsePrice(row.unitPrice),
@@ -217,6 +228,21 @@ export default function InventoryPrintModal(props: Props) {
                   placeholder="Nouveau type — apparaîtra dans la liste pour les prochains documents"
                 />
               )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Espèce</label>
+              <select
+                value={species}
+                onChange={(e) => setSpecies(e.target.value as PrintSpeciesValue)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+              >
+                {PRINT_SPECIES_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="md:col-span-2">

@@ -28,6 +28,7 @@ import StockMovementModal from "../../components/StockMovementModal";
 import StockSectionNav from "../../components/StockSectionNav";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { useCurrentUser } from "../../lib/useCurrentUser";
+import { decodePrintItemType, type PrintSpeciesValue } from "../../lib/printSpecies";
 import {
   inventoryCategories,
   inventoryItemValue,
@@ -47,10 +48,80 @@ type PrintDocTypeGroup = {
   documents: { name: string; items: InventoryItem[] }[];
 };
 
+type PrintSpecies = PrintSpeciesValue;
+type PrintSubsidiary = "general" | "idr" | "idn";
+
+const PRINT_SPECIES_META: Record<
+  PrintSpecies,
+  { label: string; badgeClass: string; borderClass: string; panelClass: string }
+> = {
+  general: {
+    label: "Général",
+    badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
+    borderClass: "border-slate-300",
+    panelClass: "bg-slate-50/50",
+  },
+  volaille: {
+    label: "Volaille",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
+    borderClass: "border-amber-300",
+    panelClass: "bg-amber-50/45",
+  },
+  ruminants: {
+    label: "Ruminants",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    borderClass: "border-emerald-300",
+    panelClass: "bg-emerald-50/45",
+  },
+  porcs: {
+    label: "Porcs",
+    badgeClass: "border-rose-200 bg-rose-50 text-rose-700",
+    borderClass: "border-rose-300",
+    panelClass: "bg-rose-50/45",
+  },
+  multi: {
+    label: "Multi-Espèces",
+    badgeClass: "border-violet-200 bg-violet-50 text-violet-700",
+    borderClass: "border-violet-300",
+    panelClass: "bg-violet-50/45",
+  },
+};
+
+const PRINT_SUBSIDIARY_META: Record<Exclude<PrintSubsidiary, "general">, { label: string }> = {
+  idr: { label: "IDR" },
+  idn: { label: "IDN" },
+};
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function inferPrintSpecies(item: InventoryItem): PrintSpecies {
+  const decodedType = decodePrintItemType(item.itemType ?? "");
+  const explicit = decodedType.species;
+  if (explicit !== "general") return explicit;
+  const haystack = normalizeSearchText([decodedType.docType, item.name, item.lastQuoteInfo ?? ""].join(" "));
+  if (/\bmulti\b|\bmulti especes?\b|\bmultiespeces?\b/.test(haystack)) return "multi";
+  if (/\bvolaille\b|\bpoulet\b|\bdinde\b/.test(haystack)) return "volaille";
+  if (/\bruminants?\b|\bbovin\b|\bbovins\b|\bovin\b|\bovins\b|\bovins?\b|\bovin\b|\bovins?\b|\bboeuf\b|\bbuf\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovins?\b|\bovin\b|\bovins?\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovins?\b|\bovin\b|\bovins?\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins\b|\bovin\b|\bovins?\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bbovin\b|\bbovins\b|\bmouton\b|\bovin\b/.test(haystack)) return "ruminants";
+  if (/\bporc\b|\bporcs\b|\bporcin\b|\bporcine\b/.test(haystack)) return "porcs";
+  return "general";
+}
+
+function inferPrintSubsidiary(item: InventoryItem): PrintSubsidiary {
+  const haystack = normalizeSearchText([item.itemType, item.name, item.lastQuoteInfo ?? ""].join(" "));
+  if (/\bidn\b|\bidena nutrition\b/.test(haystack)) return "idn";
+  if (/\bidr\b|\bidena r\b/.test(haystack)) return "idr";
+  return "general";
+}
+
 function groupPrintByDocTypeAndName(sectionItems: InventoryItem[]): PrintDocTypeGroup[] {
   const byDoc = new Map<string, InventoryItem[]>();
   for (const item of sectionItems) {
-    const doc = item.itemType?.trim() || "—";
+    const doc = decodePrintItemType(item.itemType ?? "").docType.trim() || "—";
     if (!byDoc.has(doc)) byDoc.set(doc, []);
     byDoc.get(doc)!.push(item);
   }
@@ -100,6 +171,8 @@ export default function StockPage() {
   const [plvModalOpen, setPlvModalOpen] = useState(false);
   const [plvLightbox, setPlvLightbox] = useState<{ url: string; name: string } | null>(null);
   const [collapsedPlvTypes, setCollapsedPlvTypes] = useState<Record<string, boolean>>({});
+  const [collapsedPrintSpecies, setCollapsedPrintSpecies] = useState<Record<PrintSpecies, boolean>>({});
+  const [collapsedPrintSubsidiaries, setCollapsedPrintSubsidiaries] = useState<Record<string, boolean>>({});
 
   const totalStockValue = useMemo(
     () => items.reduce((sum, item) => sum + inventoryItemValue(item), 0),
@@ -532,7 +605,32 @@ export default function StockPage() {
           ).sort((a, b) => a[0].localeCompare(b[0], "fr"))
         : null;
 
-    const printGroups = category === "Print" ? groupPrintByDocTypeAndName(sectionItems) : null;
+    const printPanels =
+      category === "Print"
+        ? (Object.keys(PRINT_SPECIES_META) as PrintSpecies[]).map((species) => {
+            const speciesItems = sectionItems.filter((item) => inferPrintSpecies(item) === species);
+            const baseItems = speciesItems.filter((item) => inferPrintSubsidiary(item) === "general");
+            const baseGroups = groupPrintByDocTypeAndName(baseItems);
+            const subsidiaries = (Object.keys(PRINT_SUBSIDIARY_META) as Array<Exclude<PrintSubsidiary, "general">>)
+              .map((subsidiary) => {
+                const subsidiaryItems = speciesItems.filter((item) => inferPrintSubsidiary(item) === subsidiary);
+                return {
+                  subsidiary,
+                  items: subsidiaryItems,
+                  groups: groupPrintByDocTypeAndName(subsidiaryItems),
+                  alertCount: subsidiaryItems.filter((item) => isLowStock(item)).length,
+                };
+              })
+              .filter((entry) => entry.items.length > 0);
+            return {
+              species,
+              items: speciesItems,
+              baseGroups,
+              subsidiaries,
+              alertCount: speciesItems.filter((item) => isLowStock(item)).length,
+            };
+          }).filter((entry) => entry.items.length > 0)
+        : null;
     const plvGroups =
       category === "PLV"
         ? Object.entries(
@@ -556,26 +654,125 @@ export default function StockPage() {
         <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">
           Aucun article dans cette catégorie.
         </div>
-      ) : category === "Print" && printGroups ? (
-          <div className="space-y-4">
-            {printGroups.map(({ docType, documents }) => (
-              <div key={docType} className="overflow-hidden rounded-2xl border border-[var(--line)]">
-                <div className="border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Type de document : {docType}</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-[720px] w-full border-collapse [&_tbody+tbody]:border-t-2 [&_tbody+tbody]:border-[var(--line)]/85">
-                    {renderTableHead("Print")}
-                    {documents.map(({ name, items: docItems }) => (
-                      <tbody key={`${docType}-${name}-${docItems.map((i) => i.id).join("-")}`}>
-                        {renderPrintDocumentRows(docItems)}
-                      </tbody>
+      ) : category === "Print" && printPanels ? (
+        <div className="space-y-4">
+          {printPanels.map(({ species, baseGroups, subsidiaries, items: speciesItems, alertCount: speciesAlertCount }) => {
+            const meta = PRINT_SPECIES_META[species];
+            const speciesCollapsed = collapsedPrintSpecies[species] ?? false;
+            return (
+              <div
+                key={`print-species-${species}`}
+                className={["overflow-hidden rounded-2xl border-2", meta.borderClass, meta.panelClass].join(" ")}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCollapsedPrintSpecies((prev) => ({ ...prev, [species]: !speciesCollapsed }))}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    {speciesCollapsed ? (
+                      <ChevronRight className="h-4 w-4 text-[color:var(--foreground)]/60" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-[color:var(--foreground)]/60" />
+                    )}
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{meta.label}</p>
+                    <span className="text-xs text-[color:var(--foreground)]/55">{formatNumber(speciesItems.length)} réf.</span>
+                  </div>
+                  <span
+                    className={[
+                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                      speciesAlertCount > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                    ].join(" ")}
+                  >
+                    {speciesAlertCount > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : null}
+                    {speciesAlertCount > 0 ? "Attention" : "OK"}
+                  </span>
+                </button>
+
+                {!speciesCollapsed && (
+                  <div className="space-y-3 border-t border-[var(--line)]/70 p-3">
+                    {baseGroups.map(({ docType, documents }) => (
+                      <div key={`print-base-${species}-${docType}`} className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+                        <div className={["border-b px-4 py-2.5", meta.badgeClass].join(" ")}>
+                          <p className="text-sm font-semibold">Type de document : {docType}</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-[720px] w-full border-collapse [&_tbody+tbody]:border-t-2 [&_tbody+tbody]:border-[var(--line)]/85">
+                            {renderTableHead("Print")}
+                            {documents.map(({ name, items: docItems }) => (
+                              <tbody key={`print-base-${species}-${docType}-${name}-${docItems.map((i) => i.id).join("-")}`}>
+                                {renderPrintDocumentRows(docItems)}
+                              </tbody>
+                            ))}
+                          </table>
+                        </div>
+                      </div>
                     ))}
-                  </table>
-                </div>
+
+                    {subsidiaries.map(({ subsidiary, groups, items: subsidiaryItems, alertCount: subsidiaryAlertCount }) => {
+                      const subKey = `${species}:${subsidiary}`;
+                      const subsidiaryCollapsed = collapsedPrintSubsidiaries[subKey] ?? false;
+                      return (
+                        <div key={subKey} className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCollapsedPrintSubsidiaries((prev) => ({ ...prev, [subKey]: !subsidiaryCollapsed }))
+                            }
+                            className="flex w-full items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-2.5 text-left"
+                          >
+                            <div className="flex items-center gap-2">
+                              {subsidiaryCollapsed ? (
+                                <ChevronRight className="h-4 w-4 text-[color:var(--foreground)]/55" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-[color:var(--foreground)]/55" />
+                              )}
+                              <p className="text-sm font-semibold text-[var(--foreground)]">{PRINT_SUBSIDIARY_META[subsidiary].label}</p>
+                              <span className="text-xs text-[color:var(--foreground)]/55">
+                                {formatNumber(subsidiaryItems.length)} réf.
+                              </span>
+                            </div>
+                            <span
+                              className={[
+                                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                                subsidiaryAlertCount > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                              ].join(" ")}
+                            >
+                              {subsidiaryAlertCount > 0 ? <AlertTriangle className="h-3 w-3" /> : null}
+                              {subsidiaryAlertCount > 0 ? "Attention" : "OK"}
+                            </span>
+                          </button>
+
+                          {!subsidiaryCollapsed && (
+                            <div className="space-y-4 p-3">
+                              {groups.map(({ docType, documents }) => (
+                                <div key={`${subKey}-${docType}`} className="overflow-hidden rounded-xl border border-[var(--line)]">
+                                  <div className={["border-b px-4 py-2.5", meta.badgeClass].join(" ")}>
+                                    <p className="text-sm font-semibold">Type de document : {docType}</p>
+                                  </div>
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-[720px] w-full border-collapse [&_tbody+tbody]:border-t-2 [&_tbody+tbody]:border-[var(--line)]/85">
+                                      {renderTableHead("Print")}
+                                      {documents.map(({ name, items: docItems }) => (
+                                        <tbody key={`${subKey}-${docType}-${name}-${docItems.map((i) => i.id).join("-")}`}>
+                                          {renderPrintDocumentRows(docItems)}
+                                        </tbody>
+                                      ))}
+                                    </table>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         ) : category === "PLV" && plvGroups ? (
           <div className="space-y-4">
             {plvGroups.map(([typeLabel, typeItems]) => {

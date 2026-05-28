@@ -140,8 +140,7 @@ export default function IdeasPage() {
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[color:var(--foreground)]/60">
                 Proposez une amélioration pour le matériel, la logistique ou les process (y compris autour du stock).
-                Les idées sont enregistrées sur cet appareil (navigateur) — exportez-les en JSON pour les partager ou
-                les archiver.
+                Les idées sont partagées entre tous les utilisateurs connectés, en temps réel.
               </p>
             </div>
             <button
