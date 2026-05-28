@@ -92,6 +92,16 @@ const PRINT_SUBSIDIARY_META: Record<Exclude<PrintSubsidiary, "general">, { label
   idn: { label: "IDN" },
 };
 
+function createCollapsedSpeciesState(): Record<PrintSpecies, boolean> {
+  return {
+    general: false,
+    volaille: false,
+    ruminants: false,
+    porcs: false,
+    multi: false,
+  };
+}
+
 function normalizeSearchText(value: string): string {
   return value
     .normalize("NFD")
@@ -171,7 +181,9 @@ export default function StockPage() {
   const [plvModalOpen, setPlvModalOpen] = useState(false);
   const [plvLightbox, setPlvLightbox] = useState<{ url: string; name: string } | null>(null);
   const [collapsedPlvTypes, setCollapsedPlvTypes] = useState<Record<string, boolean>>({});
-  const [collapsedPrintSpecies, setCollapsedPrintSpecies] = useState<Record<PrintSpecies, boolean>>({});
+  const [collapsedPrintSpecies, setCollapsedPrintSpecies] = useState<Record<PrintSpecies, boolean>>(
+    createCollapsedSpeciesState,
+  );
   const [collapsedPrintSubsidiaries, setCollapsedPrintSubsidiaries] = useState<Record<string, boolean>>({});
 
   const totalStockValue = useMemo(
