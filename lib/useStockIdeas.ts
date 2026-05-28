@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
 
+const LEGACY_STORAGE_KEY = "idena-stock-ideas-v1";
+const LEGACY_MIGRATION_DONE_KEY = "idena-stock-ideas-migrated-v1";
+
 export type StockIdeaCategory = "materiel" | "process" | "communication" | "autre";
 export type StockIdeaStatus = "nouveau" | "etude" | "adopte" | "archive";
 
@@ -37,6 +40,46 @@ function rowToIdea(row: StockIdeaRow): StockIdea {
   };
 }
 
+function parseLegacyIdeas(): Array<{
+  created_at?: string;
+  title: string;
+  description: string | null;
+  category: StockIdeaCategory;
+  status: StockIdeaStatus;
+}> {
+  if (typeof window === "undefined") return [];
+  if (window.localStorage.getItem(LEGACY_MIGRATION_DONE_KEY) === "1") return [];
+
+  try {
+    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    const validCategory = new Set<StockIdeaCategory>(["materiel", "process", "communication", "autre"]);
+    const validStatus = new Set<StockIdeaStatus>(["nouveau", "etude", "adopte", "archive"]);
+
+    return parsed
+      .filter((item): item is Record<string, unknown> => item !== null && typeof item === "object")
+      .map((item) => {
+        const category = String(item.category ?? "");
+        const status = String(item.status ?? "");
+        const createdAt = String(item.createdAt ?? "");
+        return {
+          created_at: createdAt || undefined,
+          title: String(item.title ?? "").trim(),
+          description: String(item.description ?? "").trim() || null,
+          category: validCategory.has(category as StockIdeaCategory) ? (category as StockIdeaCategory) : "autre",
+          status: validStatus.has(status as StockIdeaStatus) ? (status as StockIdeaStatus) : "nouveau",
+        };
+      })
+      .filter((item) => item.title.length > 0)
+      .slice(0, 500);
+  } catch {
+    return [];
+  }
+}
+
 export function useStockIdeas() {
   const [ideas, setIdeas] = useState<StockIdea[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -60,7 +103,27 @@ export function useStockIdeas() {
         return;
       }
 
-      setIdeas(((data ?? []) as StockIdeaRow[]).map(rowToIdea));
+      const rows = (data ?? []) as StockIdeaRow[];
+      if (rows.length === 0) {
+        const legacyIdeas = parseLegacyIdeas();
+        if (legacyIdeas.length > 0) {
+          const { error: migrationError } = await supabase.from("stock_ideas").insert(legacyIdeas);
+          if (!migrationError) {
+            window.localStorage.setItem(LEGACY_MIGRATION_DONE_KEY, "1");
+            const { data: migratedData } = await supabase
+              .from("stock_ideas")
+              .select(STOCK_IDEA_SELECT)
+              .order("created_at", { ascending: false })
+              .limit(500);
+            setIdeas(((migratedData ?? []) as StockIdeaRow[]).map(rowToIdea));
+            setHydrated(true);
+            return;
+          }
+          console.warn("[StockIdeas] migrate legacy:", migrationError.message);
+        }
+      }
+
+      setIdeas(rows.map(rowToIdea));
       setHydrated(true);
     };
 
