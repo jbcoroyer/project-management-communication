@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -68,7 +69,8 @@ function categoryLabel(c: StockIdeaCategory): string {
 
 export default function IdeasPage() {
   const { user: currentUser } = useCurrentUser();
-  const { ideas, hydrated, addIdea, updateIdea, removeIdea, exportJson } = useStockIdeas();
+  const { ideas, hydrated, canManage, addIdea, updateIdea, removeIdea, exportJson } = useStockIdeas();
+  const isGuest = !currentUser;
   const confirm = useConfirm();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -142,8 +144,18 @@ export default function IdeasPage() {
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[color:var(--foreground)]/60">
                 Proposez une amélioration pour le matériel, la logistique ou les process (y compris autour du stock).
-                Les idées sont partagées entre tous les utilisateurs connectés, en temps réel.
+                Tout le monde peut consulter et déposer une idée ici, sans compte. La modération (statuts, archivage)
+                est réservée aux membres connectés de l&apos;équipe.
               </p>
+              {isGuest ? (
+                <p className="mt-3 text-sm text-[color:var(--foreground)]/55">
+                  Vous consultez la boîte à idées en accès public.{" "}
+                  <Link href="/login" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
+                    Se connecter
+                  </Link>{" "}
+                  pour gérer les idées depuis le reste de l&apos;application.
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
@@ -251,6 +263,7 @@ export default function IdeasPage() {
                       <IdeaCard
                         key={idea.id}
                         idea={idea}
+                        canManage={canManage}
                         onStatus={(s) => updateIdea(idea.id, { status: s })}
                         onRemove={async () => {
                           const ok = await confirm({
@@ -284,10 +297,11 @@ function formatIdeaDate(iso: string): string {
 
 function IdeaCard(props: {
   idea: StockIdea;
+  canManage: boolean;
   onStatus: (s: StockIdeaStatus) => void;
   onRemove: () => void;
 }) {
-  const { idea, onStatus, onRemove } = props;
+  const { idea, canManage, onStatus, onRemove } = props;
   const created = formatIdeaDate(idea.createdAt);
 
   const nextActions: { label: string; status: StockIdeaStatus }[] = [];
@@ -305,26 +319,28 @@ function IdeaCard(props: {
       {idea.description ? (
         <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--foreground)]/60">{idea.description}</p>
       ) : null}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {nextActions.map((a) => (
+      {canManage ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {nextActions.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => onStatus(a.status)}
+              className="ui-transition rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[10px] font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)]"
+            >
+              {a.label}
+            </button>
+          ))}
           <button
-            key={a.label}
             type="button"
-            onClick={() => onStatus(a.status)}
-            className="ui-transition rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[10px] font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)]"
+            onClick={onRemove}
+            className="ui-transition ml-auto inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50"
+            title="Supprimer"
           >
-            {a.label}
+            <Trash2 className="h-3 w-3" />
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={onRemove}
-          className="ui-transition ml-auto inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50"
-          title="Supprimer"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      </div>
+        </div>
+      ) : null}
     </article>
   );
 }

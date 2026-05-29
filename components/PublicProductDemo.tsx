@@ -153,6 +153,12 @@ export default function PublicProductDemo() {
             </div>
             <div className="flex items-center gap-2">
               <Link
+                href="/ideas"
+                className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)]/75 hover:border-[var(--line-strong)]"
+              >
+                Boîte à idées
+              </Link>
+              <Link
                 href="/login"
                 className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)]/75 hover:border-[var(--line-strong)]"
               >

@@ -12,10 +12,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Laisser passer les routes publiques
+  // Laisser passer les routes publiques (boîte à idées accessible sans compte)
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/ideas") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".")
@@ -64,5 +65,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|ideas|api/public).*)"],
 };

@@ -117,6 +117,8 @@ export default function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileNavOpen]);
 
+  const isGuest = !currentUserName && !currentUserEmail;
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -154,20 +156,31 @@ export default function AppShell({
           </nav>
 
           <div className="mt-auto space-y-2">
-            <UserCard
-              name={currentUserName}
-              email={currentUserEmail}
-              avatarUrl={currentUserAvatarUrl}
-              jobTitle={currentUserJobTitle}
-            />
-            <button
-              type="button"
-              onClick={() => void handleSignOut()}
-              className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-            >
-              <LogOut className="h-3.5 w-3.5" aria-hidden />
-              Se déconnecter
-            </button>
+            {isGuest ? (
+              <Link
+                href="/login"
+                className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--accent)] px-3 py-2.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
+              >
+                Se connecter
+              </Link>
+            ) : (
+              <>
+                <UserCard
+                  name={currentUserName}
+                  email={currentUserEmail}
+                  avatarUrl={currentUserAvatarUrl}
+                  jobTitle={currentUserJobTitle}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <LogOut className="h-3.5 w-3.5" aria-hidden />
+                  Se déconnecter
+                </button>
+              </>
+            )}
           </div>
         </aside>
 
@@ -219,20 +232,32 @@ export default function AppShell({
               </nav>
 
               <div className="mt-auto space-y-2">
-                <UserCard
-                  name={currentUserName}
-                  email={currentUserEmail}
-                  avatarUrl={currentUserAvatarUrl}
-                  jobTitle={currentUserJobTitle}
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSignOut()}
-                  className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                >
-                  <LogOut className="h-3.5 w-3.5" aria-hidden />
-                  Se déconnecter
-                </button>
+                {isGuest ? (
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileNavOpen(false)}
+                    className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--accent)] px-3 py-2.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
+                  >
+                    Se connecter
+                  </Link>
+                ) : (
+                  <>
+                    <UserCard
+                      name={currentUserName}
+                      email={currentUserEmail}
+                      avatarUrl={currentUserAvatarUrl}
+                      jobTitle={currentUserJobTitle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSignOut()}
+                      className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                    >
+                      <LogOut className="h-3.5 w-3.5" aria-hidden />
+                      Se déconnecter
+                    </button>
+                  </>
+                )}
               </div>
             </aside>
           </>

@@ -1,205 +1,124 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { ideaToClient, type StockIdeaDto } from "./stockIdeasApi";
+import type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "./stockIdeasTypes";
+import { toastError } from "./toast";
 
-const LEGACY_STORAGE_KEY = "idena-stock-ideas-v1";
-const LEGACY_MIGRATION_DONE_KEY = "idena-stock-ideas-migrated-v1";
+export type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "./stockIdeasTypes";
 
-export type StockIdeaCategory = "materiel" | "process" | "communication" | "autre";
-export type StockIdeaStatus = "nouveau" | "etude" | "adopte" | "archive";
+const PUBLIC_IDEAS_API = "/api/public/ideas";
+const POLL_MS = 12_000;
 
-export type StockIdea = {
-  id: string;
-  createdAt: string;
-  title: string;
-  description: string;
-  category: StockIdeaCategory;
-  status: StockIdeaStatus;
-};
-
-const STOCK_IDEA_SELECT = "id, created_at, title, description, category, status";
-
-type StockIdeaRow = {
-  id: string;
-  created_at: string;
-  title: string;
-  description: string | null;
-  category: StockIdeaCategory;
-  status: StockIdeaStatus;
-};
-
-function rowToIdea(row: StockIdeaRow): StockIdea {
-  return {
-    id: row.id,
-    createdAt: row.created_at,
-    title: row.title,
-    description: row.description ?? "",
-    category: row.category,
-    status: row.status,
-  };
-}
-
-function parseLegacyIdeas(): Array<{
-  created_at?: string;
-  title: string;
-  description: string | null;
-  category: StockIdeaCategory;
-  status: StockIdeaStatus;
-}> {
-  if (typeof window === "undefined") return [];
-  if (window.localStorage.getItem(LEGACY_MIGRATION_DONE_KEY) === "1") return [];
-
-  try {
-    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-
-    const validCategory = new Set<StockIdeaCategory>(["materiel", "process", "communication", "autre"]);
-    const validStatus = new Set<StockIdeaStatus>(["nouveau", "etude", "adopte", "archive"]);
-
-    return parsed
-      .filter((item): item is Record<string, unknown> => item !== null && typeof item === "object")
-      .map((item) => {
-        const category = String(item.category ?? "");
-        const status = String(item.status ?? "");
-        const createdAt = String(item.createdAt ?? "");
-        return {
-          created_at: createdAt || undefined,
-          title: String(item.title ?? "").trim(),
-          description: String(item.description ?? "").trim() || null,
-          category: validCategory.has(category as StockIdeaCategory) ? (category as StockIdeaCategory) : "autre",
-          status: validStatus.has(status as StockIdeaStatus) ? (status as StockIdeaStatus) : "nouveau",
-        };
-      })
-      .filter((item) => item.title.length > 0)
-      .slice(0, 500);
-  } catch {
-    return [];
+async function parseJson<T>(res: Response): Promise<T> {
+  const data = (await res.json()) as T & { error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === "string" ? data.error : res.statusText);
   }
+  return data;
 }
 
 export function useStockIdeas() {
   const [ideas, setIdeas] = useState<StockIdea[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(PUBLIC_IDEAS_API, { cache: "no-store" });
+      const rows = await parseJson<StockIdeaDto[]>(res);
+      setIdeas(rows.map(ideaToClient));
+    } catch (e) {
+      console.warn("[StockIdeas] load:", e);
+      toastError("Impossible de charger les idées.");
+      setIdeas([]);
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
-
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("stock_ideas")
-        .select(STOCK_IDEA_SELECT)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (!mounted) return;
-      if (error) {
-        console.warn("[StockIdeas] load:", error.message);
-        setIdeas([]);
-        setHydrated(true);
-        return;
-      }
-
-      const rows = (data ?? []) as StockIdeaRow[];
-      if (rows.length === 0) {
-        const legacyIdeas = parseLegacyIdeas();
-        if (legacyIdeas.length > 0) {
-          const { error: migrationError } = await supabase.from("stock_ideas").insert(legacyIdeas);
-          if (!migrationError) {
-            window.localStorage.setItem(LEGACY_MIGRATION_DONE_KEY, "1");
-            const { data: migratedData } = await supabase
-              .from("stock_ideas")
-              .select(STOCK_IDEA_SELECT)
-              .order("created_at", { ascending: false })
-              .limit(500);
-            setIdeas(((migratedData ?? []) as StockIdeaRow[]).map(rowToIdea));
-            setHydrated(true);
-            return;
-          }
-          console.warn("[StockIdeas] migrate legacy:", migrationError.message);
-        }
-      }
-
-      setIdeas(rows.map(rowToIdea));
-      setHydrated(true);
-    };
-
-    void load();
-
-    const channel = supabase
-      .channel("stock_ideas_feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "stock_ideas" }, () => {
-        void load();
-      })
-      .subscribe();
-
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (mounted) setCanManage(Boolean(data.session));
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      setCanManage(Boolean(session));
+    });
     return () => {
       mounted = false;
-      void supabase.removeChannel(channel);
+      sub.subscription.unsubscribe();
     };
   }, [supabase]);
 
-  const addIdea = useCallback((draft: Omit<StockIdea, "id" | "createdAt">) => {
-    void (async () => {
-      const { data, error } = await supabase
-        .from("stock_ideas")
-        .insert({
-          title: draft.title,
-          description: draft.description || null,
-          category: draft.category,
-          status: draft.status,
-        })
-        .select(STOCK_IDEA_SELECT)
-        .single();
+  useEffect(() => {
+    void load();
+    const interval = window.setInterval(() => void load(), POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [load]);
 
-      if (error) {
-        console.warn("[StockIdeas] add:", error.message);
-        return;
-      }
-
-      setIdeas((prev) => [rowToIdea(data as StockIdeaRow), ...prev].slice(0, 500));
-    })();
-  }, [supabase]);
+  const addIdea = useCallback(
+    (draft: Omit<StockIdea, "id" | "createdAt">) => {
+      void (async () => {
+        try {
+          const res = await fetch(PUBLIC_IDEAS_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: draft.title,
+              description: draft.description,
+              category: draft.category,
+            }),
+          });
+          const created = await parseJson<StockIdeaDto>(res);
+          setIdeas((prev) => [ideaToClient(created), ...prev].slice(0, 500));
+        } catch (e) {
+          console.warn("[StockIdeas] add:", e);
+          toastError("Impossible d'ajouter l'idée.");
+        }
+      })();
+    },
+    [],
+  );
 
   const updateIdea = useCallback(
     (id: string, patch: Partial<Pick<StockIdea, "title" | "description" | "category" | "status">>) => {
       void (async () => {
-        const dbPatch: {
-          title?: string;
-          description?: string | null;
-          category?: StockIdeaCategory;
-          status?: StockIdeaStatus;
-        } = {};
-        if (patch.title !== undefined) dbPatch.title = patch.title;
-        if (patch.description !== undefined) dbPatch.description = patch.description || null;
-        if (patch.category !== undefined) dbPatch.category = patch.category;
-        if (patch.status !== undefined) dbPatch.status = patch.status;
-
-        const { error } = await supabase.from("stock_ideas").update(dbPatch).eq("id", id);
-        if (error) {
-          console.warn("[StockIdeas] update:", error.message);
-          return;
+        try {
+          const res = await fetch(`${PUBLIC_IDEAS_API}/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patch),
+          });
+          const updated = await parseJson<StockIdeaDto>(res);
+          setIdeas((prev) => prev.map((i) => (i.id === id ? ideaToClient(updated) : i)));
+        } catch (e) {
+          console.warn("[StockIdeas] update:", e);
+          toastError("Modification impossible. Connectez-vous pour gérer les idées.");
         }
-
-        setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
       })();
     },
-    [supabase],
+    [],
   );
 
   const removeIdea = useCallback((id: string) => {
     void (async () => {
-      const { error } = await supabase.from("stock_ideas").delete().eq("id", id);
-      if (error) {
-        console.warn("[StockIdeas] remove:", error.message);
-        return;
+      try {
+        const res = await fetch(`${PUBLIC_IDEAS_API}/${id}`, { method: "DELETE" });
+        if (!res.ok && res.status !== 204) {
+          await parseJson(res);
+        }
+        setIdeas((prev) => prev.filter((i) => i.id !== id));
+      } catch (e) {
+        console.warn("[StockIdeas] remove:", e);
+        toastError("Suppression impossible. Connectez-vous pour gérer les idées.");
       }
-      setIdeas((prev) => prev.filter((i) => i.id !== id));
     })();
-  }, [supabase]);
+  }, []);
 
   const exportJson = useCallback(() => {
     const blob = new Blob([JSON.stringify(ideas, null, 2)], { type: "application/json" });
@@ -215,11 +134,13 @@ export function useStockIdeas() {
     () => ({
       ideas,
       hydrated,
+      canManage,
       addIdea,
       updateIdea,
       removeIdea,
       exportJson,
+      reload: load,
     }),
-    [ideas, hydrated, addIdea, updateIdea, removeIdea, exportJson],
+    [ideas, hydrated, canManage, addIdea, updateIdea, removeIdea, exportJson, load],
   );
 }
