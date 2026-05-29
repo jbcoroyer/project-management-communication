@@ -31,6 +31,7 @@ import { useReferenceData } from "../../lib/useReferenceData";
 import { useTasks } from "../../lib/useTasks";
 import { useEvents } from "../../lib/useEvents";
 import { useCurrentUser } from "../../lib/useCurrentUser";
+import { teamAdminNameForUser } from "../../lib/taskConcernsUser";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { useTaskManager } from "../../lib/useTaskManager";
 import { celebrateTaskManually } from "../../lib/celebrateTaskDone";
@@ -150,11 +151,10 @@ export default function DashboardHomePage() {
     [adminRecords],
   );
 
-  const effectiveUser = useMemo(() => {
-    const name = currentUser?.teamMemberName ?? currentUser?.displayName ?? null;
-    if (name && admins.includes(name)) return name;
-    return admins[0] ?? null;
-  }, [currentUser, admins]);
+  const effectiveUser = useMemo(
+    () => teamAdminNameForUser(admins, currentUser),
+    [currentUser, admins],
+  );
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -202,11 +202,10 @@ export default function DashboardHomePage() {
     }
   }, [tasks, searchParams, pathname, router]);
 
-  const defaultAdminName = useMemo(() => {
-    const name = currentUser?.teamMemberName ?? currentUser?.displayName ?? null;
-    if (name && admins.includes(name)) return name;
-    return admins[0] ?? "";
-  }, [currentUser, admins]);
+  const defaultAdminName = useMemo(
+    () => teamAdminNameForUser(admins, currentUser) ?? "",
+    [currentUser, admins],
+  );
 
   const handleOpenForm = useCallback(() => {
     const firstCompany = companyRecords[0]?.name ?? initialFormState.company;
@@ -628,7 +627,7 @@ export default function DashboardHomePage() {
               companies={companies}
               companyRecords={companyRecords}
               now={now}
-              currentUserName={currentUser?.teamMemberName ?? null}
+              currentUserName={effectiveUser}
               onMoveTask={handleMoveTask}
               onOpenTask={setSelectedTaskId}
               onArchiveTask={handleArchiveTask}
@@ -681,6 +680,7 @@ export default function DashboardHomePage() {
                 admins={admins}
                 columns={columns}
                 now={now}
+                currentUser={currentUser}
                 onClose={closeTaskDetailPanel}
                 onSave={handleInlineSave}
                 onArchive={() => handleArchiveTask(selectedTask.id)}
@@ -704,7 +704,8 @@ export default function DashboardHomePage() {
           admins={adminRecords}
           companies={companyRecords}
           domains={domainRecords}
-          currentUserName={currentUser?.teamMemberName ?? currentUser?.displayName ?? null}
+          currentUserName={effectiveUser ?? currentUser?.teamMemberName ?? currentUser?.displayName ?? null}
+          currentUser={currentUser}
           onCancel={handleCloseForm}
           onSubmit={handleCreateTask}
         />

@@ -18,6 +18,7 @@ import AdminAvatar from "./AdminAvatar";
 import SubtasksPanel from "./SubtasksPanel";
 import { adminBadgeClassFor, domainTagStyles } from "../lib/kanbanStyles";
 import type { Task, AdminId, ColumnId, Priority, ProjectedWorkItem } from "../lib/types";
+import type { CurrentUser } from "../lib/useCurrentUser";
 import { priorities } from "../lib/types";
 import { completedAtPatchForColumnChange } from "../lib/completedAt";
 import type { ReferenceRecord } from "../lib/referenceData";
@@ -69,6 +70,7 @@ export default function TaskDetailPanel(props: {
   admins: string[];
   columns: string[];
   now: number;
+  currentUser?: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null;
   onClose: () => void;
   onSave: (taskId: string, patch: Partial<Task>, dbPatch: Record<string, unknown>) => Promise<void>;
   onArchive: () => void;
@@ -674,6 +676,7 @@ export default function TaskDetailPanel(props: {
             admins={props.admins}
             columns={props.columns}
             now={props.now}
+            currentUser={props.currentUser}
             onSubtaskCreated={props.onSubtaskCreated}
             onSubtaskUpdated={props.onSubtaskUpdated}
             onSubtaskDeleted={props.onSubtaskDeleted}

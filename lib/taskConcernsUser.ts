@@ -8,10 +8,50 @@ export function parseAdminCsv(admin: unknown): string[] {
 function identityMatches(assignee: string, user: Pick<CurrentUser, "teamMemberName" | "displayName" | "email">): boolean {
   const n = assignee.trim();
   if (!n) return false;
-  if (user.teamMemberName && n === user.teamMemberName) return true;
-  if (user.displayName && n === user.displayName) return true;
-  if (user.email && n === user.email) return true;
+  const nLower = n.toLowerCase();
+  const candidates = [user.teamMemberName, user.displayName, user.email].filter(
+    (v): v is string => typeof v === "string" && v.trim().length > 0,
+  );
+  for (const raw of candidates) {
+    const c = raw.trim();
+    const cLower = c.toLowerCase();
+    if (n === c || nLower === cLower) return true;
+    // « Jean-Baptiste » ↔ « Jean-Baptiste Coroyer »
+    if (nLower.startsWith(`${cLower} `) || cLower.startsWith(`${nLower} `)) return true;
+  }
   return false;
+}
+
+/** Nom exact dans `team_members` / liste admins, pour les sélecteurs et filtres. */
+export function teamAdminNameForUser(
+  teamAdmins: string[],
+  user: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null | undefined,
+): string | null {
+  if (!user || teamAdmins.length === 0) return null;
+  for (const admin of teamAdmins) {
+    if (identityMatches(admin, user)) return admin;
+  }
+  return null;
+}
+
+/** Assigné par défaut d'une étape : utilisateur connecté, puis responsable parent, sinon liste. */
+export function resolveDefaultSubtaskAssignee(
+  teamAdmins: string[],
+  options?: {
+    currentUser?: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null;
+    parentTaskAdmins?: string[];
+  },
+): string {
+  const fromCurrent = teamAdminNameForUser(teamAdmins, options?.currentUser ?? null);
+  if (fromCurrent) return fromCurrent;
+
+  const primaryParent = options?.parentTaskAdmins?.[0];
+  if (primaryParent && teamAdmins.includes(primaryParent)) return primaryParent;
+
+  // Utilisateur connecté mais profil non relié à l'équipe : pas de défaut arbitraire (évite admins[0]).
+  if (options?.currentUser) return "";
+
+  return teamAdmins[0] ?? "";
 }
 
 /** Ligne Supabase `tasks` (champs snake_case). */

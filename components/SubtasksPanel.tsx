@@ -19,6 +19,8 @@ import { completedAtPatchForColumnChange } from "../lib/completedAt";
 import { celebrateTaskDone } from "../lib/celebrateTaskDone";
 import { markTaskMutatedLocally } from "../lib/taskMutatedLocally";
 import { DONE_COLUMN_NAME } from "../lib/workflowConstants";
+import { resolveDefaultSubtaskAssignee } from "../lib/taskConcernsUser";
+import type { CurrentUser } from "../lib/useCurrentUser";
 import { useConfirm } from "./ui/ConfirmDialog";
 
 /* ─── Mini formulaire inline pour ajouter une sous-tâche ─── */
@@ -26,6 +28,8 @@ function AddSubtaskForm(props: {
   parentId: string;
   parentCompany: string;
   parentDomain: string;
+  parentTaskAdmins: string[];
+  currentUser: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null;
   admins: string[];
   columns: string[];
   onCreated: (task: Task) => void;
@@ -34,13 +38,19 @@ function AddSubtaskForm(props: {
   const supabase = getSupabaseBrowser();
   const [name, setName] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [selectedAdmin, setSelectedAdmin] = useState(props.admins[0] ?? "");
+  const [selectedAdmin, setSelectedAdmin] = useState(() =>
+    resolveDefaultSubtaskAssignee(props.admins, {
+      currentUser: props.currentUser,
+      parentTaskAdmins: props.parentTaskAdmins,
+    }),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError("Nom requis."); return; }
+    if (!selectedAdmin) { setError("Choisissez un responsable."); return; }
     setSaving(true);
     setError(null);
 
@@ -108,6 +118,11 @@ function AddSubtaskForm(props: {
             onChange={(e) => setSelectedAdmin(e.target.value)}
             className="ui-focus-ring flex-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
           >
+            {!selectedAdmin ? (
+              <option value="" disabled>
+                Responsable…
+              </option>
+            ) : null}
             {props.admins.map((a) => (
               <option key={a} value={a}>{a}</option>
             ))}
@@ -248,6 +263,7 @@ export default function SubtasksPanel(props: {
   admins: string[];
   columns: string[];
   now: number;
+  currentUser?: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null;
   onSubtaskCreated: (task: Task) => void;
   onSubtaskUpdated: (taskId: string, patch: Partial<Task>, dbPatch: Record<string, unknown>) => void;
   onSubtaskDeleted: (taskId: string) => void;
@@ -376,6 +392,8 @@ export default function SubtasksPanel(props: {
               parentId={props.parentTask.id}
               parentCompany={props.parentTask.company}
               parentDomain={props.parentTask.domain}
+              parentTaskAdmins={props.parentTask.admins}
+              currentUser={props.currentUser ?? null}
               admins={props.admins}
               columns={props.columns}
               onCreated={(task) => {

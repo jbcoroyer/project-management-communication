@@ -26,6 +26,8 @@ import { priorities, type AdminId, type NewTaskFormState } from "../lib/types";
 import type { ReferenceRecord } from "../lib/referenceData";
 import { taskFormSchema, type TaskFormValues, type TaskFormValuesWithSubtasks, type PendingSubtask } from "../lib/validation/taskSchema";
 import { normalizeProjectName } from "../lib/normalize";
+import { resolveDefaultSubtaskAssignee } from "../lib/taskConcernsUser";
+import type { CurrentUser } from "../lib/useCurrentUser";
 
 const HALF_HOUR_OPTIONS = Array.from({ length: 25 }, (_, i) => {
   const totalMinutes = 8 * 60 + i * 30;
@@ -46,6 +48,7 @@ export default function NewTaskModal(props: {
   companies: ReferenceRecord[];
   domains: ReferenceRecord[];
   currentUserName?: string | null;
+  currentUser?: Pick<CurrentUser, "teamMemberName" | "displayName" | "email"> | null;
   onCancel: () => void;
   onSubmit: (values: TaskFormValuesWithSubtasks) => Promise<void> | void;
 }) {
@@ -91,6 +94,19 @@ export default function NewTaskModal(props: {
   });
 
   const watchedAdmins = useWatch({ control, name: "admins" }) ?? [];
+
+  const adminNames = useMemo(() => admins.map((a) => a.name), [admins]);
+
+  const defaultSubtaskAdmin = useMemo(
+    () =>
+      resolveDefaultSubtaskAssignee(adminNames, {
+        currentUser: props.currentUser ?? null,
+        parentTaskAdmins: watchedAdmins,
+      }),
+    [adminNames, props.currentUser, watchedAdmins],
+  );
+
+  const effectiveSubAdmin = newSubAdmin || defaultSubtaskAdmin;
   const isClientRequest = useWatch({ control, name: "isClientRequest" }) ?? false;
   const estimatedHoursStr = useWatch({ control, name: "estimatedHours" }) ?? "";
   const estimatedDaysStr = useWatch({ control, name: "estimatedDays" }) ?? "";
@@ -105,7 +121,7 @@ export default function NewTaskModal(props: {
       setPendingSubtasks([]);
       setNewSubName("");
       setNewSubDeadline("");
-      setNewSubAdmin(props.currentUserName ?? admins[0]?.name ?? "");
+      setNewSubAdmin("");
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [open, reset, defaultValues]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -646,10 +662,11 @@ export default function NewTaskModal(props: {
                         setPendingSubtasks((prev) => [...prev, {
                           name: normalizeProjectName(newSubName),
                           deadline: newSubDeadline,
-                          adminName: newSubAdmin || admins[0]?.name || "",
+                          adminName: effectiveSubAdmin,
                         }]);
                         setNewSubName("");
                         setNewSubDeadline("");
+                        setNewSubAdmin("");
                       }}
                       placeholder="Nom de l'étape (Entrée pour ajouter)"
                       className="ui-focus-ring flex-1 min-w-[160px] rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs"
@@ -661,7 +678,7 @@ export default function NewTaskModal(props: {
                       className="ui-focus-ring w-36 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs"
                     />
                     <select
-                      value={newSubAdmin}
+                      value={effectiveSubAdmin}
                       onChange={(e) => setNewSubAdmin(e.target.value)}
                       className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs"
                     >
@@ -676,10 +693,11 @@ export default function NewTaskModal(props: {
                         setPendingSubtasks((prev) => [...prev, {
                           name: normalizeProjectName(newSubName),
                           deadline: newSubDeadline,
-                          adminName: newSubAdmin || admins[0]?.name || "",
+                          adminName: effectiveSubAdmin,
                         }]);
                         setNewSubName("");
                         setNewSubDeadline("");
+                        setNewSubAdmin("");
                       }}
                       className="ui-transition flex items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
                     >
