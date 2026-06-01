@@ -34,6 +34,7 @@ type Engine = {
 };
 
 let lastCelebrateAt = 0;
+let celebrateAudioCtx: AudioContext | null = null;
 const THROTTLE_MS = 750;
 const MAX_PIECES = 9000;
 const FLOOR_BUCKET = 8;
@@ -52,6 +53,85 @@ function prefersReducedMotion(): boolean {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function getCelebrateAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const Ctor =
+    window.AudioContext ??
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  if (!celebrateAudioCtx) celebrateAudioCtx = new Ctor();
+  return celebrateAudioCtx;
+}
+
+/** Petit « pop » festif synchronisé avec l’explosion de confettis (Web Audio, sans asset). */
+function playCelebrateSound(intensity = 1): void {
+  if (prefersReducedMotion()) return;
+  const ctx = getCelebrateAudioContext();
+  if (!ctx) return;
+
+  void ctx.resume().catch(() => {});
+
+  const now = ctx.currentTime;
+  const vol = clamp(0.22 * intensity, 0.12, 0.38);
+
+  const out = ctx.createGain();
+  out.gain.value = vol;
+  out.connect(ctx.destination);
+
+  const pop = ctx.createOscillator();
+  const popGain = ctx.createGain();
+  pop.type = "sine";
+  pop.frequency.setValueAtTime(340, now);
+  pop.frequency.exponentialRampToValueAtTime(72, now + 0.14);
+  popGain.gain.setValueAtTime(0.55, now);
+  popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+  pop.connect(popGain);
+  popGain.connect(out);
+  pop.start(now);
+  pop.stop(now + 0.18);
+
+  const tickCount = intensity >= 1.15 ? 7 : 5;
+  for (let i = 0; i < tickCount; i += 1) {
+    const t = now + 0.02 + i * 0.042;
+    const len = Math.max(1, Math.floor(ctx.sampleRate * 0.035));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < len; j += 1) {
+      data[j] = (Math.random() * 2 - 1) * (1 - j / len);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1100 + i * 380;
+    filter.Q.value = 1.1;
+    const tickGain = ctx.createGain();
+    tickGain.gain.setValueAtTime(0.32, t);
+    tickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.038);
+    src.connect(filter);
+    filter.connect(tickGain);
+    tickGain.connect(out);
+    src.start(t);
+    src.stop(t + 0.045);
+  }
+
+  const chimeNotes = [523.25, 659.25, 783.99];
+  chimeNotes.forEach((freq, i) => {
+    const t = now + 0.07 + i * 0.065;
+    const osc = ctx.createOscillator();
+    const chimeGain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    chimeGain.gain.setValueAtTime(0, t);
+    chimeGain.gain.linearRampToValueAtTime(0.2, t + 0.012);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+    osc.connect(chimeGain);
+    chimeGain.connect(out);
+    osc.start(t);
+    osc.stop(t + 0.36);
+  });
 }
 
 function ensureEngine(): Engine | null {
@@ -144,6 +224,7 @@ function scheduleCleanup() {
 function spawnBurst(power: number) {
   const e = ensureEngine();
   if (!e) return;
+  playCelebrateSound(power);
   scheduleCleanup();
 
   const centerX = e.width * 0.5;

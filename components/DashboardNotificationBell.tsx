@@ -64,6 +64,11 @@ export default function DashboardNotificationBell() {
 
   useEffect(() => {
     if (!open) return;
+    markHistoryRead();
+  }, [open, markHistoryRead]);
+
+  useEffect(() => {
+    if (!open) return;
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
       if (buttonRef.current?.contains(t)) return;
@@ -154,13 +159,7 @@ export default function DashboardNotificationBell() {
         <button
           ref={buttonRef}
           type="button"
-          onClick={() => {
-            setOpen((was) => {
-              const next = !was;
-              if (next) markHistoryRead();
-              return next;
-            });
-          }}
+          onClick={() => setOpen((was) => !was)}
           title="Notifications"
           aria-expanded={open}
           aria-haspopup="dialog"
