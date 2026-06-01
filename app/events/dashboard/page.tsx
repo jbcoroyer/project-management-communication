@@ -197,7 +197,7 @@ export default function EventsDashboardPage() {
               Chargement des événements…
             </div>
           ) : (
-            <EventTimeline events={events} onDeleteEvent={handleDeleteEvent} />
+            <EventTimeline events={events} tasks={eventTasks} onDeleteEvent={handleDeleteEvent} />
           )}
         </div>
 
@@ -213,6 +213,10 @@ export default function EventsDashboardPage() {
       <CreateEventModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        existingEvents={events}
+        defaultAdminName={
+          currentUser?.teamMemberName ?? currentUser?.displayName ?? ""
+        }
         onCreated={(id) => {
           void loadEvents();
           void loadTasks();

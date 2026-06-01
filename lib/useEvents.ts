@@ -14,7 +14,20 @@ type EventDbRow = {
   end_date: string;
   status: string | null;
   allocated_budget: number | string | null;
+  budget_posts?: unknown;
+  template_key?: string | null;
+  closure_recap?: unknown;
 };
+
+function parseBudgetPosts(raw: unknown): EventRow["budgetPosts"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 0) out[k] = n;
+  }
+  return out;
+}
 
 function mapEvent(row: EventDbRow): EventRow {
   const status = (row.status ?? "Brouillon") as EventStatus;
@@ -27,6 +40,12 @@ function mapEvent(row: EventDbRow): EventRow {
     endDate: row.end_date,
     status,
     allocatedBudget: Math.max(0, Number(row.allocated_budget ?? 0) || 0),
+    budgetPosts: parseBudgetPosts(row.budget_posts),
+    templateKey: row.template_key ?? null,
+    closureRecap:
+      row.closure_recap && typeof row.closure_recap === "object" && !Array.isArray(row.closure_recap)
+        ? (row.closure_recap as EventRow["closureRecap"])
+        : null,
   };
 }
 
@@ -40,7 +59,9 @@ export function useEvents() {
       setLoading(true);
       const { data, error } = await supabase
         .from("events")
-        .select("id, created_at, name, location, start_date, end_date, status, allocated_budget")
+        .select(
+          "id, created_at, name, location, start_date, end_date, status, allocated_budget, budget_posts, template_key, closure_recap",
+        )
         .order("start_date", { ascending: true });
       if (error) throw error;
       setEvents(((data ?? []) as EventDbRow[]).map(mapEvent));

@@ -5,15 +5,18 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { MapPin, Trash2 } from "lucide-react";
 import type { EventRow } from "../../lib/eventTypes";
+import { computeEventPreparationStats } from "../../lib/eventPreparationStats";
+import type { Task } from "../../lib/types";
 import { formatCurrency } from "../../lib/stockUtils";
 
 type EventTimelineProps = {
   events: EventRow[];
+  tasks?: Task[];
   onDeleteEvent?: (eventId: string) => void | Promise<void>;
 };
 
 export default function EventTimeline(props: EventTimelineProps) {
-  const { events, onDeleteEvent } = props;
+  const { events, tasks = [], onDeleteEvent } = props;
 
   if (events.length === 0) {
     return (
@@ -63,6 +66,27 @@ export default function EventTimeline(props: EventTimelineProps) {
               <p className="mt-4 text-sm text-[color:var(--foreground)]/55">
                 Budget alloué : <span className="font-semibold text-[var(--foreground)]">{formatCurrency(ev.allocatedBudget)}</span>
               </p>
+              {tasks.length > 0 ? (() => {
+                const stats = computeEventPreparationStats(ev.id, tasks);
+                if (stats.totalTasks === 0) return null;
+                return (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs text-[color:var(--foreground)]/55">
+                      <span>Préparation</span>
+                      <span className="font-semibold text-[var(--foreground)]">{stats.progressPct}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface-soft)]">
+                      <div
+                        className="h-full rounded-full bg-[color:var(--foreground)]/25"
+                        style={{ width: `${stats.progressPct}%` }}
+                      />
+                    </div>
+                    {stats.overdueTasks > 0 ? (
+                      <p className="mt-1 text-xs font-semibold text-rose-700">{stats.overdueTasks} en retard</p>
+                    ) : null}
+                  </div>
+                );
+              })() : null}
             </Link>
             {onDeleteEvent && (
               <button

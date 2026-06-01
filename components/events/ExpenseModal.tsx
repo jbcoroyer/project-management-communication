@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
-import { expenseCategories } from "../../lib/eventTypes";
+import { expenseCategories, expenseStatuses, type ExpenseStatus } from "../../lib/eventTypes";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { getInventoryErrorMessage } from "../../lib/useInventory";
 
 type ExpenseModalProps = {
   open: boolean;
   eventId: string;
+  budgetPosts?: Record<string, number>;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -17,11 +18,17 @@ type ExpenseModalProps = {
 export default function ExpenseModal(props: ExpenseModalProps) {
   const { open, eventId, onClose, onSaved } = props;
   const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
+  const [quoted, setQuoted] = useState("");
+  const [committed, setCommitted] = useState("");
+  const [paid, setPaid] = useState("");
   const [category, setCategory] = useState<string>(expenseCategories[0]);
+  const [budgetPost, setBudgetPost] = useState<string>(expenseCategories[0]);
+  const [status, setStatus] = useState<ExpenseStatus>("engage");
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
+
+  const parseAmount = (v: string) => Math.max(0, Number(v.replace(",", ".")) || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,25 +36,34 @@ export default function ExpenseModal(props: ExpenseModalProps) {
       toastError("Indiquez un libellé.");
       return;
     }
-    const n = Number(amount.replace(",", ".")) || 0;
-    if (n < 0) {
-      toastError("Le montant doit être positif.");
-      return;
-    }
+    const q = parseAmount(quoted);
+    const c = parseAmount(committed);
+    const p = parseAmount(paid);
+    const legacy = p > 0 ? p : c > 0 ? c : q;
+
     setSubmitting(true);
     try {
       const supabase = getSupabaseBrowser();
       const { error } = await supabase.from("expenses").insert({
         event_id: eventId,
         title: title.trim(),
-        amount: n,
+        amount: legacy,
         category,
+        quoted_amount: q,
+        committed_amount: c,
+        paid_amount: p,
+        expense_status: status,
+        budget_post: budgetPost,
       });
       if (error) throw error;
       toastSuccess("Dépense enregistrée");
       setTitle("");
-      setAmount("");
+      setQuoted("");
+      setCommitted("");
+      setPaid("");
       setCategory(expenseCategories[0]);
+      setBudgetPost(expenseCategories[0]);
+      setStatus("engage");
       onSaved();
       onClose();
     } catch (err) {
@@ -63,15 +79,10 @@ export default function ExpenseModal(props: ExpenseModalProps) {
       role="presentation"
       onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}
     >
-      <div className="ui-surface w-full max-w-md rounded-[28px] p-6">
+      <div className="ui-surface w-full max-w-lg rounded-[28px] p-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter une dépense</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[var(--line)] p-2 text-[color:var(--foreground)]/60"
-            aria-label="Fermer"
-          >
+          <button type="button" onClick={onClose} className="rounded-xl border border-[var(--line)] p-2" aria-label="Fermer">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -82,27 +93,53 @@ export default function ExpenseModal(props: ExpenseModalProps) {
               value={title}
               onChange={(ev) => setTitle(ev.target.value)}
               className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
-              placeholder="Ex. Hôtel équipe"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Montant (€)</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Devis (€)</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
-                value={amount}
-                onChange={(ev) => setAmount(ev.target.value)}
-                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+                value={quoted}
+                onChange={(ev) => setQuoted(ev.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Engagé (€)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={committed}
+                onChange={(ev) => setCommitted(ev.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Payé (€)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paid}
+                onChange={(ev) => setPaid(ev.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Catégorie</label>
               <select
                 value={category}
-                onChange={(ev) => setCategory(ev.target.value)}
-                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+                onChange={(ev) => {
+                  setCategory(ev.target.value);
+                  if (!budgetPost || budgetPost === category) setBudgetPost(ev.target.value);
+                }}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
               >
                 {expenseCategories.map((c) => (
                   <option key={c} value={c}>
@@ -111,13 +148,37 @@ export default function ExpenseModal(props: ExpenseModalProps) {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Poste budget</label>
+              <select
+                value={budgetPost}
+                onChange={(ev) => setBudgetPost(ev.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
+              >
+                {expenseCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Statut</label>
+              <select
+                value={status}
+                onChange={(ev) => setStatus(ev.target.value as ExpenseStatus)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
+              >
+                {expenseStatuses.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-[var(--line)] px-4 py-2 text-sm font-semibold"
-            >
+            <button type="button" onClick={onClose} className="rounded-xl border border-[var(--line)] px-4 py-2 text-sm font-semibold">
               Annuler
             </button>
             <button

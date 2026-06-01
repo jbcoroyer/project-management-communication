@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "db:ideas-public": "node scripts/apply-stock-ideas-public.mjs"
+    "db:ideas-public": "node scripts/apply-stock-ideas-public.mjs",
+    "db:event-organization": "node scripts/apply-event-organization.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

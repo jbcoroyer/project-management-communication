@@ -16,13 +16,21 @@ import {
   Warehouse,
 } from "lucide-react";
 import AppShell from "../../../components/AppShell";
-import BudgetGauge from "../../../components/events/BudgetGauge";
+import EventBudgetSection from "../../../components/events/EventBudgetSection";
+import EventDetailKanban from "../../../components/events/EventDetailKanban";
+import EventMaterialNeeds from "../../../components/events/EventMaterialNeeds";
+import EventMilestoneBar from "../../../components/events/EventMilestoneBar";
+import EventPreparationDashboard from "../../../components/events/EventPreparationDashboard";
+import EventRunOfShow from "../../../components/events/EventRunOfShow";
 import EventTaskPlanningModal from "../../../components/events/EventTaskPlanningModal";
 import EventStockReserve from "../../../components/events/EventStockReserve";
 import EventsSectionNav from "../../../components/events/EventsSectionNav";
-import ExpenseModal from "../../../components/events/ExpenseModal";
 import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import type { EventRow } from "../../../lib/eventTypes";
+import { documentTypes, type EventDocumentType } from "../../../lib/eventTypes";
+import { computeEventPreparationStats } from "../../../lib/eventPreparationStats";
+import { eventTaskCategories } from "../../../lib/eventTaskCategories";
+import type { ColumnId } from "../../../lib/types";
 import { stockMovementCostEuros } from "../../../lib/eventBudget";
 import { defaultCompanies, defaultDomains } from "../../../lib/types";
 import type { Task } from "../../../lib/types";
@@ -35,7 +43,6 @@ import { useReferenceData } from "../../../lib/useReferenceData";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { deleteEvent } from "../../actions/events";
 import { completedAtIsoForNewTaskInColumn, completedAtPatchForColumnChange } from "../../../lib/completedAt";
-import { celebrateTaskDone } from "../../../lib/celebrateTaskDone";
 import { markTaskMutatedLocally } from "../../../lib/taskMutatedLocally";
 
 type Tab = "tasks" | "stock" | "budget" | "documents";
@@ -47,6 +54,12 @@ type ExpenseDb = {
   title: string;
   amount: number;
   category: string;
+  quoted_amount?: number | string | null;
+  committed_amount?: number | string | null;
+  paid_amount?: number | string | null;
+  expense_status?: string | null;
+  budget_post?: string | null;
+  document_path?: string | null;
 };
 
 type MovementDb = {
@@ -70,6 +83,8 @@ type EventDocument = {
   createdAt: string | null;
   size: number;
   publicUrl: string;
+  docType: EventDocumentType;
+  expenseId: string | null;
 };
 
 type StorageListItem = {
@@ -94,23 +109,6 @@ function isPdfDocument(name: string): boolean {
   return getFileExtension(name) === "pdf";
 }
 
-function TaskDeadlineInput(props: { task: Task; onCommit: (deadline: string) => void }) {
-  const { task, onCommit } = props;
-  const [v, setV] = useState(task.deadline || "");
-  return (
-    <input
-      type="date"
-      value={v}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => {
-        const next = v.trim();
-        if (next !== (task.deadline || "").trim()) onCommit(next);
-      }}
-      className="ui-focus-ring max-w-[11rem] rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1.5 text-xs"
-    />
-  );
-}
-
 export default function EventDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -124,8 +122,9 @@ export default function EventDetailPage() {
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [expenses, setExpenses] = useState<ExpenseDb[]>([]);
   const [movements, setMovements] = useState<MovementDb[]>([]);
-  const [expenseOpen, setExpenseOpen] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState(false);
+  const [milestoneFilterDate, setMilestoneFilterDate] = useState<string | null>(null);
+  const [uploadDocType, setUploadDocType] = useState<EventDocumentType>("devis");
   const [documents, setDocuments] = useState<EventDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [uploadingDocuments, setUploadingDocuments] = useState(false);
@@ -140,7 +139,9 @@ export default function EventDetailPage() {
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, created_at, name, location, start_date, end_date, status, allocated_budget")
+        .select(
+          "id, created_at, name, location, start_date, end_date, status, allocated_budget, budget_posts, template_key, closure_recap",
+        )
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -158,6 +159,15 @@ export default function EventDetailPage() {
         endDate: String(row.end_date),
         status: row.status as EventRow["status"],
         allocatedBudget: Math.max(0, Number(row.allocated_budget ?? 0) || 0),
+        budgetPosts:
+          row.budget_posts && typeof row.budget_posts === "object" && !Array.isArray(row.budget_posts)
+            ? (row.budget_posts as EventRow["budgetPosts"])
+            : {},
+        templateKey: (row.template_key as string | null) ?? null,
+        closureRecap:
+          row.closure_recap && typeof row.closure_recap === "object"
+            ? (row.closure_recap as EventRow["closureRecap"])
+            : null,
       });
     } finally {
       setLoadingEvent(false);
@@ -168,7 +178,13 @@ export default function EventDetailPage() {
     if (!id) return;
     const supabase = getSupabaseBrowser();
     const [exRes, mvRes] = await Promise.all([
-      supabase.from("expenses").select("id, created_at, title, amount, category").eq("event_id", id).order("created_at", { ascending: false }),
+      supabase
+        .from("expenses")
+        .select(
+          "id, created_at, title, amount, category, quoted_amount, committed_amount, paid_amount, expense_status, budget_post, document_path",
+        )
+        .eq("event_id", id)
+        .order("created_at", { ascending: false }),
       supabase
         .from("stock_movements")
         .select(
@@ -191,6 +207,16 @@ export default function EventDetailPage() {
         sortBy: { column: "created_at", order: "desc" },
       });
       if (error) throw error;
+      const { data: metaRows } = await supabase
+        .from("event_document_meta")
+        .select("storage_path, doc_type, expense_id, title")
+        .eq("event_id", id);
+      const metaByPath = new Map(
+        ((metaRows ?? []) as { storage_path: string; doc_type: string; expense_id: string | null }[]).map(
+          (m) => [m.storage_path, m],
+        ),
+      );
+
       const rows = ((data ?? []) as StorageListItem[])
         .filter((file) => !!file.name)
         .map((file) => {
@@ -198,12 +224,15 @@ export default function EventDetailPage() {
           const {
             data: { publicUrl },
           } = supabase.storage.from(EVENT_DOCUMENTS_BUCKET).getPublicUrl(path);
+          const meta = metaByPath.get(path);
           return {
             path,
             name: file.name,
             createdAt: file.created_at ?? null,
             size: Number(file.metadata?.size ?? 0) || 0,
             publicUrl,
+            docType: (meta?.doc_type as EventDocumentType) ?? "autre",
+            expenseId: meta?.expense_id ?? null,
           } satisfies EventDocument;
         });
       setDocuments(rows);
@@ -264,6 +293,36 @@ export default function EventDetailPage() {
 
   const consumedTotal = expenseTotal + stockTotal;
 
+  const prepStats = useMemo(
+    () => (id ? computeEventPreparationStats(id, tasks) : null),
+    [id, tasks],
+  );
+
+  const filteredTasks = useMemo(() => {
+    if (!milestoneFilterDate) return tasks;
+    return tasks.filter((t) => t.deadline && t.deadline <= milestoneFilterDate);
+  }, [tasks, milestoneFilterDate]);
+
+  const stockCostRows = useMemo(
+    () =>
+      movements
+        .filter((m) => m.change_amount < 0)
+        .map((m) => {
+          const fallback = Number(m.inventory_items?.unit_price ?? 0) || 0;
+          const cost = stockMovementCostEuros({
+            changeAmount: m.change_amount,
+            unitPriceAtMovement: m.unit_price_at_movement,
+            fallbackUnitPrice: fallback,
+          });
+          return {
+            id: m.id,
+            label: `Sortie : ${formatInventoryEventItemName(m.inventory_items ?? { name: null })}`,
+            cost,
+          };
+        }),
+    [movements],
+  );
+
   const updateTaskDb = useCallback(
     async (taskId: string, dbPatch: Record<string, unknown>) => {
       const supabase = getSupabaseBrowser();
@@ -280,6 +339,18 @@ export default function EventDetailPage() {
   );
 
   const [planningTask, setPlanningTask] = useState<Task | null>(null);
+
+  const handleMoveTask = useCallback(
+    (taskId: string, newColumn: ColumnId) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task || task.column === newColumn) return;
+      void updateTaskDb(task.id, {
+        column_id: newColumn,
+        ...completedAtPatchForColumnChange(task.column, newColumn),
+      }).catch(() => {});
+    },
+    [tasks, updateTaskDb],
+  );
 
   const defaultUserName =
     currentUser?.teamMemberName ??
@@ -329,6 +400,15 @@ export default function EventDetailPage() {
           contentType: file.type || undefined,
         });
         if (error) throw error;
+        await supabase.from("event_document_meta").upsert(
+          {
+            event_id: id,
+            storage_path: storagePath,
+            doc_type: uploadDocType,
+            title: file.name,
+          },
+          { onConflict: "storage_path" },
+        );
       }
       toastSuccess("Document(s) ajouté(s)");
       await loadDocuments();
@@ -358,6 +438,7 @@ export default function EventDetailPage() {
       toastError(getInventoryErrorMessage(error, "Suppression impossible."));
       return;
     }
+    await supabase.from("event_document_meta").delete().eq("storage_path", doc.path);
     toastSuccess("Document supprimé");
     await loadDocuments();
   };
@@ -472,6 +553,21 @@ export default function EventDetailPage() {
 
             <EventsSectionNav />
 
+            <EventPreparationDashboard
+              event={event}
+              tasks={tasks}
+              consumedTotal={consumedTotal}
+            />
+
+            <EventMilestoneBar
+              event={event}
+              tasks={tasks}
+              activeFilterDate={milestoneFilterDate}
+              onFilterMilestone={(dateIso) =>
+                setMilestoneFilterDate((prev) => (prev === dateIso ? null : dateIso))
+              }
+            />
+
             <div className="flex flex-wrap gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2">
               {(
                 [
@@ -501,131 +597,85 @@ export default function EventDetailPage() {
             </div>
 
             {tab === "tasks" && (
-              <section className="ui-surface rounded-[24px] p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-[var(--foreground)]">To-do list de l&apos;événement</h2>
-                  <Link
-                    href="/dashboard/kanban"
-                    className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)] hover:bg-[var(--surface)]"
-                  >
-                    <KanbanSquare className="h-4 w-4 text-[var(--accent)]" />
-                    Ouvrir le Kanban principal
-                  </Link>
-                </div>
-                <p className="mt-2 text-sm text-[color:var(--foreground)]/55">
-                  Les tâches créées ici sont enregistrées comme sur le tableau Kanban : elles apparaissent dans les colonnes
-                  « À faire », « En cours », etc., dans la charge de travail et les vues événements.
-                </p>
-                <div className="mt-4 grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_220px_auto]">
-                  <input
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Ajouter une tâche..."
-                    className="ui-focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
-                  />
-                  <input
-                    value={newTaskCategory}
-                    onChange={(e) => setNewTaskCategory(e.target.value)}
-                    placeholder="Catégorie (optionnel)"
-                    className="ui-focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
-                  />
-                  <button
-                    type="button"
-                    disabled={creatingTask}
-                    onClick={() => void handleCreateEventTask()}
-                    className="ui-transition rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
-                  >
-                    {creatingTask ? "Ajout..." : "Ajouter"}
-                  </button>
-                </div>
-                {tasksLoading ? (
-                  <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Chargement…</p>
-                ) : tasks.length === 0 ? (
-                  <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Aucune tâche.</p>
-                ) : (
-                  <ul className="mt-4 space-y-2">
-                    {tasks.map((task) => (
-                      <li
-                        key={task.id}
-                        className="grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-[auto_1fr_auto_auto_auto]"
+              <div className="space-y-6">
+                <section className="ui-surface rounded-[24px] p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h2 className="text-lg font-semibold text-[var(--foreground)]">Kanban événement</h2>
+                    <Link
+                      href="/dashboard/kanban"
+                      className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--foreground)]/70"
+                    >
+                      <KanbanSquare className="h-4 w-4 text-[var(--accent)]" />
+                      Kanban principal
+                    </Link>
+                  </div>
+                  {milestoneFilterDate ? (
+                    <p className="mt-2 text-xs font-semibold text-[var(--accent)]">
+                      Filtre jalon : échéance ≤ {milestoneFilterDate}{" "}
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => setMilestoneFilterDate(null)}
                       >
-                        <label className="inline-flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={task.column === "Terminé"}
-                            onChange={(e) => {
-                              const nextCol = e.target.checked ? "Terminé" : "À faire";
-                              const wasTermine = task.column === "Terminé";
-                              void (async () => {
-                                try {
-                                  await updateTaskDb(task.id, {
-                                    column_id: nextCol,
-                                    ...completedAtPatchForColumnChange(task.column, nextCol),
-                                  });
-                                  if (nextCol === "Terminé" && !wasTermine) celebrateTaskDone();
-                                } catch {
-                                  /* toast déjà affiché */
-                                }
-                              })();
-                            }}
-                            className="h-4 w-4 rounded border-[var(--line)]"
-                          />
-                        </label>
-                        <div className="min-w-0">
-                          <p
-                            className={[
-                              "truncate text-sm font-semibold text-[var(--foreground)]",
-                              task.column === "Terminé" ? "line-through opacity-50" : "",
-                            ].join(" ")}
-                          >
-                            {task.projectName}
-                          </p>
-                          {task.eventCategory && (
-                            <p className="text-xs text-[color:var(--foreground)]/45">{task.eventCategory}</p>
-                          )}
-                        </div>
-                        <select
-                          value={task.admins[0] ?? ""}
-                          onChange={(e) => {
-                            const name = e.target.value;
-                            void updateTaskDb(task.id, { admin: name, lane: name || "" }).catch(() => {});
-                          }}
-                          className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2 py-1.5 text-xs"
-                        >
-                          <option value="">Non assigné</option>
-                          {task.admins[0] &&
-                            !teamMemberRecords.some((m) => m.name === task.admins[0]) && (
-                              <option value={task.admins[0]}>{task.admins[0]} (ancien)</option>
-                            )}
-                          {teamMemberRecords.map((m) => (
-                            <option key={m.id} value={m.name}>
-                              {m.name}
-                            </option>
-                          ))}
-                        </select>
-                        <TaskDeadlineInput
-                          key={`${task.id}-${task.deadline ?? ""}`}
-                          task={task}
-                          onCommit={(deadline) =>
-                            void updateTaskDb(task.id, { deadline: deadline || null }).catch(() => {})
-                          }
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setPlanningTask(task)}
-                          className="ui-transition rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
-                        >
-                          Planning
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+                        Réinitialiser
+                      </button>
+                    </p>
+                  ) : null}
+                  <div className="mt-4 grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_180px_auto]">
+                    <input
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      placeholder="Ajouter une tâche…"
+                      className="ui-focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
+                    />
+                    <select
+                      value={newTaskCategory}
+                      onChange={(e) => setNewTaskCategory(e.target.value)}
+                      className="ui-focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
+                    >
+                      <option value="">Catégorie…</option>
+                      {eventTaskCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => void handleCreateEventTask()}
+                      className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] disabled:opacity-60"
+                    >
+                      {creatingTask ? "Ajout…" : "Ajouter"}
+                    </button>
+                  </div>
+                  <div className="mt-4">
+                    {tasksLoading ? (
+                      <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+                    ) : (
+                      <EventDetailKanban
+                        tasks={filteredTasks}
+                        onMoveTask={handleMoveTask}
+                        onPlanning={(task) => setPlanningTask(task)}
+                      />
+                    )}
+                  </div>
+                </section>
+                <EventRunOfShow
+                  eventId={id}
+                  startDate={event.startDate}
+                  endDate={event.endDate}
+                />
+              </div>
             )}
 
             {tab === "stock" && (
               <section className="space-y-6">
+                <EventMaterialNeeds
+                  eventId={id}
+                  defaultUserName={defaultUserName}
+                  onStockChanged={() => void loadExpensesAndMovements()}
+                />
                 <EventStockReserve eventId={id} defaultUserName={defaultUserName} />
                 <div className="ui-surface rounded-[24px] p-5">
                   <h3 className="text-lg font-semibold text-[var(--foreground)]">Sorties de stock imputées</h3>
@@ -662,72 +712,36 @@ export default function EventDetailPage() {
               </section>
             )}
 
-            {tab === "budget" && (
-              <section className="space-y-6">
-                <div className="ui-surface rounded-[24px] p-6">
-                  <BudgetGauge allocated={event.allocatedBudget} consumed={consumedTotal} />
-                  <button
-                    type="button"
-                    onClick={() => setExpenseOpen(true)}
-                    className="ui-transition mt-6 rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90"
-                  >
-                    Ajouter une dépense
-                  </button>
-                </div>
-
-                <div className="ui-surface rounded-[24px] p-5">
-                  <h3 className="text-lg font-semibold text-[var(--foreground)]">Détail des coûts</h3>
-                  <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--line)] text-left text-xs uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
-                          <th className="px-3 py-2">Type</th>
-                          <th className="px-3 py-2">Libellé</th>
-                          <th className="px-3 py-2">Montant</th>
-                          <th className="px-3 py-2">Catégorie</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {expenses.map((ex) => (
-                          <tr key={ex.id} className="border-b border-[var(--line)]/80">
-                            <td className="px-3 py-2 text-[color:var(--foreground)]/55">Dépense</td>
-                            <td className="px-3 py-2 font-medium">{ex.title}</td>
-                            <td className="px-3 py-2">{formatCurrency(Number(ex.amount))}</td>
-                            <td className="px-3 py-2 text-[color:var(--foreground)]/65">{ex.category}</td>
-                          </tr>
-                        ))}
-                        {movements
-                          .filter((m) => m.change_amount < 0)
-                          .map((m) => {
-                            const fallback = Number(m.inventory_items?.unit_price ?? 0) || 0;
-                            const cost = stockMovementCostEuros({
-                              changeAmount: m.change_amount,
-                              unitPriceAtMovement: m.unit_price_at_movement,
-                              fallbackUnitPrice: fallback,
-                            });
-                            return (
-                              <tr key={m.id} className="border-b border-[var(--line)]/80">
-                                <td className="px-3 py-2 text-[color:var(--foreground)]/55">Stock</td>
-                                <td className="px-3 py-2 font-medium">
-                                  Sortie : {formatInventoryEventItemName(m.inventory_items ?? { name: null })} (
-                                  {Math.abs(m.change_amount)} u.)
-                                </td>
-                                <td className="px-3 py-2">{formatCurrency(cost)}</td>
-                                <td className="px-3 py-2 text-[color:var(--foreground)]/65">Matériel</td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </section>
-            )}
+            {tab === "budget" && event && prepStats ? (
+              <EventBudgetSection
+                event={event}
+                expenses={expenses}
+                stockRows={stockCostRows}
+                consumedTotal={consumedTotal}
+                expenseTotal={expenseTotal}
+                stockTotal={stockTotal}
+                taskProgressPct={prepStats.progressPct}
+                onRefresh={() => void loadExpensesAndMovements()}
+                onEventUpdated={() => void loadEvent()}
+              />
+            ) : null}
 
             {tab === "documents" && (
               <section className="ui-surface rounded-[24px] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">Documents Devis / Facture</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={uploadDocType}
+                      onChange={(e) => setUploadDocType(e.target.value as EventDocumentType)}
+                      className="ui-focus-ring rounded-xl border border-[var(--line)] px-3 py-2 text-sm"
+                    >
+                      {documentTypes.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
                   <label className="ui-transition inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--foreground)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90">
                     <Upload className="h-4 w-4" />
                     {uploadingDocuments ? "Upload..." : "Uploader des documents"}
@@ -743,6 +757,7 @@ export default function EventDetailPage() {
                       }}
                     />
                   </label>
+                  </div>
                 </div>
                 {loadingDocuments ? (
                   <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Chargement…</p>
@@ -781,6 +796,9 @@ export default function EventDetailPage() {
                         </div>
                         <div className="min-w-0 self-center">
                           <p className="truncate text-sm font-medium text-[var(--foreground)]">{doc.name}</p>
+                          <span className="mt-1 inline-block rounded-full border border-[var(--line)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                            {doc.docType}
+                          </span>
                           <p className="text-xs text-[color:var(--foreground)]/55">
                             {doc.createdAt ? new Date(doc.createdAt).toLocaleString("fr-FR") : "Date inconnue"} ·{" "}
                             {formatNumber(doc.size / 1024)} Ko
@@ -813,13 +831,6 @@ export default function EventDetailPage() {
           </>
         )}
       </div>
-
-      <ExpenseModal
-        open={expenseOpen}
-        eventId={id}
-        onClose={() => setExpenseOpen(false)}
-        onSaved={() => void loadExpensesAndMovements()}
-      />
 
       <EventTaskPlanningModal
         open={planningTask !== null}
