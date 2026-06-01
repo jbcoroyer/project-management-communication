@@ -123,7 +123,7 @@ export default function ExpenseModal(props: ExpenseModalProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] disabled:opacity-60"
+              className="rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] disabled:opacity-60"
             >
               {submitting ? "Enregistrement…" : "Enregistrer"}
             </button>

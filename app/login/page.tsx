@@ -394,7 +394,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={goToStep2}
-                className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] py-2.5 text-sm font-semibold text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+                className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:opacity-90"
               >
                 Continuer
                 <ArrowRight className="h-4 w-4" />
@@ -586,7 +586,7 @@ function SubmitBtn(props: { loading: boolean; label: string }) {
     <button
       type="submit"
       disabled={props.loading}
-      className="ui-transition w-full rounded-xl bg-[var(--accent)] py-2.5 text-sm font-semibold text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:opacity-60"
+      className="ui-transition w-full rounded-xl bg-[var(--foreground)] py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:opacity-90 disabled:opacity-60"
     >
       {props.loading ? "Chargement…" : props.label}
     </button>

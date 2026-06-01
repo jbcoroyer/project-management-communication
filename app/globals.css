@@ -1,43 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  /* Charte graphique IDENA 2024 (couleurs principales) */
-  --idena-blue: #009cdf;
-  --idena-fond: #ece7d1;
-  --background: #ece7d1;
-  --foreground: #1a1a1a;
-  --surface: #faf8f3;
-  --surface-soft: #f2efe6;
-  --line: #d8d2c0;
-  --line-strong: #c4bcaa;
-  --accent: #009cdf;
-  --accent-strong: #007bb5;
-  --accent-soft: rgba(0, 156, 223, 0.12);
-  --success: #2d8a50;
-  --warning: #c9791c;
-  --danger: #c44c4c;
-  --ring: rgba(26, 26, 26, 0.22);
-  --motion-fast: 180ms;
-  --motion-base: 220ms;
-  --motion-slow: 280ms;
-  /* Echelle d'arrondis unifiee (inspiree des shape scales Material / Apple) */
+  /* Studio editorial — encre & argile */
+  --background: #f4f1ea;
+  --foreground: #1a1713;
+  --surface: #fcfbf7;
+  --surface-soft: #ede9df;
+  --line: #e3ddd1;
+  --line-strong: #cfc7b6;
+  --accent: #bc5a3c;
+  --accent-strong: #9e4830;
+  --accent-soft: rgba(188, 90, 60, 0.1);
+  --accent-contrast: #fcfbf7;
+  --ink: #1a1713;
+  --ink-muted: rgba(26, 23, 19, 0.62);
+  --success: #3e7d52;
+  --warning: #b07320;
+  --danger: #b4453f;
+  --ring: rgba(26, 23, 19, 0.18);
+  --motion-fast: 160ms;
+  --motion-base: 200ms;
+  --motion-slow: 260ms;
   --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-3xl: 28px;
-  --shadow-1: 0 1px 2px rgba(18, 16, 13, 0.03), 0 10px 24px rgba(27, 23, 18, 0.05);
-  --shadow-2: 0 1px 2px rgba(18, 16, 13, 0.04), 0 18px 42px rgba(27, 23, 18, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --shadow-1: 0 1px 2px rgba(20, 17, 13, 0.04), 0 8px 20px rgba(20, 17, 13, 0.05);
+  --shadow-2: 0 2px 4px rgba(20, 17, 13, 0.05), 0 16px 40px rgba(20, 17, 13, 0.08);
 
-  /* Z-index tokens : utiliser ces variables plutôt que des magic numbers dans les composants. */
-  --z-sticky: 20;       /* éléments collants (sidebar, headers) */
-  --z-sidebar: 30;      /* sidebar desktop fixe */
-  --z-dropdown: 50;     /* menus déroulants flottants */
-  --z-overlay: 100;     /* overlay (drawer mobile, modals) */
-  --z-dialog: 200;      /* ConfirmDialog au-dessus de tout */
-  --z-toast: 300;       /* notifications in-app, toujours au-dessus */
+  --z-sticky: 20;
+  --z-sidebar: 30;
+  --z-dropdown: 50;
+  --z-overlay: 100;
+  --z-dialog: 200;
+  --z-toast: 300;
 }
 
 @theme inline {
@@ -47,37 +46,63 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1e1d1a;
-    --foreground: #ece7d1;
-    --surface: #282622;
-    --surface-soft: #302e2a;
-    --line: #3d3a34;
-    --line-strong: #524e46;
-    --accent: #3db3eb;
-    --accent-strong: #5cc4f0;
-    --accent-soft: rgba(0, 156, 223, 0.18);
+    --background: #141310;
+    --foreground: #f0ebe3;
+    --surface: #1e1c18;
+    --surface-soft: #282520;
+    --line: #3a3630;
+    --line-strong: #4e4840;
+    --accent: #d47352;
+    --accent-strong: #e08a6a;
+    --accent-soft: rgba(212, 115, 82, 0.15);
+    --accent-contrast: #fcfbf7;
+    --ink: #f0ebe3;
+    --ink-muted: rgba(240, 235, 227, 0.62);
     --success: #5cb86a;
     --warning: #e0a050;
     --danger: #e07070;
-    --ring: rgba(236, 231, 209, 0.35);
+    --ring: rgba(240, 235, 227, 0.28);
   }
 }
 
 body {
   background:
-    radial-gradient(circle at 22% 10%, rgba(26, 26, 26, 0.04), transparent 38%),
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(188, 90, 60, 0.06), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(26, 23, 19, 0.03), transparent 45%),
     var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
+.ui-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+.ui-heading {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+.ui-kicker {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
 .ui-surface {
-  border: 1px solid color-mix(in srgb, var(--line) 76%, white);
-  background: color-mix(in srgb, var(--surface) 94%, white);
-  box-shadow: 0 1px 2px rgba(18, 16, 13, 0.03), 0 16px 36px rgba(27, 23, 18, 0.06);
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
   border-radius: var(--radius-2xl);
 }
 
@@ -92,36 +117,88 @@ body {
 .ui-surface-soft {
   border: 1px solid var(--line);
   background: var(--surface-soft);
+  border-radius: var(--radius-lg);
 }
 
 .ui-chip {
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   background: var(--surface-soft);
   color: var(--foreground);
+  border-radius: var(--radius-md);
 }
 
 .ui-focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
-}
-
-@keyframes soft-float {
-  from {
-    transform: translateY(0px);
-  }
-  to {
-    transform: translateY(-1px);
-  }
-}
-
-.ui-heading {
-  font-family: var(--font-sans), system-ui, Arial, Helvetica, sans-serif;
-  letter-spacing: -0.02em;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--foreground) 35%, transparent);
 }
 
 .ui-transition {
   transition-duration: var(--motion-base);
   transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Boutons — convention studio */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: var(--motion-base);
+  transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.ui-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-btn-primary {
+  background: var(--foreground);
+  color: var(--accent-contrast);
+  border: 1px solid var(--foreground);
+}
+
+.ui-btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 88%, white);
+}
+
+.ui-btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--line-strong);
+}
+
+.ui-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+}
+
+.ui-btn-accent {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: 1px solid var(--accent);
+}
+
+.ui-btn-accent:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.ui-btn-ghost {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid transparent;
+}
+
+.ui-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--foreground);
 }
 
 .rbc-calendar {
@@ -134,12 +211,14 @@ body {
   background: var(--surface) !important;
   color: var(--foreground) !important;
   border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
 }
 
 .rbc-toolbar button.rbc-active {
-  background: var(--accent) !important;
-  color: #fff !important;
-  border-color: var(--accent) !important;
+  background: var(--foreground) !important;
+  color: var(--accent-contrast) !important;
+  border-color: var(--foreground) !important;
 }
 
 .rbc-month-view,
@@ -148,9 +227,9 @@ body {
   border-color: var(--rbc-border-color) !important;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  background: var(--surface) !important;
 }
 
-/* Harmonisation globale des classes d'arrondis utilitaires les plus utilisees */
 @layer utilities {
   .rounded-sm {
     border-radius: var(--radius-sm) !important;
@@ -165,7 +244,7 @@ body {
   }
 
   .rounded-xl {
-    border-radius: var(--radius-md) !important;
+    border-radius: var(--radius-lg) !important;
   }
 
   .rounded-2xl {
@@ -187,6 +266,14 @@ body {
   .rounded-\[28px\] {
     border-radius: var(--radius-3xl) !important;
   }
+
+  .text-on-accent {
+    color: var(--accent-contrast);
+  }
+
+  .bg-ink {
+    background-color: var(--foreground);
+  }
 }
 
 .rbc-day-bg + .rbc-day-bg,
@@ -196,7 +283,7 @@ body {
 }
 
 .rbc-today {
-  background: color-mix(in srgb, var(--surface-soft) 85%, var(--foreground)) !important;
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)) !important;
 }
 
 .rbc-off-range-bg {
@@ -212,7 +299,6 @@ body {
   scroll-behavior: auto !important;
 }
 
-/* Respect global de la préférence système prefers-reduced-motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

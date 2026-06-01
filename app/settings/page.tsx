@@ -521,7 +521,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => void saveProfile()}
                     disabled={!(profileMemberId || currentUser?.teamMemberId) || savingProfile}
-                    className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] disabled:opacity-50"
+                    className="ui-transition rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:-translate-y-0.5 hover:opacity-90 disabled:opacity-50"
                   >
                     {savingProfile ? "..." : "Enregistrer"}
                   </button>

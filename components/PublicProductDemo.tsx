@@ -137,37 +137,23 @@ export default function PublicProductDemo() {
   return (
     <div className="min-h-screen bg-[var(--background)] px-4 py-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="ui-surface rounded-2xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <IdenaMark className="h-12 w-12 rounded-2xl" />
+        <header className="border-b border-[var(--line)] pb-8 pt-2">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <IdenaMark className="h-14 w-14" />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--foreground)]/60">
-                  Service Communication
-                </p>
-                <h1 className="text-2xl font-semibold tracking-tight">IDENA Platform</h1>
-                <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-                  Suite métier interne pour gérer projets, événements, social media et stock.
+                <p className="ui-kicker mb-2">Service Communication</p>
+                <h1 className="ui-display text-4xl text-[var(--foreground)] sm:text-5xl">IDENA</h1>
+                <p className="mt-3 max-w-lg text-base leading-relaxed text-[color:var(--foreground)]/55">
+                  Suite métier pour piloter projets, événements, réseaux sociaux et stock.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/ideas"
-                className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)]/75 hover:border-[var(--line-strong)]"
-              >
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/ideas" className="ui-btn ui-btn-secondary">
                 Boîte à idées
               </Link>
-              <Link
-                href="/login"
-                className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)]/75 hover:border-[var(--line-strong)]"
-              >
-                Découvrir en accès équipe
-              </Link>
-              <Link
-                href="/login"
-                className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
-              >
+              <Link href="/login" className="ui-btn ui-btn-primary">
                 Se connecter
               </Link>
             </div>
@@ -244,7 +230,7 @@ export default function PublicProductDemo() {
             </div>
             <Link
               href="/login"
-              className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
+              className="ui-transition rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90"
             >
               Accéder à la plateforme
             </Link>

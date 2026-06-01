@@ -112,7 +112,7 @@ export default function ProjectModal(props: ProjectModalProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)] disabled:opacity-60"
+              className="ui-transition rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90 disabled:opacity-60"
             >
               {submitting ? "Enregistrement..." : "Créer le projet"}
             </button>

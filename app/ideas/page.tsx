@@ -132,7 +132,7 @@ export default function IdeasPage() {
             aria-hidden
           />
           <div className="relative flex flex-wrap items-start gap-6">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[#fffdf9] shadow-[0_12px_40px_rgba(20,17,13,0.18)]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-[0_12px_40px_rgba(20,17,13,0.18)]">
               <Lightbulb className="h-8 w-8" strokeWidth={1.75} />
             </div>
             <div className="min-w-0 flex-1">
@@ -216,7 +216,7 @@ export default function IdeasPage() {
             <button
               type="submit"
               disabled={!title.trim() || !hydrated}
-              className="ui-transition inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[#fffdf9] shadow-[0_10px_28px_rgba(20,17,13,0.15)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-transition inline-flex items-center gap-2 rounded-xl bg-[var(--foreground)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] shadow-[0_10px_28px_rgba(20,17,13,0.15)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               Ajouter à la boîte

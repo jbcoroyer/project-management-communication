@@ -116,7 +116,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
       ? "bg-rose-600 text-white hover:bg-rose-700"
       : variant === "warning"
         ? "bg-amber-500 text-white hover:bg-amber-600"
-        : "bg-[var(--accent)] text-[#fffdf9] hover:bg-[var(--accent-strong)]";
+        : "bg-[var(--foreground)] text-[var(--accent-contrast)] hover:opacity-90";
 
   const overlay =
     mounted &&
@@ -126,7 +126,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="fixed inset-0 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm"
+        className="fixed inset-0 flex items-center justify-center bg-[var(--foreground)]/30 px-4 backdrop-blur-sm"
         style={{ zIndex: "var(--z-dialog)" }}
         onClick={(event) => {
           if (event.target === event.currentTarget) close(false);
@@ -148,7 +148,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
           </div>
           <h3
             id="confirm-dialog-title"
-            className="text-base font-semibold text-[var(--foreground)]"
+            className="ui-display text-lg text-[var(--foreground)]"
           >
             {pending.options.title}
           </h3>

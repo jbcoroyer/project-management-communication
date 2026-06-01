@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   DndContext,
@@ -237,7 +237,25 @@ export default function KanbanBoardView(props: {
     }
     return map;
   }, [props.companyRecords]);
-  const [filterAdmin, setFilterAdmin] = useState<AdminId | "Tous">("Tous");
+  const defaultFilterAdmin = useMemo((): AdminId | "Tous" => {
+    if (props.currentUserName && props.admins.includes(props.currentUserName)) {
+      return props.currentUserName as AdminId;
+    }
+    return "Tous";
+  }, [props.currentUserName, props.admins]);
+
+  const filterTouchedRef = useRef(false);
+  const [filterAdmin, setFilterAdminState] = useState<AdminId | "Tous">(() => defaultFilterAdmin);
+
+  const setFilterAdmin = (value: AdminId | "Tous") => {
+    filterTouchedRef.current = true;
+    setFilterAdminState(value);
+  };
+
+  useEffect(() => {
+    if (filterTouchedRef.current) return;
+    if (defaultFilterAdmin !== "Tous") setFilterAdminState(defaultFilterAdmin);
+  }, [defaultFilterAdmin]);
   const [filterCompany, setFilterCompany] = useState<string>("Toutes");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [cardDensity, setCardDensity] = useState<"compact" | "detailed">("detailed");

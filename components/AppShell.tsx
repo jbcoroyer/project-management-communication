@@ -59,23 +59,22 @@ function UserCard({
 }) {
   if (!name && !email) return null;
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
       <div className="flex items-center gap-3">
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[var(--line)] bg-[var(--surface)]">
+        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--line)]">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt={name ?? ""} fill sizes="40px" className="object-cover" />
+            <Image src={avatarUrl} alt={name ?? ""} fill sizes="36px" className="object-cover" />
           ) : (
-            <UserCircle2 className="m-auto h-6 w-6 text-[color:var(--foreground)]/35" />
+            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-soft)]">
+              <UserCircle2 className="h-5 w-5 text-[color:var(--foreground)]/35" />
+            </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-[var(--foreground)]">{name ?? email}</p>
-          {jobTitle && (
-            <p className="truncate text-[11px] text-[color:var(--foreground)]/55">{jobTitle}</p>
-          )}
-          {email && (
-            <p className="truncate text-[10px] text-[color:var(--foreground)]/40">{email}</p>
-          )}
+          {jobTitle ? (
+            <p className="truncate text-[11px] text-[color:var(--foreground)]/50">{jobTitle}</p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -95,7 +94,6 @@ export default function AppShell({
   const supabase = getSupabaseBrowser();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Bloquer le scroll body quand le drawer est ouvert
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (mobileNavOpen) {
@@ -107,7 +105,6 @@ export default function AppShell({
     }
   }, [mobileNavOpen]);
 
-  // Échap pour fermer
   useEffect(() => {
     if (!mobileNavOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -126,71 +123,75 @@ export default function AppShell({
 
   const navLinkClass = (active: boolean) =>
     [
-      "ui-transition flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm",
+      "ui-transition flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium",
       active
-        ? "border-[var(--line-strong)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/75 shadow-[0_6px_20px_rgba(28,24,20,0.07)]"
-        : "border-transparent text-[color:var(--foreground)]/65 hover:border-[var(--line)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
+        ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
+        : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
     ].join(" ");
+
+  const sidebarContent = (onNavClick?: () => void) => (
+    <>
+      <ServiceCommunicationIdenaHeading />
+      <nav className="mt-6 flex-1 space-y-0.5">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = isNavActive(item.href, pathname);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavClick}
+              className={navLinkClass(active)}
+            >
+              <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 space-y-2 border-t border-[var(--line)] pt-4">
+        {isGuest ? (
+          <Link href="/login" className="ui-btn ui-btn-primary w-full text-xs" onClick={onNavClick}>
+            Se connecter
+          </Link>
+        ) : (
+          <>
+            <UserCard
+              name={currentUserName}
+              email={currentUserEmail}
+              avatarUrl={currentUserAvatarUrl}
+              jobTitle={currentUserJobTitle}
+            />
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="ui-btn ui-btn-ghost w-full justify-start text-xs"
+            >
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
+              Se déconnecter
+            </button>
+          </>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-[1600px] px-4 py-4 lg:px-6">
-        {/* Sidebar desktop ≥ lg */}
+      <div className="mx-auto w-full max-w-[1680px] px-4 py-5 lg:px-8">
         <aside
-          className="ui-surface fixed bottom-4 left-6 top-6 hidden w-60 flex-col rounded-2xl p-4 lg:flex"
+          className="fixed bottom-5 left-4 top-5 hidden w-[15.5rem] flex-col border-r border-[var(--line)] bg-[var(--background)] pr-4 lg:flex"
           style={{ zIndex: "var(--z-sidebar)" }}
         >
-          <ServiceCommunicationIdenaHeading />
-
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isNavActive(item.href, pathname);
-              return (
-                <Link key={item.href} href={item.href} className={navLinkClass(active)}>
-                  <Icon className="h-4 w-4" aria-hidden />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="mt-auto space-y-2">
-            {isGuest ? (
-              <Link
-                href="/login"
-                className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--accent)] px-3 py-2.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
-              >
-                Se connecter
-              </Link>
-            ) : (
-              <>
-                <UserCard
-                  name={currentUserName}
-                  email={currentUserEmail}
-                  avatarUrl={currentUserAvatarUrl}
-                  jobTitle={currentUserJobTitle}
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSignOut()}
-                  className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                >
-                  <LogOut className="h-3.5 w-3.5" aria-hidden />
-                  Se déconnecter
-                </button>
-              </>
-            )}
-          </div>
+          {sidebarContent()}
         </aside>
 
-        {/* Drawer mobile < lg */}
-        {mobileNavOpen && (
+        {mobileNavOpen ? (
           <>
             <button
               type="button"
               aria-label="Fermer le menu"
-              className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 bg-[var(--foreground)]/25 backdrop-blur-sm lg:hidden"
               style={{ zIndex: "var(--z-overlay)" }}
               onClick={() => setMobileNavOpen(false)}
             />
@@ -198,78 +199,31 @@ export default function AppShell({
               role="dialog"
               aria-modal="true"
               aria-label="Navigation principale"
-              className="ui-surface fixed inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col rounded-none rounded-r-2xl p-4 shadow-[0_24px_80px_rgba(20,17,13,0.22)] lg:hidden"
+              className="ui-surface fixed inset-y-0 left-0 flex w-72 max-w-[88vw] flex-col p-5 lg:hidden"
               style={{ zIndex: "calc(var(--z-overlay) + 1)" }}
             >
-              <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="mb-4 flex items-start justify-between gap-2">
                 <ServiceCommunicationIdenaHeading />
                 <button
                   type="button"
                   onClick={() => setMobileNavOpen(false)}
-                  className="ui-transition shrink-0 rounded-lg p-1.5 text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+                  className="ui-btn ui-btn-ghost h-9 w-9 p-0"
                   aria-label="Fermer le menu"
                 >
                   <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
-
-              <nav className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isNavActive(item.href, pathname);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileNavOpen(false)}
-                      className={navLinkClass(active)}
-                    >
-                      <Icon className="h-4 w-4" aria-hidden />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="mt-auto space-y-2">
-                {isGuest ? (
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileNavOpen(false)}
-                    className="ui-transition flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--accent)] px-3 py-2.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
-                  >
-                    Se connecter
-                  </Link>
-                ) : (
-                  <>
-                    <UserCard
-                      name={currentUserName}
-                      email={currentUserEmail}
-                      avatarUrl={currentUserAvatarUrl}
-                      jobTitle={currentUserJobTitle}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void handleSignOut()}
-                      className="ui-transition flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[color:var(--foreground)]/65 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                    >
-                      <LogOut className="h-3.5 w-3.5" aria-hidden />
-                      Se déconnecter
-                    </button>
-                  </>
-                )}
-              </div>
+              <div className="flex min-h-0 flex-1 flex-col">{sidebarContent(() => setMobileNavOpen(false))}</div>
             </aside>
           </>
-        )}
+        ) : null}
 
-        <div className="min-w-0 flex-1 lg:pl-[16rem]">
-          <header className="ui-surface mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3">
-            {/* Burger mobile uniquement */}
+        <div className="min-w-0 lg:pl-[17rem]">
+          <header className="mb-8 flex flex-wrap items-center gap-3 border-b border-[var(--line)] pb-5">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="ui-transition flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)] lg:hidden"
+              className="ui-btn ui-btn-secondary h-10 w-10 p-0 lg:hidden"
               aria-label="Ouvrir le menu"
               aria-expanded={mobileNavOpen}
             >
@@ -278,15 +232,15 @@ export default function AppShell({
 
             <div className="min-w-[180px] flex-1">
               {searchSlot ?? (
-                <div className="flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
-                  <span className="h-4 w-4 text-[color:var(--foreground)]/45" aria-hidden>
+                <div className="flex max-w-md items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
+                  <span className="text-sm text-[color:var(--foreground)]/40" aria-hidden>
                     ⌕
                   </span>
                   <input
                     type="text"
-                    placeholder="Rechercher..."
+                    placeholder="Rechercher…"
                     aria-label="Recherche globale"
-                    className="ui-focus-ring w-full rounded-md bg-transparent text-sm text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/45 focus:outline-none"
+                    className="ui-focus-ring w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/40 focus:outline-none"
                   />
                 </div>
               )}
@@ -294,7 +248,7 @@ export default function AppShell({
             {toolbarRight}
           </header>
 
-          <main>{children}</main>
+          <main className="pb-10">{children}</main>
         </div>
       </div>
     </div>

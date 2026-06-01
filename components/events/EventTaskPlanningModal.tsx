@@ -200,7 +200,7 @@ export default function EventTaskPlanningModal(props: Props) {
             type="button"
             disabled={saving}
             onClick={() => void handleSubmit()}
-            className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+            className="rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>

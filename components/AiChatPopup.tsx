@@ -139,7 +139,7 @@ export default function AiChatPopup({
               type="button"
               disabled={!canSubmit}
               onClick={() => void handleSubmit()}
-              className="ui-transition inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-2.5 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-transition inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--foreground)] px-3 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -178,7 +178,7 @@ export default function AiChatPopup({
           title="Ouvrir le chat IA"
           aria-expanded={false}
           aria-haspopup="dialog"
-          className="ui-transition fixed z-[141] flex h-14 w-14 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[var(--accent)] text-[#fffdf9] shadow-[0_12px_36px_rgba(20,17,13,0.25)] hover:scale-105 hover:bg-[var(--accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          className="ui-transition fixed z-[141] flex h-14 w-14 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-[0_12px_36px_rgba(20,17,13,0.25)] hover:scale-105 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           style={{
             bottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
             right: "max(1rem, env(safe-area-inset-right, 0px))",

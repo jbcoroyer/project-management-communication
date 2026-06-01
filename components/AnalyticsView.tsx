@@ -99,10 +99,11 @@ export default function AnalyticsView(props: { tasks: Task[] }) {
 
   return (
     <div className="space-y-5">
-      <header className="ui-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
+      <header className="ui-surface flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
-          <h2 className="ui-heading text-2xl font-semibold text-[var(--foreground)]">Analytics</h2>
-          <p className="mt-1 text-sm text-[color:var(--foreground)]/65">
+          <p className="ui-kicker mb-1">Pilotage</p>
+          <h2 className="ui-display text-2xl text-[var(--foreground)]">Analytics</h2>
+          <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
             Indicateurs clés sur les projets créés ou mis à jour sur la période (hors sous-tâches).
           </p>
         </div>
@@ -115,7 +116,7 @@ export default function AnalyticsView(props: { tasks: Task[] }) {
               className={[
                 "rounded-md px-3 py-1.5 text-xs font-semibold transition",
                 periodDays === dayValue
-                  ? "bg-[var(--accent)] text-[#fffdf9]"
+                  ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
                   : "text-[color:var(--foreground)]/65 hover:bg-[var(--surface-soft)]",
               ].join(" ")}
             >

@@ -263,7 +263,7 @@ export default function TaskDetailPanel(props: {
                     type="button"
                     onClick={() => void handleSave()}
                     disabled={saving}
-                    className="ui-transition inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                    className="ui-transition inline-flex items-center gap-1 rounded-lg bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
                   >
                     <Check className="h-3.5 w-3.5" />
                     {saving ? "Sauvegarde…" : "Sauvegarder"}
@@ -442,7 +442,7 @@ export default function TaskDetailPanel(props: {
                 type="button"
                 onClick={() => void handleSavePlanning()}
                 disabled={planningSaving}
-                className="ui-transition rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                className="ui-transition rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
               >
                 {planningSaving ? "Enregistrement…" : "Enregistrer le planning"}
               </button>
@@ -475,7 +475,7 @@ export default function TaskDetailPanel(props: {
                       className={[
                         "rounded-md px-2 py-1 text-xs font-medium",
                         planEstimateUnit === "hours"
-                          ? "bg-[var(--accent)] text-[#fffdf9]"
+                          ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
                           : "text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
                       ].join(" ")}
                     >
@@ -487,7 +487,7 @@ export default function TaskDetailPanel(props: {
                       className={[
                         "rounded-md px-2 py-1 text-xs font-medium",
                         planEstimateUnit === "days"
-                          ? "bg-[var(--accent)] text-[#fffdf9]"
+                          ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
                           : "text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
                       ].join(" ")}
                     >

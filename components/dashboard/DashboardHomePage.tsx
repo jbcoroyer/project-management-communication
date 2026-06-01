@@ -529,7 +529,7 @@ export default function DashboardHomePage() {
               type="button"
               onClick={handleOpenForm}
               title="Nouvelle tache (N)"
-              className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+              className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--foreground)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:opacity-90"
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/25 text-white">
                 <Plus className="h-3.5 w-3.5" />
@@ -592,7 +592,7 @@ export default function DashboardHomePage() {
                     "ui-transition inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
                     isActive
                       ? tab.id === "todo"
-                        ? "bg-[var(--accent)] text-[#fffdf9] shadow-[0_8px_20px_rgba(20,17,13,0.16)]"
+                        ? "bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-[0_8px_20px_rgba(20,17,13,0.16)]"
                         : "bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(20,17,13,0.08)]"
                       : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
                   ].join(" ")}

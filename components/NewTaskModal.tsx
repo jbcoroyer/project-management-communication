@@ -345,7 +345,7 @@ export default function NewTaskModal(props: {
                         <label
                           key={admin}
                           className={`flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 transition ${
-                            checked ? "bg-[var(--accent)] text-[#fffdf9]" : "hover:bg-[var(--surface-soft)]"
+                            checked ? "bg-[var(--foreground)] text-[var(--accent-contrast)]" : "hover:bg-[var(--surface-soft)]"
                           }`}
                         >
                           <input
@@ -419,7 +419,7 @@ export default function NewTaskModal(props: {
                         }}
                         className={[
                           "rounded-md px-2 py-1 text-xs font-medium transition",
-                          timeUnit === "hours" ? "bg-[var(--accent)] text-[#fffdf9]" : "text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]",
+                          timeUnit === "hours" ? "bg-[var(--foreground)] text-[var(--accent-contrast)]" : "text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]",
                         ].join(" ")}
                       >
                         h
@@ -434,7 +434,7 @@ export default function NewTaskModal(props: {
                         }}
                         className={[
                           "rounded-md px-2 py-1 text-xs font-medium transition",
-                          timeUnit === "days" ? "bg-[var(--accent)] text-[#fffdf9]" : "text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]",
+                          timeUnit === "days" ? "bg-[var(--foreground)] text-[var(--accent-contrast)]" : "text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]",
                         ].join(" ")}
                       >
                         j
@@ -734,7 +734,7 @@ export default function NewTaskModal(props: {
                   <button
                     type="button"
                     onClick={() => void handleNextStep()}
-                    className="ui-transition inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
+                    className="ui-transition inline-flex items-center gap-1 rounded-xl bg-[var(--foreground)] px-5 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90"
                   >
                     <ArrowRight className="h-4 w-4" />
                     Continuer
@@ -743,7 +743,7 @@ export default function NewTaskModal(props: {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="ui-transition inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-70"
+                    className="ui-transition inline-flex items-center gap-1 rounded-xl bg-[var(--foreground)] px-5 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-70"
                   >
                     <Check className="h-4 w-4" />
                     {editingTaskId ? "Enregistrer" : "Créer la tâche"}

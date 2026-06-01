@@ -118,7 +118,7 @@ export default function EventStockReserve(props: EventStockReserveProps) {
             <button
               type="submit"
               disabled={submitting || !itemId}
-              className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)] disabled:opacity-50"
+              className="ui-transition rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90 disabled:opacity-50"
             >
               {submitting ? "Enregistrement…" : "Enregistrer la sortie"}
             </button>

@@ -137,7 +137,7 @@ export default function ProfileSetup(props: {
             className={[
               "ui-transition mt-4 w-full rounded-xl py-3 text-sm font-semibold transition",
               selected
-                ? "bg-[var(--accent)] text-[#fffdf9] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+                ? "bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:opacity-90"
                 : "cursor-not-allowed bg-[var(--surface-soft)] text-[color:var(--foreground)]/40",
             ].join(" ")}
           >

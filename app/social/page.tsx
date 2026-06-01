@@ -443,7 +443,7 @@ export default function SocialPage() {
       <button
         type="button"
         onClick={() => openCreateModal()}
-        className="ui-transition inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)]"
+        className="ui-transition inline-flex items-center gap-1.5 rounded-xl bg-[var(--foreground)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90"
       >
         <Plus className="h-4 w-4" />
         Nouveau post
@@ -640,7 +640,7 @@ export default function SocialPage() {
                       className={[
                         "ui-transition inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold",
                         displayMode === item.id
-                          ? "bg-[var(--accent)] text-[#fffdf9]"
+                          ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
                           : "text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
                       ].join(" ")}
                     >

@@ -490,7 +490,7 @@ export default function EventDetailPage() {
                     onClick={() => setTab(item.id)}
                     className={[
                       "ui-transition inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold",
-                      active ? "bg-[var(--accent)] text-[#fffdf9] shadow-sm" : "text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
+                      active ? "bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-sm" : "text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
                     ].join(" ")}
                   >
                     <Icon className="h-4 w-4" />
@@ -533,7 +533,7 @@ export default function EventDetailPage() {
                     type="button"
                     disabled={creatingTask}
                     onClick={() => void handleCreateEventTask()}
-                    className="ui-transition rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                    className="ui-transition rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
                   >
                     {creatingTask ? "Ajout..." : "Ajouter"}
                   </button>
@@ -669,7 +669,7 @@ export default function EventDetailPage() {
                   <button
                     type="button"
                     onClick={() => setExpenseOpen(true)}
-                    className="ui-transition mt-6 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)]"
+                    className="ui-transition mt-6 rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90"
                   >
                     Ajouter une dépense
                   </button>
@@ -728,7 +728,7 @@ export default function EventDetailPage() {
               <section className="ui-surface rounded-[24px] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">Documents Devis / Facture</h2>
-                  <label className="ui-transition inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)]">
+                  <label className="ui-transition inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--foreground)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90">
                     <Upload className="h-4 w-4" />
                     {uploadingDocuments ? "Upload..." : "Uploader des documents"}
                     <input

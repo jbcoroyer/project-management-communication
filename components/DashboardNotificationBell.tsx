@@ -168,7 +168,7 @@ export default function DashboardNotificationBell() {
         >
           <Bell className="h-5 w-5" strokeWidth={2} aria-hidden />
           {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-[#fffdf9]">
+            <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--foreground)] px-1 text-[10px] font-bold text-[var(--accent-contrast)]">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           ) : null}

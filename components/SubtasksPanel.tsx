@@ -136,7 +136,7 @@ function AddSubtaskForm(props: {
         <button
           type="submit"
           disabled={saving}
-          className="ui-transition flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+          className="ui-transition flex items-center gap-1.5 rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60"
         >
           <Plus className="h-3.5 w-3.5" />
           {saving ? "Ajout…" : "Ajouter"}

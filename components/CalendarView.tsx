@@ -188,7 +188,7 @@ function Toolbar(props: {
         <button
           type="button"
           onClick={props.onAddManual}
-          className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)]"
+          className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--foreground)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90"
         >
           <Plus className="h-3.5 w-3.5" />
           Événement
@@ -202,7 +202,7 @@ function Toolbar(props: {
               className={[
                 "ui-transition rounded-md px-2.5 py-1 text-xs font-semibold",
                 props.view === v
-                  ? "bg-[var(--accent)] text-[#fffdf9]"
+                  ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
                   : "text-[color:var(--foreground)]/65 hover:bg-[var(--surface-soft)]",
               ].join(" ")}
             >
@@ -435,7 +435,7 @@ function EventModal({ open, onClose, onSave, onDelete, initial }: EventModalProp
             </button>
             <button
               type="submit"
-              className="ui-transition rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#fffdf9] hover:bg-[var(--accent-strong)]"
+              className="ui-transition rounded-xl border border-[var(--line-strong)] bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90"
             >
               Enregistrer
             </button>

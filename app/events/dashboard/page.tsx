@@ -125,7 +125,7 @@ export default function EventsDashboardPage() {
       <button
         type="button"
         onClick={() => setCreateOpen(true)}
-        className="ui-transition inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[#fffdf9] shadow-sm hover:bg-[var(--accent-strong)]"
+        className="ui-transition inline-flex items-center gap-1.5 rounded-xl bg-[var(--foreground)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-sm hover:opacity-90"
       >
         <Plus className="h-4 w-4" />
         Nouvel événement
