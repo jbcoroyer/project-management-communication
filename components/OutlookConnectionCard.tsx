@@ -150,7 +150,8 @@ export default function OutlookConnectionCard() {
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Outlook connecté</p>
             <p className="text-xs text-[color:var(--foreground)]/60">
-              {status.email ?? "Compte Microsoft 365"} · les jours planifiés sont synchronisés.
+              {status.email ?? "Compte Microsoft 365"} · catégorie{" "}
+              <strong>IDENA Planification</strong> (orange) dans Outlook.
             </p>
           </div>
         </div>

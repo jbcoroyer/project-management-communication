@@ -11,11 +11,21 @@ const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 /** Fuseau horaire Windows utilisé pour les événements (Paris/France par défaut). */
 export const MS_TIMEZONE = process.env.MS_TIMEZONE?.trim() || "Romance Standard Time";
 
+/** Catégorie Outlook appliquée aux événements créés par l'app (couleur distincte). */
+export const MS_EVENT_CATEGORY =
+  process.env.MS_OUTLOOK_CATEGORY_NAME?.trim() || "IDENA Planification";
+
+/** Couleur preset Outlook (preset0–preset24). preset1 = orange dans Outlook bureau. */
+export const MS_EVENT_CATEGORY_COLOR =
+  process.env.MS_OUTLOOK_CATEGORY_COLOR?.trim() || "preset1";
+
 /**
  * Portées demandées. `offline_access` est indispensable pour obtenir un
  * refresh_token et garder la synchro active sans reconnexion.
+ * `MailboxSettings.ReadWrite` permet de créer la catégorie colorée.
  */
-const MS_SCOPES = "openid profile email offline_access User.Read Calendars.ReadWrite";
+const MS_SCOPES =
+  "openid profile email offline_access User.Read Calendars.ReadWrite MailboxSettings.ReadWrite";
 
 function tenant(): string {
   return process.env.MS_TENANT_ID?.trim() || "common";
@@ -174,4 +184,38 @@ export async function updateEvent(
 /** Supprime un événement. Ne lève pas d'erreur si déjà supprimé (404). */
 export async function deleteEvent(accessToken: string, eventId: string): Promise<void> {
   await graphFetch(accessToken, `/me/events/${eventId}`, { method: "DELETE" });
+}
+
+type OutlookCategory = { id: string; displayName: string; color: string };
+
+/**
+ * Crée (ou met à jour) la catégorie Outlook utilisée pour colorer les tâches IDENA.
+ * Outlook n'a pas de couleur directe sur les événements : on passe par une catégorie.
+ */
+export async function ensureOutlookCategory(accessToken: string): Promise<void> {
+  const res = await graphFetch(accessToken, "/me/outlook/masterCategories");
+  const json = (await res.json()) as { value?: OutlookCategory[] };
+  const found = json.value?.find((c) => c.displayName === MS_EVENT_CATEGORY);
+
+  if (found) {
+    if (found.color !== MS_EVENT_CATEGORY_COLOR) {
+      await graphFetch(accessToken, `/me/outlook/masterCategories/${found.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ color: MS_EVENT_CATEGORY_COLOR }),
+      });
+    }
+    return;
+  }
+
+  try {
+    await graphFetch(accessToken, "/me/outlook/masterCategories", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: MS_EVENT_CATEGORY,
+        color: MS_EVENT_CATEGORY_COLOR,
+      }),
+    });
+  } catch {
+    /* Catégorie créée entre-temps par une autre requête — ignoré. */
+  }
 }

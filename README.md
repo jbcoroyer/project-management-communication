@@ -196,6 +196,8 @@ MS_CLIENT_SECRET=
 MS_TENANT_ID=common
 MS_REDIRECT_URI=
 MS_TIMEZONE=Romance Standard Time
+MS_OUTLOOK_CATEGORY_NAME=IDENA Planification
+MS_OUTLOOK_CATEGORY_COLOR=preset1
 
 # Optionnel — alertes stock Slack
 SLACK_WEBHOOK_URL=
@@ -248,7 +250,11 @@ Les variables `MS_*` de `.env.local` ne sont **pas** déployées automatiquement
 | `MS_CLIENT_SECRET` | Oui |
 | `MS_TENANT_ID` | Recommandé (`common` par défaut) |
 | `MS_TIMEZONE` | Optionnel (`Romance Standard Time`) |
+| `MS_OUTLOOK_CATEGORY_NAME` | Optionnel (`IDENA Planification`) |
+| `MS_OUTLOOK_CATEGORY_COLOR` | Optionnel (`preset1` = orange Outlook) |
 | `MS_REDIRECT_URI` | Optionnel — sinon dérivé de l’URL publique |
+
+Dans **Azure Portal → App registrations → API permissions**, ajoutez aussi `MailboxSettings.ReadWrite` (délégué) pour la catégorie colorée, puis **Grant admin consent**. Les utilisateurs déjà connectés doivent **déconnecter puis reconnecter** Outlook pour obtenir la nouvelle permission.
 
 Dans **Azure Portal → App registrations → votre app → Authentication**, ajoutez l’URI de redirection :
 

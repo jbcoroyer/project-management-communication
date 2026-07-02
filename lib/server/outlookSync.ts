@@ -11,9 +11,11 @@ import { createSupabaseAdmin } from "./supabaseAdmin";
 import { taskRowConcernsUser } from "../taskConcernsUser";
 import type { ServerUserIdentity } from "./userIdentity";
 import {
+  MS_EVENT_CATEGORY,
   MS_TIMEZONE,
   createEvent,
   deleteEvent,
+  ensureOutlookCategory,
   refreshAccessToken,
   updateEvent,
   type GraphEventPayload,
@@ -127,11 +129,13 @@ function buildEventPayload(task: TaskForSync, item: ProjectedWorkItem): GraphEve
     contentType: "Text" as const,
     content: [`Tâche planifiée depuis Service Communication IDENA.`, "", ...contextLines].join("\n"),
   };
+  const categories = [MS_EVENT_CATEGORY];
 
   if (item.startTime && item.endTime) {
     return {
       subject: task.projectName,
       body,
+      categories,
       start: { dateTime: `${item.date}T${item.startTime}:00`, timeZone: MS_TIMEZONE },
       end: { dateTime: `${item.date}T${item.endTime}:00`, timeZone: MS_TIMEZONE },
       isAllDay: false,
@@ -147,6 +151,7 @@ function buildEventPayload(task: TaskForSync, item: ProjectedWorkItem): GraphEve
   return {
     subject: task.projectName,
     body,
+    categories,
     start: { dateTime: `${item.date}T00:00:00`, timeZone: MS_TIMEZONE },
     end: { dateTime: `${endDate}T00:00:00`, timeZone: MS_TIMEZONE },
     isAllDay: true,
@@ -167,6 +172,8 @@ export type SyncResult = {
 export async function syncTaskToOutlook(userId: string, task: TaskForSync): Promise<SyncResult> {
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken) return { connected: false, created: 0, updated: 0, deleted: 0 };
+
+  await ensureOutlookCategory(accessToken);
 
   const admin = createSupabaseAdmin();
 
