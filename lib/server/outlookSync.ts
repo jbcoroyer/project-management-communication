@@ -242,6 +242,12 @@ export type SyncAllResult = {
   connected: boolean;
   synced: number;
   errors: number;
+  /** Nombre de tâches concernant l'utilisateur ET comportant un planning. */
+  considered: number;
+  /** Nombre total de tâches non archivées examinées. */
+  scanned: number;
+  /** Premier message d'erreur rencontré (diagnostic). */
+  firstError?: string;
 };
 
 function rowToTaskForSync(row: Record<string, unknown>): TaskForSync {
@@ -267,16 +273,23 @@ export async function syncAllTasksForUser(
   rows: Record<string, unknown>[],
 ): Promise<SyncAllResult> {
   const accessToken = await getValidAccessToken(userId);
-  if (!accessToken) return { connected: false, synced: 0, errors: 0 };
+  if (!accessToken) {
+    return { connected: false, synced: 0, errors: 0, considered: 0, scanned: 0 };
+  }
 
   let synced = 0;
   let errors = 0;
+  let considered = 0;
+  let scanned = 0;
+  let firstError: string | undefined;
 
   for (const row of rows) {
     if (row.is_archived) continue;
+    scanned += 1;
     if (!taskRowConcernsUser(row, identity)) continue;
     const projected = (row.projected_work as ProjectedWorkItem[] | null) ?? [];
     if (!projected.some((item) => item?.date)) continue;
+    considered += 1;
 
     try {
       await syncTaskToOutlook(userId, rowToTaskForSync(row));
@@ -284,8 +297,9 @@ export async function syncAllTasksForUser(
     } catch (e) {
       console.error("Outlook sync-all task error", row.id, e);
       errors += 1;
+      if (!firstError) firstError = e instanceof Error ? e.message : String(e);
     }
   }
 
-  return { connected: true, synced, errors };
+  return { connected: true, synced, errors, considered, scanned, firstError };
 }

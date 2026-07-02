@@ -45,13 +45,17 @@ export default function OutlookConnectionCard() {
         toastError("Outlook n'est pas connecté.");
         return;
       }
-      if ((result.synced ?? 0) === 0 && (result.errors ?? 0) === 0) {
-        toastSuccess("Aucune tâche planifiée à synchroniser pour le moment.");
-        return;
-      }
       if ((result.errors ?? 0) > 0) {
         toastError(
-          `${result.synced ?? 0} tâche(s) synchronisée(s), ${result.errors} erreur(s). Consultez les logs serveur.`,
+          `${result.synced ?? 0} tâche(s) OK, ${result.errors} en échec. Cause : ${
+            result.firstError ?? "inconnue"
+          }`,
+        );
+        return;
+      }
+      if ((result.considered ?? 0) === 0) {
+        toastError(
+          `Aucune tâche planifiée ne vous est attribuée (${result.scanned ?? 0} tâche(s) examinée(s)). Vérifiez que vous êtes bien responsable et qu'un créneau est renseigné.`,
         );
         return;
       }

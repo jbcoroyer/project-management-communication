@@ -13,23 +13,23 @@ export async function requestOutlookSync(taskId: string, remove = false): Promis
   }
 }
 
-/** Synchronise toutes les tâches planifiées de l'utilisateur connecté vers Outlook. */
-export async function requestOutlookSyncAll(): Promise<{
+export type OutlookSyncAllResult = {
   ok: boolean;
   synced?: number;
   errors?: number;
+  considered?: number;
+  scanned?: number;
   connected?: boolean;
+  firstError?: string;
   error?: string;
-}> {
+};
+
+/** Synchronise toutes les tâches planifiées de l'utilisateur connecté vers Outlook. */
+export async function requestOutlookSyncAll(): Promise<OutlookSyncAllResult> {
   if (typeof window === "undefined") return { ok: false, error: "Indisponible côté serveur." };
   try {
     const res = await fetch("/api/outlook/sync-all", { method: "POST" });
-    const data = (await res.json()) as {
-      synced?: number;
-      errors?: number;
-      connected?: boolean;
-      error?: string;
-    };
+    const data = (await res.json()) as Omit<OutlookSyncAllResult, "ok">;
     if (!res.ok) {
       return { ok: false, error: data.error ?? "Échec de la synchronisation." };
     }
