@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bot, Loader2, PanelRightOpen, Send, Sparkles, X } from "lucide-react";
-import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useEvents } from "../../../lib/useEvents";
 import { useInventory } from "../../../lib/useInventory";
 import { useTasks } from "../../../lib/useTasks";
@@ -51,7 +50,6 @@ function formatQueryAnswer(answer: QueryAnswer): string {
 
 export default function V2Assistant() {
   const pathname = usePathname();
-  const { user } = useCurrentUser();
   const { tasks, loadTasks } = useTasks();
   const { events, loadEvents } = useEvents();
   const { items, loadItems } = useInventory();
@@ -62,6 +60,10 @@ export default function V2Assistant() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const ctx = useMemo(() => contextFor(pathname ?? ""), [pathname]);
+  const queryContext = useMemo(
+    () => ({ tasks, events, inventory: items }),
+    [tasks, events, items],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -72,16 +74,15 @@ export default function V2Assistant() {
 
   if (!pathname?.startsWith("/v2")) return null;
 
-  const queryContext = useMemo(
-    () => ({ tasks, events, inventory: items }),
-    [tasks, events, items],
-  );
-
-  const resolveQuestion = async (question: string): Promise<{ text: string; backend?: AiBackend }> => {
-    const dataAnswer = answerQuestion(question, queryContext);
+  const resolveQuestion = async (
+    question: string,
+    history: Message[],
+  ): Promise<{ text: string; backend?: AiBackend }> => {
+    const dataAnswer = answerQuestion(question, queryContext, {
+      conversationHistory: history.map((m) => ({ role: m.role, text: m.text })),
+    });
     const bullets = dataAnswer.bullets.length > 0 ? dataAnswer.bullets : dataAnswer.lines;
-    const hasRealData =
-      bullets.length > 0 && !bullets.every((b) => b.includes("Reformulez pour cibler"));
+    const hasRealData = bullets.some((b) => b.trim().length > 0 && !b.startsWith("…"));
 
     if (!hasRealData) {
       return { text: formatQueryAnswer(dataAnswer) };
@@ -107,9 +108,11 @@ export default function V2Assistant() {
     const q = question.trim();
     if (!q || busy) return;
     setBusy(true);
-    setMessages((prev) => [...prev, { role: "user", text: userLabel ?? q }]);
+    const userMessage: Message = { role: "user", text: userLabel ?? q };
+    const historyWithUser = [...messages, userMessage];
+    setMessages(historyWithUser);
     try {
-      const result = await resolveQuestion(q);
+      const result = await resolveQuestion(q, historyWithUser);
       setMessages((prev) => [...prev, { role: "assistant", text: result.text, backend: result.backend }]);
     } catch {
       setMessages((prev) => [
@@ -211,7 +214,7 @@ export default function V2Assistant() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Ex : ce que JB a à faire cette semaine"
+                placeholder="Ex : la todo d'Alexandre cette semaine"
                 className="ui-focus-ring flex-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
               />
               <button
