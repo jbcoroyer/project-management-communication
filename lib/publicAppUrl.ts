@@ -1,6 +1,6 @@
 /**
  * URL publique de l’app (OAuth / recovery email redirectTo).
- * Sur Vercel, next.config.ts remplit NEXT_PUBLIC_APP_URL depuis VERCEL_URL si besoin.
+ * Sur Vercel, next.config.ts utilise le domaine de production stable.
  */
 export function getPublicAppOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");

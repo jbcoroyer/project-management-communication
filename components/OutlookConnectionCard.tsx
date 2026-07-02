@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarCheck2, CalendarX2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { requestOutlookSyncAll } from "../lib/outlookClientSync";
+import { getPublicAppOrigin } from "../lib/publicAppUrl";
 import { toastError, toastSuccess } from "../lib/toast";
 
 type StatusResponse = {
@@ -129,9 +130,7 @@ export default function OutlookConnectionCard() {
             dans les variables d&apos;environnement Vercel (Production), puis redéployez. Ajoutez
             aussi l&apos;URI de redirection{" "}
             <code className="mx-1 rounded bg-amber-100 px-1 break-all">
-              {typeof window !== "undefined"
-                ? `${window.location.origin}/api/outlook/callback`
-                : "/api/outlook/callback"}
+              {`${getPublicAppOrigin() || "https://project-management-communication.vercel.app"}/api/outlook/callback`}
             </code>{" "}
             dans Azure (App registration → Authentication).
           </>
@@ -193,7 +192,7 @@ export default function OutlookConnectionCard() {
         soit ajouté automatiquement à votre agenda Outlook.
       </p>
       <a
-        href="/api/outlook/connect"
+        href={`${getPublicAppOrigin() || ""}/api/outlook/connect`}
         className="ui-transition inline-flex items-center gap-2 rounded-xl bg-[var(--foreground)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:opacity-90"
       >
         <ExternalLink className="h-4 w-4" />

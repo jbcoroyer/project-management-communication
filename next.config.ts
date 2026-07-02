@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
-/** Sur Vercel, dérive l’URL publique pour les emails Supabase (reset password) si non définie à la main. */
+/** Sur Vercel, utilise le domaine de production stable (pas l'URL de preview éphémère). */
 const publicAppUrl =
   process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL.replace(/^https?:\/\//, "")}` : "");
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "")}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL.replace(/^https?:\/\//, "")}`
+      : "");
 
 /** Hostname Supabase Storage de production (NEXT_PUBLIC_SUPABASE_URL). */
 const supabaseHostname = (() => {
