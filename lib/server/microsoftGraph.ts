@@ -134,11 +134,13 @@ async function graphFetch(
   return res;
 }
 
+export type GraphDateTime = { dateTime: string; timeZone: string };
+
 export type GraphEventPayload = {
   subject: string;
   body?: { contentType: "HTML" | "Text"; content: string };
-  start: { dateTime: string; timeZone: string } | { date: string };
-  end: { dateTime: string; timeZone: string } | { date: string };
+  start: GraphDateTime;
+  end: GraphDateTime;
   isAllDay?: boolean;
   categories?: string[];
 };

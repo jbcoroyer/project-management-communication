@@ -139,15 +139,16 @@ function buildEventPayload(task: TaskForSync, item: ProjectedWorkItem): GraphEve
   }
 
   // Jour sans créneau → événement « journée entière ».
-  const start = new Date(`${item.date}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  const endDate = end.toISOString().slice(0, 10);
+  // Microsoft Graph exige dateTime + timeZone (pas de format { date }) et des
+  // bornes à minuit pour un événement isAllDay.
+  const nextDay = new Date(`${item.date}T00:00:00Z`);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const endDate = nextDay.toISOString().slice(0, 10);
   return {
     subject: task.projectName,
     body,
-    start: { date: item.date },
-    end: { date: endDate },
+    start: { dateTime: `${item.date}T00:00:00`, timeZone: MS_TIMEZONE },
+    end: { dateTime: `${endDate}T00:00:00`, timeZone: MS_TIMEZONE },
     isAllDay: true,
   };
 }
