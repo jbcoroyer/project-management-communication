@@ -13,10 +13,11 @@ type EventTimelineProps = {
   events: EventRow[];
   tasks?: Task[];
   onDeleteEvent?: (eventId: string) => void | Promise<void>;
+  eventsBasePath?: string;
 };
 
 export default function EventTimeline(props: EventTimelineProps) {
-  const { events, tasks = [], onDeleteEvent } = props;
+  const { events, tasks = [], onDeleteEvent, eventsBasePath = "/events" } = props;
 
   if (events.length === 0) {
     return (
@@ -38,7 +39,7 @@ export default function EventTimeline(props: EventTimelineProps) {
             className="relative ui-surface rounded-[22px] border border-[var(--line)] transition-[border-color,box-shadow] hover:border-[var(--line-strong)] hover:shadow-[0_12px_40px_rgba(28,24,20,0.08)]"
           >
             <Link
-              href={`/events/${ev.id}`}
+              href={`${eventsBasePath}/${ev.id}`}
               className="group block rounded-[22px] p-5 pr-14"
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

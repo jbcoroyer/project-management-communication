@@ -8,6 +8,7 @@ import type { Task } from "../../lib/types";
 
 type EventTasksKanbanProps = {
   tasks: Task[];
+  eventsBasePath?: string;
 };
 
 function sortByDeadline(a: Task, b: Task) {
@@ -39,7 +40,7 @@ function partitionByEvent(tasks: Task[]) {
 }
 
 export default function EventTasksKanban(props: EventTasksKanbanProps) {
-  const { tasks } = props;
+  const { tasks, eventsBasePath = "/events" } = props;
 
   const byColumn = useMemo(() => {
     const map: Record<string, Task[]> = {};
@@ -87,7 +88,7 @@ export default function EventTasksKanban(props: EventTasksKanbanProps) {
                   {standalone.map((task) => (
                     <Link
                       key={task.id}
-                      href={task.eventId ? `/events/${task.eventId}` : "#"}
+                      href={task.eventId ? `${eventsBasePath}/${task.eventId}` : "#"}
                       className="ui-transition rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5 text-left hover:border-[var(--line)]/90 hover:bg-[var(--surface-soft)]"
                     >
                       <p className="text-base font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
@@ -108,7 +109,7 @@ export default function EventTasksKanban(props: EventTasksKanbanProps) {
                       className="space-y-2 rounded-xl border border-[var(--line)]/85 bg-[var(--surface-soft)] p-2"
                     >
                       <Link
-                        href={`/events/${eventId}`}
+                        href={`${eventsBasePath}/${eventId}`}
                         className="flex items-center justify-between gap-2 px-1 pb-0.5 pt-0.5 text-left"
                       >
                         <span className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--foreground)]/75 hover:underline">
@@ -122,7 +123,7 @@ export default function EventTasksKanban(props: EventTasksKanbanProps) {
                       {evTasks.map((task) => (
                         <Link
                           key={task.id}
-                          href={`/events/${eventId}`}
+                          href={`${eventsBasePath}/${eventId}`}
                           className="ui-transition block rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5 text-left hover:border-[var(--line)]/90 hover:bg-[var(--surface-soft)]"
                         >
                           <p className="text-base font-semibold leading-snug text-[var(--foreground)]">{task.projectName}</p>
