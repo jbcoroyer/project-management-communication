@@ -23,12 +23,6 @@ export const defaultDomains = [
 ] as const;
 export const priorities = ["Basse", "Moyenne", "Haute"] as const;
 
-// Alias de compatibilité: le code existant importe encore ces noms.
-export const columns: readonly string[] = defaultColumns;
-export const admins = defaultAdmins;
-export const companies: readonly string[] = defaultCompanies;
-export const domains: readonly string[] = defaultDomains;
-
 export type ColumnId = string;
 export type AdminId = string;
 export type Company = string;
@@ -99,7 +93,7 @@ export const initialFormState: NewTaskFormState = {
   projectName: "",
   company: defaultCompanies[0],
   domain: defaultDomains[0],
-  admins: [],
+  admins: [...defaultAdmins],
   isClientRequest: false,
   clientName: "",
   deadline: "",

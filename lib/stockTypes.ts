@@ -9,12 +9,6 @@ export type StockProject = {
   status: ProjectStatus;
 };
 
-export type StockProjectDraft = {
-  id?: string;
-  name: string;
-  status: ProjectStatus;
-};
-
 export type StockMovement = {
   id: string;
   createdAt: string;

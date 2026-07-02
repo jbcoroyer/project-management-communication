@@ -32,10 +32,6 @@ type InAppNotificationsContextValue = {
 
 const InAppNotificationsContext = createContext<InAppNotificationsContextValue | null>(null);
 
-export function useOptionalInAppNotifications() {
-  return useContext(InAppNotificationsContext);
-}
-
 export function useInAppNotifications(): InAppNotificationsContextValue {
   const ctx = useContext(InAppNotificationsContext);
   if (!ctx) {

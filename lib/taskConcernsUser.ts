@@ -1,6 +1,6 @@
 import type { CurrentUser } from "./useCurrentUser";
 
-export function parseAdminCsv(admin: unknown): string[] {
+function parseAdminCsv(admin: unknown): string[] {
   if (typeof admin !== "string" || !admin.trim()) return [];
   return admin.split(",").map((s) => s.trim()).filter(Boolean);
 }

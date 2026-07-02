@@ -1,4 +1,3 @@
-import type { EventRow } from "./eventTypes";
 import type { Task } from "./types";
 
 export type EventPreparationStats = {
@@ -29,11 +28,4 @@ export function computeEventPreparationStats(eventId: string, tasks: Task[]): Ev
     overdueTasks,
     unscheduledOpen,
   };
-}
-
-export function preparationStatsForEvent(
-  event: EventRow,
-  allTasks: Task[],
-): EventPreparationStats {
-  return computeEventPreparationStats(event.id, allTasks);
 }

@@ -9,15 +9,6 @@ export const socialPostStatuses = [
 
 export type SocialPostStatus = (typeof socialPostStatuses)[number];
 
-export const socialNetworkOptions = [
-  "LinkedIn",
-  "Instagram",
-  "Facebook",
-  "TikTok",
-  "X",
-  "YouTube",
-] as const;
-
 export const socialFormatOptions = [
   "Photo",
   "Vidéo",
@@ -101,7 +92,3 @@ export type SocialPostMutation = {
 export type SocialPostDraft = SocialPostMutation & {
   id?: string;
 };
-
-export function countsTowardMonthlyGauge(status: SocialPostStatus): boolean {
-  return status === "Planifié" || status === "Publié";
-}

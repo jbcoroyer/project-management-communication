@@ -11,7 +11,3 @@ export const eventTaskCategories = [
 ] as const;
 
 export type EventTaskCategory = (typeof eventTaskCategories)[number];
-
-export function isEventTaskCategory(value: string): value is EventTaskCategory {
-  return (eventTaskCategories as readonly string[]).includes(value);
-}

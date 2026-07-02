@@ -36,6 +36,10 @@ export function useTasks() {
   }, [supabase]);
 
   useEffect(() => {
+    void loadTasks().catch(() => setTasks([]));
+  }, [loadTasks]);
+
+  useEffect(() => {
     const channel = supabase
       .channel("tasks-shared-realtime")
       .on(

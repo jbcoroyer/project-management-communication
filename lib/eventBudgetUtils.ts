@@ -2,7 +2,7 @@ import { expenseCategories, type ExpenseCategory } from "./eventTypes";
 
 export type BudgetPostsMap = Record<string, number>;
 
-export const defaultBudgetPostKeys: ExpenseCategory[] = [...expenseCategories];
+const defaultBudgetPostKeys: ExpenseCategory[] = [...expenseCategories];
 
 /** Répartition indicative par défaut (% du budget alloué). */
 const DEFAULT_SHARES: Record<ExpenseCategory, number> = {

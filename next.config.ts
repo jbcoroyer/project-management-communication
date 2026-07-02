@@ -47,8 +47,6 @@ const nextConfig: NextConfig = {
       "date-fns",
       "recharts",
       "@dnd-kit/core",
-      "@dnd-kit/sortable",
-      "@dnd-kit/utilities",
     ],
   },
 };

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowser } from "./supabaseBrowser";
 import { ideaToClient, type StockIdeaDto } from "./stockIdeasApi";
-import type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "./stockIdeasTypes";
+import type { StockIdea } from "./stockIdeasTypes";
 import { toastError } from "./toast";
 
 export type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "./stockIdeasTypes";

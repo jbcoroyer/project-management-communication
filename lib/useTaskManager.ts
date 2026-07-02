@@ -15,6 +15,21 @@ import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
 
 const AUTO_ARCHIVE_DELAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Demande la synchro de la tâche vers l'agenda Outlook (si l'utilisateur l'a
+ * connecté). Best-effort : n'interrompt jamais le flux de création/édition.
+ */
+function requestOutlookSync(taskId: string, remove = false) {
+  if (typeof window === "undefined" || !taskId) return;
+  void fetch("/api/outlook/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ taskId, remove }),
+  }).catch(() => {
+    /* synchro best-effort : on ignore les erreurs réseau */
+  });
+}
+
 function normalizeProjectedWorkForSave(
   items: Array<{ date: string; hours: number; startTime?: string; endTime?: string }>,
 ) {
@@ -112,6 +127,7 @@ export function useTaskManager({
         if (!data) return;
         markTaskMutatedLocally(editingTaskId);
         setTasks((prev) => prev.map((task) => (task.id === editingTaskId ? mapTaskRow(data) : task)));
+        requestOutlookSync(editingTaskId);
         onTaskFormDone();
         return;
       }
@@ -136,6 +152,7 @@ export function useTaskManager({
       markTaskMutatedLocally(data.id as string);
       const newTask = mapTaskRow(data);
       setTasks((prev) => [...prev, newTask]);
+      requestOutlookSync(newTask.id);
 
       if (values.subtasks && values.subtasks.length > 0) {
         const firstColumn = columns[0] ?? "À faire";
@@ -198,6 +215,7 @@ export function useTaskManager({
       });
       if (!confirmed) return;
       const previous = tasks;
+      requestOutlookSync(taskId, true);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
       const { data, error } = await supabase
         .from("tasks")
@@ -228,6 +246,7 @@ export function useTaskManager({
       });
       if (!confirmed) return;
       const previous = tasks;
+      requestOutlookSync(taskId, true);
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       if (error) {
@@ -256,6 +275,10 @@ export function useTaskManager({
         return;
       }
       if (movingToDone) celebrateTaskDone();
+      const calendarKeys = ["projected_work", "project_name", "description", "company", "domain"];
+      if (calendarKeys.some((k) => k in dbPatch)) {
+        requestOutlookSync(taskId);
+      }
       toastSuccess("Tâche mise à jour.");
     },
     [setTasks, supabase, tasks],

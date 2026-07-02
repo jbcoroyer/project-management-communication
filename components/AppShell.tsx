@@ -219,7 +219,7 @@ export default function AppShell({
         ) : null}
 
         <div className="min-w-0 lg:pl-[17rem]">
-          <header className="mb-8 flex flex-wrap items-center gap-3 border-b border-[var(--line)] pb-5">
+          <header className="mb-8 flex flex-wrap items-center gap-3 border-b border-[var(--line)] pb-5 pr-24">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}

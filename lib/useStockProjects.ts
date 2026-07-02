@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
 import { useRealtimeReload } from "./useRealtimeReload";
-import { projectStatuses, type ProjectStatus, type StockProject, type StockProjectDraft } from "./stockTypes";
+import { projectStatuses, type ProjectStatus, type StockProject } from "./stockTypes";
 
 type StockProjectRow = {
   id: string;
@@ -59,25 +59,12 @@ export function useStockProjects() {
     }, [loadProjects]),
   });
 
-  const createProject = useCallback(
-    async (draft: StockProjectDraft) => {
-      const { error } = await supabase.from("projects").insert({
-        name: draft.name.trim(),
-        status: draft.status,
-      });
-      if (error) throw error;
-      await loadProjects();
-    },
-    [loadProjects, supabase],
-  );
-
   return useMemo(
     () => ({
       projects,
       loading,
       loadProjects,
-      createProject,
     }),
-    [projects, loading, loadProjects, createProject],
+    [projects, loading, loadProjects],
   );
 }

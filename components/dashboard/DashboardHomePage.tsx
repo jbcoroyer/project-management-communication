@@ -38,7 +38,6 @@ import { celebrateTaskManually } from "../../lib/celebrateTaskDone";
 import { DONE_COLUMN_NAME } from "../../lib/workflowConstants";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { getAdminColorPaletteSize } from "../../lib/kanbanStyles";
-import AiChatPopup from "../AiChatPopup";
 import DashboardNotificationBell from "../DashboardNotificationBell";
 
 type MainTab = "kanban" | "todo" | "calendar" | "analytics" | "archives" | "workload";
@@ -334,72 +333,6 @@ export default function DashboardHomePage() {
   }, [activeTasks, searchQuery]);
 
   const analyticsTasks = useMemo(() => [...activeTasks, ...archivedTasks], [activeTasks, archivedTasks]);
-
-  const taskTitleToId = useMemo(
-    () => Object.fromEntries(activeTasks.map((t) => [t.projectName, t.id])),
-    [activeTasks],
-  );
-
-  const aiContext = useMemo(() => {
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfWeek = new Date(startOfToday);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-
-    const normalizeDate = (value: string | undefined) => {
-      if (!value) return null;
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return null;
-      return date;
-    };
-
-    const isThisWeek = (value: string | undefined) => {
-      const date = normalizeDate(value);
-      if (!date) return false;
-      return date >= startOfToday && date <= endOfWeek;
-    };
-
-    const overdueTasks = activeTasks.filter((task) => {
-      const deadline = normalizeDate(task.deadline);
-      return deadline != null && deadline < startOfToday;
-    });
-
-    const thisWeekTasks = activeTasks.filter((task) => isThisWeek(task.deadline));
-    const undatedTasks = activeTasks.filter((task) => !task.deadline);
-
-    const taskBlocks = activeTasks
-      .slice()
-      .sort((a, b) => {
-        const aDate = normalizeDate(a.deadline)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        const bDate = normalizeDate(b.deadline)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        return aDate - bDate;
-      })
-      .slice(0, 50)
-      .map((task, index) => {
-        const adminsLabel = task.admins.length > 0 ? task.admins.join(", ") : "Non assigne";
-        const deadlineLabel = task.deadline || "Sans echeance";
-        return [
-          `--- Tache #${index + 1} ---`,
-          `id: ${task.id}`,
-          `Titre exact dans l'app (a citer tel quel): «${task.projectName}»`,
-          `Colonne Kanban: ${task.column} | Priorite: ${task.priority} | Echeance: ${deadlineLabel}`,
-          `Societe: ${task.company} | Responsable(s): ${adminsLabel}`,
-        ].join("\n");
-      })
-      .join("\n\n");
-
-    return [
-      "Contexte de pilotage hebdomadaire:",
-      `- Date du jour: ${startOfToday.toISOString().slice(0, 10)}`,
-      `- Taches actives: ${activeTasks.length}`,
-      `- Taches en retard: ${overdueTasks.length}`,
-      `- Taches avec deadline cette semaine: ${thisWeekTasks.length}`,
-      `- Taches sans deadline: ${undatedTasks.length}`,
-      "",
-      "DONNEES — taches reelles de l'application (tu ne peux citer que ces titres, mot pour mot entre « ») :",
-      taskBlocks || "(Aucune tache active — ne propose aucun plan generique, dis simplement qu'il n'y a pas de tache.)",
-    ].join("\n");
-  }, [activeTasks]);
 
   const selectedTask = useMemo(
     () =>
@@ -721,15 +654,6 @@ export default function DashboardHomePage() {
           actions={commandActions}
         />
       </AppShell>
-
-      <AiChatPopup
-        context={aiContext}
-        taskTitleToId={taskTitleToId}
-        onOpenTask={(taskId) => {
-          lastFocusedTaskIdRef.current = null;
-          setSelectedTaskId(taskId);
-        }}
-      />
     </AdminAvatarContext.Provider>
   );
 }

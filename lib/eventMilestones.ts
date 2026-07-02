@@ -1,6 +1,6 @@
 import type { Task } from "./types";
 
-export const EVENT_MILESTONE_OFFSETS = [60, 30, 14, 7, 1, 0, -7] as const;
+const EVENT_MILESTONE_OFFSETS = [60, 30, 14, 7, 1, 0, -7] as const;
 
 export type MilestoneOffset = (typeof EVENT_MILESTONE_OFFSETS)[number];
 

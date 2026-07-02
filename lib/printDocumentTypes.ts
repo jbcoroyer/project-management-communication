@@ -2,7 +2,7 @@ import type { InventoryItem } from "./inventoryTypes";
 import { decodePrintItemType } from "./printSpecies";
 
 /** Types de documents Print imposés par défaut ; les types créés en base complètent la liste. */
-export const DEFAULT_PRINT_DOCUMENT_TYPES = ["Fiches Commerciales", "Plaquettes", "IPP"] as const;
+const DEFAULT_PRINT_DOCUMENT_TYPES = ["Fiches Commerciales", "Plaquettes", "IPP"] as const;
 
 export function printDocumentTypeOptions(items: InventoryItem[]): string[] {
   const seen = new Set<string>();

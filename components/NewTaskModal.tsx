@@ -24,17 +24,11 @@ import {
 } from "lucide-react";
 import { priorities, type AdminId, type NewTaskFormState } from "../lib/types";
 import type { ReferenceRecord } from "../lib/referenceData";
+import { HALF_HOUR_OPTIONS } from "../lib/projectedWorkUtils";
 import { taskFormSchema, type TaskFormValues, type TaskFormValuesWithSubtasks, type PendingSubtask } from "../lib/validation/taskSchema";
 import { normalizeProjectName } from "../lib/normalize";
 import { resolveDefaultSubtaskAssignee } from "../lib/taskConcernsUser";
 import type { CurrentUser } from "../lib/useCurrentUser";
-
-const HALF_HOUR_OPTIONS = Array.from({ length: 25 }, (_, i) => {
-  const totalMinutes = 8 * 60 + i * 30;
-  const h = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
-  const m = String(totalMinutes % 60).padStart(2, "0");
-  return `${h}:${m}`;
-});
 
 function RequiredStar() {
   return <span className="ml-1 text-red-500">*</span>;

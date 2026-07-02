@@ -309,3 +309,84 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── V2 — atelier numérique (ardoise & indigo) ── */
+.v2-theme,
+.v2-vars {
+  --background: #edf1f8;
+  --foreground: #0f1a2e;
+  --surface: #ffffff;
+  --surface-soft: #e6ecf6;
+  --line: #d2dae8;
+  --line-strong: #b4c0d4;
+  --accent: #4f6df5;
+  --accent-strong: #3b57db;
+  --accent-soft: rgba(79, 109, 245, 0.12);
+  --accent-contrast: #ffffff;
+  --ink: #0f1a2e;
+  --ink-muted: rgba(15, 26, 46, 0.62);
+  --success: #2f9d6a;
+  --warning: #d4922a;
+  --danger: #dc4f5e;
+  --ring: rgba(79, 109, 245, 0.28);
+  --shadow-1: 0 1px 2px rgba(15, 26, 46, 0.04), 0 8px 22px rgba(79, 109, 245, 0.07);
+  --shadow-2: 0 2px 4px rgba(15, 26, 46, 0.05), 0 18px 42px rgba(79, 109, 245, 0.1);
+}
+
+.v2-theme {
+  min-height: 100vh;
+  color: var(--foreground);
+  background:
+    radial-gradient(ellipse 72% 52% at 88% -8%, rgba(79, 109, 245, 0.1), transparent 52%),
+    radial-gradient(ellipse 48% 38% at 4% 102%, rgba(15, 26, 46, 0.04), transparent 46%),
+    var(--background);
+}
+
+@media (prefers-color-scheme: dark) {
+  .v2-theme,
+  .v2-vars {
+    --background: #0a101c;
+    --foreground: #e8edf7;
+    --surface: #121a2b;
+    --surface-soft: #1a2438;
+    --line: #27324a;
+    --line-strong: #354261;
+    --accent: #7b93ff;
+    --accent-strong: #95a8ff;
+    --accent-soft: rgba(123, 147, 255, 0.16);
+    --accent-contrast: #0a101c;
+    --ink: #e8edf7;
+    --ink-muted: rgba(232, 237, 247, 0.62);
+    --success: #4ecf8a;
+    --warning: #f0b04a;
+    --danger: #f07080;
+    --ring: rgba(123, 147, 255, 0.35);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 22px rgba(79, 109, 245, 0.12);
+    --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.25), 0 18px 42px rgba(79, 109, 245, 0.16);
+  }
+
+  .v2-theme {
+    background:
+      radial-gradient(ellipse 72% 52% at 88% -8%, rgba(123, 147, 255, 0.14), transparent 52%),
+      radial-gradient(ellipse 48% 38% at 4% 102%, rgba(0, 0, 0, 0.35), transparent 46%),
+      var(--background);
+  }
+}
+
+html[data-app-version="v2"] body {
+  background:
+    radial-gradient(ellipse 72% 52% at 88% -8%, rgba(79, 109, 245, 0.1), transparent 52%),
+    radial-gradient(ellipse 48% 38% at 4% 102%, rgba(15, 26, 46, 0.04), transparent 46%),
+    #edf1f8;
+  color: #0f1a2e;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-app-version="v2"] body {
+    background:
+      radial-gradient(ellipse 72% 52% at 88% -8%, rgba(123, 147, 255, 0.14), transparent 52%),
+      radial-gradient(ellipse 48% 38% at 4% 102%, rgba(0, 0, 0, 0.35), transparent 46%),
+      #0a101c;
+    color: #e8edf7;
+  }
+}

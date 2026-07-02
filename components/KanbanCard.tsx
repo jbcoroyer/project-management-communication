@@ -414,15 +414,3 @@ export const KanbanCardUI = memo(KanbanCardUIComponent, (prev, next) => {
   return true;
 });
 KanbanCardUI.displayName = "KanbanCardUI";
-
-export default function KanbanCard(props: {
-  task: Task;
-  currentNow: number;
-  onArchive: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  variant?: "full" | "compact" | "dense";
-  isMyTask?: boolean;
-}) {
-  return <KanbanCardUI {...props} />;
-}
