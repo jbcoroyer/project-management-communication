@@ -15,10 +15,6 @@ export type PersonLoad = {
   byDate: Map<string, DayLoad>;
 };
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 /** Agrège la charge (projectedWork, sinon estimation répartie sur la deadline) par personne et par jour. */
 export function buildWorkload(tasks: Task[]): PersonLoad[] {
   const map = new Map<string, PersonLoad>();

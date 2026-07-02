@@ -19,7 +19,6 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import AppShell from "../AppShell";
 import InventoryGoodiesModal from "../InventoryGoodiesModal";
 import InventoryPlvModal from "../InventoryPlvModal";
 import InventoryPrintModal from "../InventoryPrintModal";

@@ -37,13 +37,6 @@ const RISK_STYLE: Record<string, string> = {
   over: "bg-rose-100 text-rose-800",
 };
 
-const RISK_LABEL: Record<string, string> = {
-  under: "Sous-charge",
-  ok: "Optimal",
-  high: "Tension",
-  over: "Surcharge",
-};
-
 const WEEK_COUNT = 8;
 
 function weekLabel(week: WeekKey): string {

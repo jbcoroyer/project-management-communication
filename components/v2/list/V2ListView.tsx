@@ -37,15 +37,6 @@ function formatElapsed(ms: number): string {
   return `${m}m`;
 }
 
-function formatDeadline(value: string): string {
-  if (!value) return "—";
-  try {
-    return format(new Date(value + "T12:00:00"), "d MMM yyyy", { locale: fr });
-  } catch {
-    return value;
-  }
-}
-
 function projectedWorkSummary(task: Task): string {
   const slots = task.projectedWork ?? [];
   if (slots.length === 0) return "—";

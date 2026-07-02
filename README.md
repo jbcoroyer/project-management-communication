@@ -248,7 +248,6 @@ Les migrations SQL se trouvent dans `supabase/migrations/` :
 | `20260601120000_event_organization.sql` | Organisation événements |
 | `20260630120000_outlook_calendar_sync.sql` | Connexions et sync Outlook |
 | `20260701120000_v2_automations_intake.sql` | Automatisations et intake V2 |
-| `20260701150000_v2_proofing.sql` | Proofing créatif V2 |
 | `20260702100000_intake_extended_fields.sql` | Champs étendus intake |
 
 Appliquez-les via le SQL Editor Supabase, la CLI `supabase db push`, ou les scripts `npm run db:*` (nécessitent `SUPABASE_DB_PASSWORD` dans `.env.local`).

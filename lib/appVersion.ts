@@ -2,25 +2,8 @@ export type AppVersion = "v1" | "v2";
 
 export const APP_VERSION_STORAGE_KEY = "idena-app-version";
 
-const APP_ROUTE_PREFIXES = [
-  "/dashboard",
-  "/events",
-  "/social",
-  "/stock",
-  "/ideas",
-  "/settings",
-] as const;
-
 export function detectVersionFromPath(pathname: string): AppVersion {
   return pathname === "/v2" || pathname.startsWith("/v2/") ? "v2" : "v1";
-}
-
-export function isAppRoute(pathname: string): boolean {
-  if (pathname === "/") return true;
-  if (pathname === "/v2" || pathname.startsWith("/v2/")) return true;
-  return APP_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
 }
 
 export function toV2Path(pathname: string): string {
@@ -50,9 +33,4 @@ export function toV1Path(pathname: string): string {
   const stripped = pathname.slice(3);
   if (!stripped || stripped === "/") return "/dashboard/kanban";
   return stripped;
-}
-
-export function getNavHref(href: string, version: AppVersion): string {
-  if (version === "v1") return href;
-  return toV2Path(href);
 }
