@@ -8,6 +8,8 @@
  * jour / supprimer ce qu'il faut, de façon idempotente.
  */
 import { createSupabaseAdmin } from "./supabaseAdmin";
+import { taskRowConcernsUser } from "../taskConcernsUser";
+import type { ServerUserIdentity } from "./userIdentity";
 import {
   MS_TIMEZONE,
   createEvent,
@@ -234,4 +236,56 @@ export async function syncTaskToOutlook(userId: string, task: TaskForSync): Prom
   }
 
   return { connected: true, created, updated, deleted };
+}
+
+export type SyncAllResult = {
+  connected: boolean;
+  synced: number;
+  errors: number;
+};
+
+function rowToTaskForSync(row: Record<string, unknown>): TaskForSync {
+  return {
+    id: row.id as string,
+    projectName: (row.project_name as string) ?? "Tâche",
+    description: (row.description as string | null) ?? null,
+    company: (row.company as string | null) ?? null,
+    domain: (row.domain as string | null) ?? null,
+    projectedWork: ((row.projected_work as ProjectedWorkItem[] | null) ?? []).filter(
+      (item) => item && typeof item.date === "string" && item.date.length > 0,
+    ),
+  };
+}
+
+/**
+ * Synchronise toutes les tâches planifiées dont l'utilisateur est responsable.
+ * Utile après la première connexion Outlook ou pour rattraper un retard de synchro.
+ */
+export async function syncAllTasksForUser(
+  userId: string,
+  identity: ServerUserIdentity,
+  rows: Record<string, unknown>[],
+): Promise<SyncAllResult> {
+  const accessToken = await getValidAccessToken(userId);
+  if (!accessToken) return { connected: false, synced: 0, errors: 0 };
+
+  let synced = 0;
+  let errors = 0;
+
+  for (const row of rows) {
+    if (row.is_archived) continue;
+    if (!taskRowConcernsUser(row, identity)) continue;
+    const projected = (row.projected_work as ProjectedWorkItem[] | null) ?? [];
+    if (!projected.some((item) => item?.date)) continue;
+
+    try {
+      await syncTaskToOutlook(userId, rowToTaskForSync(row));
+      synced += 1;
+    } catch (e) {
+      console.error("Outlook sync-all task error", row.id, e);
+      errors += 1;
+    }
+  }
+
+  return { connected: true, synced, errors };
 }

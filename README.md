@@ -238,6 +238,24 @@ Ouvrez [http://localhost:3000](http://localhost:3000).
 
 `NEXT_PUBLIC_APP_URL` est dérivé de `VERCEL_URL` au build si non défini.
 
+#### Outlook 365 sur Vercel
+
+Les variables `MS_*` de `.env.local` ne sont **pas** déployées automatiquement. Copiez-les dans **Vercel → Projet → Settings → Environment Variables** (cible **Production**, et Preview si besoin) :
+
+| Variable | Obligatoire |
+|---|---|
+| `MS_CLIENT_ID` | Oui |
+| `MS_CLIENT_SECRET` | Oui |
+| `MS_TENANT_ID` | Recommandé (`common` par défaut) |
+| `MS_TIMEZONE` | Optionnel (`Romance Standard Time`) |
+| `MS_REDIRECT_URI` | Optionnel — sinon dérivé de l’URL publique |
+
+Dans **Azure Portal → App registrations → votre app → Authentication**, ajoutez l’URI de redirection :
+
+`https://<votre-domaine-vercel>/api/outlook/callback`
+
+Puis **redéployez** le projet (un simple ajout de variables ne recharge pas les fonctions déjà déployées).
+
 ### Supabase — migrations
 
 Les migrations SQL se trouvent dans `supabase/migrations/` :

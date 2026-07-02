@@ -15,20 +15,7 @@ import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
 
 const AUTO_ARCHIVE_DELAY_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Demande la synchro de la tâche vers l'agenda Outlook (si l'utilisateur l'a
- * connecté). Best-effort : n'interrompt jamais le flux de création/édition.
- */
-function requestOutlookSync(taskId: string, remove = false) {
-  if (typeof window === "undefined" || !taskId) return;
-  void fetch("/api/outlook/sync", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ taskId, remove }),
-  }).catch(() => {
-    /* synchro best-effort : on ignore les erreurs réseau */
-  });
-}
+import { requestOutlookSync } from "./outlookClientSync";
 
 function normalizeProjectedWorkForSave(
   items: Array<{ date: string; hours: number; startTime?: string; endTime?: string }>,

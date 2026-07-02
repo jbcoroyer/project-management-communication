@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CalendarCheck2, CalendarX2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { requestOutlookSyncAll } from "../lib/outlookClientSync";
 import { toastError, toastSuccess } from "../lib/toast";
 
 type StatusResponse = {
@@ -32,14 +33,48 @@ export default function OutlookConnectionCard() {
     void loadStatus();
   }, [loadStatus]);
 
+  const handleSyncAll = useCallback(async () => {
+    setBusy(true);
+    try {
+      const result = await requestOutlookSyncAll();
+      if (!result.ok) {
+        toastError(result.error ?? "Impossible de synchroniser l'agenda Outlook.");
+        return;
+      }
+      if (!result.connected) {
+        toastError("Outlook n'est pas connecté.");
+        return;
+      }
+      if ((result.synced ?? 0) === 0 && (result.errors ?? 0) === 0) {
+        toastSuccess("Aucune tâche planifiée à synchroniser pour le moment.");
+        return;
+      }
+      if ((result.errors ?? 0) > 0) {
+        toastError(
+          `${result.synced ?? 0} tâche(s) synchronisée(s), ${result.errors} erreur(s). Consultez les logs serveur.`,
+        );
+        return;
+      }
+      toastSuccess(`${result.synced ?? 0} tâche(s) synchronisée(s) vers Outlook.`);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   // Affiche un toast au retour de la redirection OAuth (?outlook=...).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const outlook = params.get("outlook");
     if (!outlook) return;
-    if (outlook === "connected") toastSuccess("Agenda Outlook connecté.");
-    else if (outlook === "not_configured")
+    if (outlook === "connected") {
+      toastSuccess("Agenda Outlook connecté.");
+      void requestOutlookSyncAll().then((result) => {
+        if (result.ok && (result.synced ?? 0) > 0) {
+          toastSuccess(`${result.synced} tâche(s) planifiée(s) envoyée(s) vers Outlook.`);
+        }
+      });
+    } else if (outlook === "not_configured")
       toastError("Microsoft 365 n'est pas configuré côté serveur (variables MS_*).");
     else if (outlook === "state_mismatch") toastError("Échec de sécurité OAuth, réessayez.");
     else if (outlook === "error") toastError("La connexion à Outlook a échoué.");
@@ -72,13 +107,31 @@ export default function OutlookConnectionCard() {
   }
 
   if (status && !status.configured) {
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        L&apos;intégration Microsoft 365 n&apos;est pas encore configurée côté serveur. Renseignez
-        <code className="mx-1 rounded bg-amber-100 px-1">MS_CLIENT_ID</code>,
-        <code className="mx-1 rounded bg-amber-100 px-1">MS_CLIENT_SECRET</code> et
-        <code className="mx-1 rounded bg-amber-100 px-1">MS_TENANT_ID</code> dans
-        <code className="mx-1 rounded bg-amber-100 px-1">.env.local</code>.
+        L&apos;intégration Microsoft 365 n&apos;est pas encore configurée côté serveur. Renseignez{" "}
+        <code className="mx-1 rounded bg-amber-100 px-1">MS_CLIENT_ID</code>,{" "}
+        <code className="mx-1 rounded bg-amber-100 px-1">MS_CLIENT_SECRET</code> et{" "}
+        <code className="mx-1 rounded bg-amber-100 px-1">MS_TENANT_ID</code>{" "}
+        {isLocal ? (
+          <>
+            dans <code className="mx-1 rounded bg-amber-100 px-1">.env.local</code>.
+          </>
+        ) : (
+          <>
+            dans les variables d&apos;environnement Vercel (Production), puis redéployez. Ajoutez
+            aussi l&apos;URI de redirection{" "}
+            <code className="mx-1 rounded bg-amber-100 px-1 break-all">
+              {typeof window !== "undefined"
+                ? `${window.location.origin}/api/outlook/callback`
+                : "/api/outlook/callback"}
+            </code>{" "}
+            dans Azure (App registration → Authentication).
+          </>
+        )}
       </div>
     );
   }
@@ -100,10 +153,18 @@ export default function OutlookConnectionCard() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => void handleSyncAll()}
+            disabled={busy}
+            className="ui-transition flex items-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Synchroniser
+          </button>
+          <button
+            type="button"
             onClick={() => void loadStatus()}
             className="ui-transition flex items-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)]"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
             Actualiser
           </button>
           <button

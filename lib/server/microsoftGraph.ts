@@ -30,7 +30,7 @@ function getMsClientConfig(): { clientId: string; clientSecret: string } {
   const clientSecret = process.env.MS_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) {
     throw new Error(
-      "Configuration Microsoft manquante : définissez MS_CLIENT_ID et MS_CLIENT_SECRET dans .env.local.",
+      "Configuration Microsoft manquante : définissez MS_CLIENT_ID et MS_CLIENT_SECRET (localement dans .env.local, sur Vercel dans Paramètres → Variables d'environnement).",
     );
   }
   return { clientId, clientSecret };

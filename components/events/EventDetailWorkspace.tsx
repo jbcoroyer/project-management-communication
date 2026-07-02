@@ -844,6 +844,8 @@ export default function EventDetailWorkspace({
         onSave={async (items) => {
           if (!planningTask) return;
           await updateTaskDb(planningTask.id, { projected_work: items });
+          const { requestOutlookSync } = await import("../../lib/outlookClientSync");
+          void requestOutlookSync(planningTask.id);
         }}
       />
     </>
