@@ -144,7 +144,7 @@ export default function V2AppShell({
     [
       "ui-transition flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium",
       active
-        ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
+        ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
         : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
     ].join(" ");
 
@@ -152,7 +152,7 @@ export default function V2AppShell({
     <>
       <div className="flex items-start justify-between gap-2">
         <ServiceCommunicationIdenaHeading />
-        <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--accent-contrast)]">
+        <span className="rounded-full border border-[var(--line-strong)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/70">
           V2
         </span>
       </div>
@@ -201,10 +201,10 @@ export default function V2AppShell({
   );
 
   return (
-    <div className="min-h-screen text-[var(--foreground)]">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto w-full max-w-[1680px] px-4 py-5 lg:px-8">
         <aside
-          className="fixed bottom-5 left-4 top-5 hidden w-[15.5rem] flex-col border-r border-[var(--line)] bg-transparent pr-4 lg:flex"
+          className="fixed bottom-5 left-4 top-5 hidden w-[15.5rem] flex-col border-r border-[var(--line)] bg-[var(--background)] pr-4 lg:flex"
           style={{ zIndex: "var(--z-sidebar)" }}
         >
           {sidebarContent()}
@@ -229,7 +229,7 @@ export default function V2AppShell({
               <div className="mb-4 flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <ServiceCommunicationIdenaHeading />
-                  <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--accent-contrast)]">
+                  <span className="rounded-full border border-[var(--line-strong)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/70">
                     V2
                   </span>
                 </div>
