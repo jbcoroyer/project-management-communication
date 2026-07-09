@@ -31,3 +31,11 @@ export function getDefaultSurveyDefinition(id: string) {
   if (id === "satisfaction-2026") return satisfaction2026;
   return undefined;
 }
+
+/**
+ * Chemin public du formulaire. Le questionnaire historique conserve /questionnaire
+ * (liens déjà partagés) ; les nouveaux questionnaires vivent sous /questionnaire/f/[id].
+ */
+export function buildSurveyPublicPath(id: string): string {
+  return id === "satisfaction-2026" ? "/questionnaire" : `/questionnaire/f/${id}`;
+}

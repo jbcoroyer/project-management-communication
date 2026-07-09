@@ -100,6 +100,38 @@ export function createBlankQuestion(type: QuestionType, section: number): Questi
   return base;
 }
 
+/** Définition de départ pour un nouveau questionnaire créé depuis le dashboard. */
+export function createStarterDefinition(id: string, title: string): SurveyDefinition {
+  const firstQuestionId = generateQuestionId();
+  return {
+    version: id,
+    title,
+    intro: {
+      title,
+      subtitle: "Merci de prendre quelques minutes pour répondre à ce questionnaire.",
+      estimatedMinutes: 2,
+    },
+    questions: [
+      {
+        id: firstQuestionId,
+        type: "single",
+        section: 1,
+        label: "Votre première question",
+        required: false,
+        options: ["Option 1", "Option 2"],
+      },
+    ],
+    steps: [
+      {
+        id: "section-1",
+        title: "Section 1",
+        subtitle: "",
+        questionIds: [firstQuestionId],
+      },
+    ],
+  };
+}
+
 /** Nettoie une question quand son type change (retire les champs inutiles). */
 export function normalizeQuestionForType(question: Question, type: QuestionType): Question {
   const next: Question = { ...question, type };

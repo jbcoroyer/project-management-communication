@@ -19,6 +19,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/ideas") ||
     pathname === "/questionnaire" ||
+    pathname.startsWith("/questionnaire/f/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".")

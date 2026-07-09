@@ -42,7 +42,6 @@ import {
   sectionsToDefinition,
   type EditorSection,
 } from "../../../lib/survey/surveyDefinitionUtils";
-import { getSurveyRegistryEntry } from "../../../lib/survey/surveyRegistry";
 import type { Question, QuestionType, SurveyDefinition } from "../../../lib/survey/surveyTypes";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { useConfirm } from "../../ui/ConfirmDialog";
@@ -67,6 +66,7 @@ const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
 
 type SurveyEditorWorkspaceProps = {
   surveyId: string;
+  title: string;
   initialDefinition: SurveyDefinition;
 };
 
@@ -145,9 +145,9 @@ function SectionDropZone({ id, children }: { id: string; children: ReactNode }) 
 
 export default function SurveyEditorWorkspace({
   surveyId,
+  title,
   initialDefinition,
 }: SurveyEditorWorkspaceProps) {
-  const entry = getSurveyRegistryEntry(surveyId);
   const confirm = useConfirm();
   const [intro, setIntro] = useState(() => ({ ...initialDefinition.intro }));
   const [sections, setSections] = useState<EditorSection[]>(() =>
@@ -444,10 +444,6 @@ export default function SurveyEditorWorkspace({
     toastSuccess("Questionnaire enregistré.");
   };
 
-  if (!entry) {
-    return <p className="text-sm text-[color:var(--foreground)]/55">Questionnaire introuvable.</p>;
-  }
-
   const totalQuestions = sections.reduce((sum, s) => sum + s.questions.length, 0);
 
   return (
@@ -463,7 +459,7 @@ export default function SurveyEditorWorkspace({
           </Link>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Éditeur de formulaire</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-            {entry.title} · {sections.length} écran{sections.length !== 1 ? "s" : ""} ·{" "}
+            {title} · {sections.length} écran{sections.length !== 1 ? "s" : ""} ·{" "}
             {totalQuestions} question{totalQuestions !== 1 ? "s" : ""}
           </p>
         </div>

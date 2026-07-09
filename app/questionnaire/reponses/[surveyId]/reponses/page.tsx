@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import SurveyAdminGuard from "../../../../../components/survey/responses/SurveyAdminGuard";
 import SurveyResponsesWorkspace from "../../../../../components/survey/responses/SurveyResponsesWorkspace";
-import { getSurveyRegistryEntry } from "../../../../../lib/survey/surveyRegistry";
+import { getSurveyMeta } from "../../../../../app/actions/survey";
 
 type PageProps = {
   params: Promise<{ surveyId: string }>;
@@ -9,11 +9,12 @@ type PageProps = {
 
 export default async function SurveyResponsesDetailPage({ params }: PageProps) {
   const { surveyId } = await params;
-  if (!getSurveyRegistryEntry(surveyId)) notFound();
+  const meta = await getSurveyMeta(surveyId);
+  if (!meta) notFound();
 
   return (
     <SurveyAdminGuard>
-      <SurveyResponsesWorkspace surveyId={surveyId} />
+      <SurveyResponsesWorkspace surveyId={surveyId} title={meta.title} publicPath={meta.publicPath} />
     </SurveyAdminGuard>
   );
 }

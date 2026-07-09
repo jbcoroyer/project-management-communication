@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
 import SurveyAdminGuard from "../../../../../components/survey/responses/SurveyAdminGuard";
 import SurveyEditorWorkspace from "../../../../../components/survey/responses/SurveyEditorWorkspace";
-import { fetchSurveyDefinition } from "../../../../../app/actions/survey";
-import {
-  getDefaultSurveyDefinition,
-  getSurveyRegistryEntry,
-} from "../../../../../lib/survey/surveyRegistry";
+import { fetchSurveyDefinition, getSurveyMeta } from "../../../../../app/actions/survey";
+import { getDefaultSurveyDefinition } from "../../../../../lib/survey/surveyRegistry";
 
 type PageProps = {
   params: Promise<{ surveyId: string }>;
@@ -13,8 +10,8 @@ type PageProps = {
 
 export default async function SurveyEditorPage({ params }: PageProps) {
   const { surveyId } = await params;
-  const entry = getSurveyRegistryEntry(surveyId);
-  if (!entry) notFound();
+  const meta = await getSurveyMeta(surveyId);
+  if (!meta) notFound();
 
   const result = await fetchSurveyDefinition(surveyId);
   const initialDefinition =
@@ -23,7 +20,11 @@ export default async function SurveyEditorPage({ params }: PageProps) {
 
   return (
     <SurveyAdminGuard>
-      <SurveyEditorWorkspace surveyId={surveyId} initialDefinition={initialDefinition} />
+      <SurveyEditorWorkspace
+        surveyId={surveyId}
+        title={meta.title}
+        initialDefinition={initialDefinition}
+      />
     </SurveyAdminGuard>
   );
 }

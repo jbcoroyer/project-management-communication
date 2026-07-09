@@ -12,9 +12,11 @@ import { toastError } from "../../lib/toast";
 import { useReferenceData } from "../../lib/useReferenceData";
 import QuestionField from "./QuestionField";
 
-const SURVEY_ID = "satisfaction-2026";
-
 type Phase = "intro" | "form" | "done";
+
+type SurveyFormProps = {
+  surveyId?: string;
+};
 
 function isAnswered(question: Question, value: SurveyAnswers[string]): boolean {
   if (value == null) return false;
@@ -24,7 +26,7 @@ function isAnswered(question: Question, value: SurveyAnswers[string]): boolean {
   return false;
 }
 
-export default function SurveyForm() {
+export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFormProps) {
   const { companies } = useReferenceData();
   const [definition, setDefinition] = useState<SurveyDefinition>(satisfaction2026);
   const [phase, setPhase] = useState<Phase>("intro");
@@ -33,10 +35,10 @@ export default function SurveyForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    void fetchSurveyDefinition(SURVEY_ID).then((result) => {
+    void fetchSurveyDefinition(surveyId).then((result) => {
       if (result.ok) setDefinition(result.definition);
     });
-  }, []);
+  }, [surveyId]);
 
   const entityOptions = useMemo(() => {
     const names = companies.map((c) => c.name).filter(Boolean);

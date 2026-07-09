@@ -15,7 +15,7 @@ import {
 } from "../../../lib/survey/surveyAnalytics";
 import { surveyResponsesToCsv } from "../../../lib/survey/surveyExport";
 import { mapSurveyResponseRow } from "../../../lib/survey/surveyMappers";
-import { getDefaultSurveyDefinition, getSurveyRegistryEntry } from "../../../lib/survey/surveyRegistry";
+import { getDefaultSurveyDefinition } from "../../../lib/survey/surveyRegistry";
 import type { SurveyDefinition, SurveyResponse } from "../../../lib/survey/surveyTypes";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../../lib/toast";
@@ -29,6 +29,8 @@ type ResponsesTab = "summary" | "individual";
 
 type SurveyResponsesWorkspaceProps = {
   surveyId: string;
+  title: string;
+  publicPath: string;
 };
 
 function KpiCard({
@@ -57,8 +59,11 @@ function KpiCard({
   );
 }
 
-export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWorkspaceProps) {
-  const entry = getSurveyRegistryEntry(surveyId);
+export default function SurveyResponsesWorkspace({
+  surveyId,
+  title,
+  publicPath,
+}: SurveyResponsesWorkspaceProps) {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const confirm = useConfirm();
   const [definition, setDefinition] = useState<SurveyDefinition | null>(null);
@@ -89,17 +94,13 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
   );
 
   const load = useCallback(async () => {
-    if (!entry) {
-      setLoading(false);
-      return;
-    }
     try {
       const [defResult, responsesResult] = await Promise.all([
         fetchSurveyDefinition(surveyId),
         supabase
           .from("survey_responses")
           .select("*")
-          .eq("survey_version", entry.version)
+          .eq("survey_version", surveyId)
           .order("created_at", { ascending: false }),
       ]);
 
@@ -111,7 +112,7 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
     } finally {
       setLoading(false);
     }
-  }, [entry, supabase, surveyId]);
+  }, [supabase, surveyId]);
 
   useEffect(() => {
     void load().catch(() => {});
@@ -192,10 +193,6 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
   const selectClass =
     "ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]";
 
-  if (!entry) {
-    return <p className="text-sm text-[color:var(--foreground)]/55">Questionnaire introuvable.</p>;
-  }
-
   return (
     <div className="space-y-5">
       <header className="ui-surface flex flex-wrap items-center justify-between gap-4 p-5">
@@ -209,9 +206,7 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
           </Link>
           <p className="ui-kicker mb-1">Service Communication</p>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Réponses</h1>
-          <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-            {entry.title} · version {entry.version}
-          </p>
+          <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{title}</p>
         </div>
         <button type="button" onClick={handleExport} className="ui-btn ui-btn-secondary gap-2">
           <Download className="h-4 w-4" />
@@ -296,12 +291,12 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
           <p className="text-sm text-[color:var(--foreground)]/55">
             Aucune réponse pour le moment. Partagez le lien{" "}
             <a
-              href={entry.publicPath}
+              href={publicPath}
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
             >
-              {entry.publicPath}
+              {publicPath}
             </a>
             .
           </p>

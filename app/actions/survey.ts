@@ -2,10 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "../../lib/server/supabaseServer";
-import { isQuestionVisible } from "../../lib/survey/surveyDefinitionUtils";
 import {
+  createStarterDefinition,
+  isQuestionVisible,
+} from "../../lib/survey/surveyDefinitionUtils";
+import {
+  buildSurveyPublicPath,
   getDefaultSurveyDefinition,
   getSurveyRegistryEntry,
+  surveyRegistry,
 } from "../../lib/survey/surveyRegistry";
 import type {
   SubmitSurveyInput,
@@ -19,6 +24,19 @@ export type SurveyDefinitionResult =
   | { ok: false; error: string };
 export type SaveSurveyDefinitionResult = { ok: true } | { ok: false; error: string };
 export type DeleteSurveyResponseResult = { ok: true } | { ok: false; error: string };
+
+export type SurveyMeta = {
+  id: string;
+  title: string;
+  description: string;
+  version: string;
+  status: "active" | "draft";
+  createdAt: string;
+  publicPath: string;
+};
+export type SurveyListItem = SurveyMeta & { responseCount: number };
+export type CreateSurveyResult = { ok: true; surveyId: string } | { ok: false; error: string };
+export type RenameSurveyResult = { ok: true } | { ok: false; error: string };
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabase>>;
 
@@ -63,6 +81,168 @@ function parseSurveyDefinition(raw: unknown): SurveyDefinition | null {
   const d = raw as SurveyDefinition;
   if (!d.version || !Array.isArray(d.questions) || !Array.isArray(d.steps)) return null;
   return d;
+}
+
+function slugifySurveyTitle(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return slug || "questionnaire";
+}
+
+type SurveyDefinitionRow = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  version: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+function rowToSurveyMeta(row: SurveyDefinitionRow): SurveyMeta {
+  return {
+    id: row.id,
+    title: row.title ?? row.id,
+    description: row.description ?? "",
+    version: row.version ?? row.id,
+    status: row.status === "draft" ? "draft" : "active",
+    createdAt: row.created_at ?? "",
+    publicPath: buildSurveyPublicPath(row.id),
+  };
+}
+
+/** Métadonnées d'un questionnaire (base, avec repli sur le registre groupé). */
+export async function getSurveyMeta(surveyId: string): Promise<SurveyMeta | null> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("survey_definitions")
+    .select("id, title, description, version, status, created_at")
+    .eq("id", surveyId)
+    .maybeSingle();
+
+  if (data) return rowToSurveyMeta(data as SurveyDefinitionRow);
+
+  const fallback = getSurveyRegistryEntry(surveyId);
+  if (fallback) {
+    return {
+      id: fallback.id,
+      title: fallback.title,
+      description: fallback.description,
+      version: fallback.version,
+      status: fallback.status,
+      createdAt: fallback.createdAt,
+      publicPath: buildSurveyPublicPath(fallback.id),
+    };
+  }
+  return null;
+}
+
+/** Liste des questionnaires du catalogue avec leur nombre de réponses. */
+export async function listSurveys(): Promise<SurveyListItem[]> {
+  const supabase = await createServerSupabase();
+  const { data: defs } = await supabase
+    .from("survey_definitions")
+    .select("id, title, description, version, status, created_at")
+    .order("created_at", { ascending: true });
+
+  const { data: resp } = await supabase.from("survey_responses").select("survey_version");
+  const counts: Record<string, number> = {};
+  for (const r of resp ?? []) {
+    const v = String((r as { survey_version?: string }).survey_version ?? "");
+    if (v) counts[v] = (counts[v] ?? 0) + 1;
+  }
+
+  const rows = (defs ?? []) as SurveyDefinitionRow[];
+  const source =
+    rows.length > 0
+      ? rows.map(rowToSurveyMeta)
+      : surveyRegistry.map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          description: entry.description,
+          version: entry.version,
+          status: entry.status,
+          createdAt: entry.createdAt,
+          publicPath: buildSurveyPublicPath(entry.id),
+        }));
+
+  return source.map((meta) => ({ ...meta, responseCount: counts[meta.version] ?? 0 }));
+}
+
+/** Crée un nouveau questionnaire (réservé à l'administrateur). */
+export async function createSurvey(title: string): Promise<CreateSurveyResult> {
+  const clean = title.trim();
+  if (!clean) return { ok: false, error: "Le titre du questionnaire est requis." };
+
+  const supabase = await createServerSupabase();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return admin;
+
+  const id = `${slugifySurveyTitle(clean)}-${Math.random().toString(36).slice(2, 6)}`;
+  const definition = createStarterDefinition(id, clean);
+
+  const { error } = await supabase.from("survey_definitions").insert({
+    id,
+    version: id,
+    title: clean,
+    description: "",
+    status: "active",
+    definition,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message ?? "Création du questionnaire impossible." };
+  }
+
+  revalidatePath("/questionnaire/reponses");
+  return { ok: true, surveyId: id };
+}
+
+/** Renomme un questionnaire (réservé à l'administrateur). */
+export async function renameSurvey(
+  surveyId: string,
+  title: string,
+): Promise<RenameSurveyResult> {
+  const clean = title.trim();
+  if (!clean) return { ok: false, error: "Le titre du questionnaire est requis." };
+
+  const supabase = await createServerSupabase();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return admin;
+
+  const { data } = await supabase
+    .from("survey_definitions")
+    .select("definition")
+    .eq("id", surveyId)
+    .maybeSingle();
+
+  const patch: Record<string, unknown> = {
+    title: clean,
+    updated_at: new Date().toISOString(),
+  };
+  const def = parseSurveyDefinition(data?.definition);
+  if (def) {
+    patch.definition = { ...def, title: clean, intro: { ...def.intro, title: clean } };
+  }
+
+  const { error } = await supabase
+    .from("survey_definitions")
+    .update(patch)
+    .eq("id", surveyId);
+
+  if (error) {
+    return { ok: false, error: error.message ?? "Renommage impossible." };
+  }
+
+  revalidatePath("/questionnaire/reponses");
+  revalidatePath(`/questionnaire/reponses/${surveyId}`);
+  revalidatePath(`/questionnaire/reponses/${surveyId}/reponses`);
+  revalidatePath(`/questionnaire/reponses/${surveyId}/edit`);
+  return { ok: true };
 }
 
 /** Charge la définition depuis la base, avec repli sur le fichier versionné. */
@@ -129,7 +309,7 @@ export async function saveSurveyDefinition(
 export async function submitSurveyResponse(
   input: SubmitSurveyInput,
 ): Promise<SubmitSurveyResult> {
-  const surveyId = "satisfaction-2026";
+  const surveyId = input?.surveyVersion?.trim() || "satisfaction-2026";
   const defResult = await fetchSurveyDefinition(surveyId);
   if (!defResult.ok) {
     return { ok: false, error: defResult.error };
@@ -178,6 +358,7 @@ export async function submitSurveyResponse(
   }
 
   revalidatePath("/questionnaire/reponses");
+  revalidatePath(`/questionnaire/reponses/${surveyId}/reponses`);
   return { ok: true };
 }
 
