@@ -116,10 +116,10 @@ export default function V2AppShell({
   const pathname = usePathname();
   const supabase = getSupabaseBrowser();
   const { user } = useCurrentUser();
-  const isCommMember = Boolean(user?.teamMemberId);
+  const isAdmin = Boolean(user?.isAdmin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const items = isCommMember
+  const items = isAdmin
     ? [
         ...navItems,
         {

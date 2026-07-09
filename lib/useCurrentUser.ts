@@ -15,6 +15,8 @@ export type CurrentUser = {
   teamMemberName: string | null;
   jobTitle: string | null;
   avatarUrl: string | null;
+  role: "admin" | "user";
+  isAdmin: boolean;
 };
 
 export function useCurrentUser() {
@@ -45,7 +47,7 @@ export function useCurrentUser() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, team_member_id, team_members(display_name, job_title, avatar_url)")
+      .select("display_name, team_member_id, role, team_members(display_name, job_title, avatar_url)")
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -55,6 +57,8 @@ export function useCurrentUser() {
       avatar_url?: string | null;
     } | null) ?? null;
 
+    const role = (profile?.role as string | null) === "admin" ? "admin" : "user";
+
     setUser({
       id: authUser.id,
       email: authUser.email ?? "",
@@ -63,6 +67,8 @@ export function useCurrentUser() {
       teamMemberName: member?.display_name ?? null,
       jobTitle: member?.job_title ?? null,
       avatarUrl: member?.avatar_url ?? null,
+      role,
+      isAdmin: role === "admin",
     });
     setLoading(false);
   }, [supabase]);

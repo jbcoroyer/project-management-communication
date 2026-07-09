@@ -18,6 +18,30 @@ export type SurveyDefinitionResult =
   | { ok: true; definition: SurveyDefinition }
   | { ok: false; error: string };
 export type SaveSurveyDefinitionResult = { ok: true } | { ok: false; error: string };
+export type DeleteSurveyResponseResult = { ok: true } | { ok: false; error: string };
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabase>>;
+
+/** Vérifie que l'utilisateur courant est administrateur (rôle admin dans profiles). */
+async function requireAdmin(
+  supabase: SupabaseServerClient,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Vous devez être connecté." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if ((profile?.role as string | null) !== "admin") {
+    return { ok: false, error: "Action réservée à l'administrateur." };
+  }
+  return { ok: true };
+}
 
 function asString(value: SurveyAnswers[string]): string | null {
   if (typeof value === "string" && value.trim() !== "") return value.trim();
@@ -75,6 +99,9 @@ export async function saveSurveyDefinition(
   }
 
   const supabase = await createServerSupabase();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return admin;
+
   const { error } = await supabase.from("survey_definitions").upsert({
     id: surveyId,
     version: definition.version,
@@ -151,5 +178,25 @@ export async function submitSurveyResponse(
   }
 
   revalidatePath("/questionnaire/reponses");
+  return { ok: true };
+}
+
+/** Supprime une réponse (réservé à l'administrateur). */
+export async function deleteSurveyResponse(
+  surveyId: string,
+  responseId: string,
+): Promise<DeleteSurveyResponseResult> {
+  if (!responseId) return { ok: false, error: "Réponse introuvable." };
+
+  const supabase = await createServerSupabase();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return admin;
+
+  const { error } = await supabase.from("survey_responses").delete().eq("id", responseId);
+  if (error) {
+    return { ok: false, error: error.message ?? "Suppression impossible." };
+  }
+
+  revalidatePath(`/questionnaire/reponses/${surveyId}/reponses`);
   return { ok: true };
 }

@@ -8,7 +8,7 @@ import { useCurrentUser } from "../../../lib/useCurrentUser";
 
 export default function SurveyAdminGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useCurrentUser();
-  const isCommMember = Boolean(user?.teamMemberId);
+  const isAdmin = Boolean(user?.isAdmin);
 
   return (
     <V2AppShell
@@ -19,7 +19,7 @@ export default function SurveyAdminGuard({ children }: { children: ReactNode }) 
     >
       {loading ? (
         <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
-      ) : isCommMember ? (
+      ) : isAdmin ? (
         children
       ) : (
         <div className="ui-surface mx-auto max-w-md rounded-2xl p-8 text-center">
@@ -27,10 +27,10 @@ export default function SurveyAdminGuard({ children }: { children: ReactNode }) 
             <ShieldAlert className="h-7 w-7" />
           </div>
           <h1 className="ui-heading text-xl font-semibold text-[var(--foreground)]">
-            Accès réservé au service Communication
+            Accès réservé à l&apos;administrateur
           </h1>
           <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-            Cette section est réservée aux membres du service Communication.
+            La gestion des questionnaires est réservée à l&apos;administrateur.
           </p>
           <Link href="/v2/dashboard/kanban" className="ui-btn ui-btn-secondary mt-6 inline-flex">
             Retour au tableau de bord

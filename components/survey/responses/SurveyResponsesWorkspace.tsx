@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Download, Inbox, Smile, ThumbsUp, Users } from "lucide-react";
-import { fetchSurveyDefinition } from "../../../app/actions/survey";
+import { ArrowLeft, BarChart3, Download, Inbox, ListChecks, Smile, ThumbsUp, Users } from "lucide-react";
+import { deleteSurveyResponse, fetchSurveyDefinition } from "../../../app/actions/survey";
+import { useConfirm } from "../../ui/ConfirmDialog";
 import { findQuestion } from "../../../lib/survey/surveyDefinitionUtils";
 import {
   collectVerbatims,
@@ -20,9 +21,11 @@ import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { useRealtimeReload } from "../../../lib/useRealtimeReload";
 import { DistributionChart, RatingAveragesChart } from "./SurveyCharts";
+import SurveyResponseList from "./SurveyResponseList";
 import SurveyVerbatims from "./SurveyVerbatims";
 
 type PeriodPreset = "all" | "30" | "90" | "365";
+type ResponsesTab = "summary" | "individual";
 
 type SurveyResponsesWorkspaceProps = {
   surveyId: string;
@@ -57,9 +60,12 @@ function KpiCard({
 export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWorkspaceProps) {
   const entry = getSurveyRegistryEntry(surveyId);
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const confirm = useConfirm();
   const [definition, setDefinition] = useState<SurveyDefinition | null>(null);
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<ResponsesTab>("summary");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [now] = useState(() => Date.now());
   const [entity, setEntity] = useState("all");
@@ -163,6 +169,26 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
     toastSuccess("Export CSV généré");
   };
 
+  const handleDelete = async (responseId: string) => {
+    const ok = await confirm({
+      title: "Supprimer cette réponse ?",
+      description: "La réponse sera définitivement supprimée. Cette action est irréversible.",
+      confirmLabel: "Supprimer",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
+    setDeletingId(responseId);
+    const result = await deleteSurveyResponse(surveyId, responseId);
+    setDeletingId(null);
+    if (!result.ok) {
+      toastError(result.error);
+      return;
+    }
+    setResponses((prev) => prev.filter((r) => r.id !== responseId));
+    toastSuccess("Réponse supprimée");
+  };
+
   const selectClass =
     "ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]";
 
@@ -192,6 +218,31 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
           Export CSV
         </button>
       </header>
+
+      <div className="inline-flex rounded-lg border border-[var(--line)] bg-[var(--surface)] p-1">
+        {([
+          { id: "summary", label: "Synthèse", icon: BarChart3 },
+          { id: "individual", label: "Réponses individuelles", icon: ListChecks },
+        ] as const).map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                tab === t.id
+                  ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
+                  : "text-[color:var(--foreground)]/65 hover:bg-[var(--surface-soft)]",
+              ].join(" ")}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="ui-surface flex flex-wrap items-center gap-3 rounded-2xl p-4">
         <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]/45">
@@ -255,6 +306,13 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
             .
           </p>
         </div>
+      ) : tab === "individual" && activeDefinition ? (
+        <SurveyResponseList
+          definition={activeDefinition}
+          responses={filtered}
+          onDelete={(id) => void handleDelete(id)}
+          deletingId={deletingId}
+        />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
