@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, PartyPopper, Send, Sparkles } from "lucide-react";
 import { fetchSurveyDefinition, submitSurveyResponse } from "../../app/actions/survey";
-import { NO_OPINION, satisfaction2026 } from "../../lib/survey/satisfaction2026";
+import { NO_OPINION } from "../../lib/survey/surveyConstants";
 import { isQuestionVisible } from "../../lib/survey/surveyDefinitionUtils";
 import { defaultCompanies } from "../../lib/types";
 import type { Question, SurveyAnswers, SurveyDefinition } from "../../lib/survey/surveyTypes";
@@ -15,7 +15,7 @@ import QuestionField from "./QuestionField";
 type Phase = "intro" | "form" | "done";
 
 type SurveyFormProps = {
-  surveyId?: string;
+  surveyId: string;
 };
 
 function isAnswered(question: Question, value: SurveyAnswers[string]): boolean {
@@ -26,33 +26,47 @@ function isAnswered(question: Question, value: SurveyAnswers[string]): boolean {
   return false;
 }
 
-export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFormProps) {
+export default function SurveyForm({ surveyId }: SurveyFormProps) {
   const { companies } = useReferenceData();
-  const [definition, setDefinition] = useState<SurveyDefinition>(satisfaction2026);
+  const [definition, setDefinition] = useState<SurveyDefinition | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("intro");
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<SurveyAnswers>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    setLoadError(null);
+    setDefinition(null);
+    setPhase("intro");
+    setStepIndex(0);
+    setAnswers({});
     void fetchSurveyDefinition(surveyId).then((result) => {
-      if (result.ok) setDefinition(result.definition);
+      if (result.ok) {
+        setDefinition(result.definition);
+        return;
+      }
+      setLoadError(result.error);
     });
   }, [surveyId]);
 
-  const entityOptions = useMemo(() => {
+  const companyOptions = useMemo(() => {
     const names = companies.map((c) => c.name).filter(Boolean);
     const base = names.length > 0 ? names : [...defaultCompanies];
     return [...base, NO_OPINION];
   }, [companies]);
 
-  const selectedPrestations = useMemo(
-    () => (Array.isArray(answers.q4) ? answers.q4 : []),
-    [answers.q4],
-  );
+  const prestationsQuestionId = definition?.exports?.prestationsQuestionId;
+  const selectedPrestations = useMemo(() => {
+    if (!prestationsQuestionId) return [];
+    const value = answers[prestationsQuestionId];
+    return Array.isArray(value) ? value : [];
+  }, [answers, prestationsQuestionId]);
 
-  // Étapes visibles = étapes dont au moins une question est affichée (logique conditionnelle).
+  const respondentNameQuestionId = definition?.exports?.respondentNameQuestionId;
+
   const visibleSteps = useMemo(() => {
+    if (!definition) return [];
     return definition.steps
       .map((step) => ({
         step,
@@ -76,12 +90,11 @@ export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFor
 
   const currentStepValid = useMemo(() => {
     if (!current) return true;
-    return current.questions.every(
-      (q) => !q.required || isAnswered(q, answers[q.id]),
-    );
+    return current.questions.every((q) => !q.required || isAnswered(q, answers[q.id]));
   }, [current, answers]);
 
   const goNext = () => {
+    if (!definition) return;
     if (!currentStepValid) {
       toastError("Merci de répondre aux questions obligatoires (*) avant de continuer.");
       return;
@@ -100,14 +113,16 @@ export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFor
   };
 
   const handleSubmit = async () => {
+    if (!definition) return;
     setSubmitting(true);
-    // Le nom (q23) est envoyé séparément et retiré du corps des réponses.
-    const { q23, ...rest } = answers;
-    const respondentName = typeof q23 === "string" ? q23.trim() : "";
+    const nameValue =
+      respondentNameQuestionId && typeof answers[respondentNameQuestionId] === "string"
+        ? answers[respondentNameQuestionId].trim()
+        : "";
     const result = await submitSurveyResponse({
       surveyVersion: definition.version,
-      answers: rest,
-      respondentName: respondentName || null,
+      answers,
+      respondentName: nameValue || null,
     });
     setSubmitting(false);
     if (!result.ok) {
@@ -119,9 +134,29 @@ export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFor
   };
 
   const firstName = useMemo(() => {
-    const raw = typeof answers.q23 === "string" ? answers.q23.trim() : "";
+    if (!respondentNameQuestionId) return "";
+    const raw =
+      typeof answers[respondentNameQuestionId] === "string"
+        ? answers[respondentNameQuestionId].trim()
+        : "";
     return raw ? raw.split(/\s+/)[0] : "";
-  }, [answers.q23]);
+  }, [answers, respondentNameQuestionId]);
+
+  if (loadError) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-12">
+        <p className="text-sm text-[color:var(--foreground)]/55">{loadError}</p>
+      </div>
+    );
+  }
+
+  if (!definition) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-12">
+        <p className="text-sm text-[color:var(--foreground)]/55">Chargement du questionnaire…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8 sm:py-12">
@@ -214,9 +249,7 @@ export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFor
                       value={answers[q.id]}
                       onChange={(v) => setAnswer(q.id, v)}
                       optionsOverride={
-                        surveyId === "satisfaction-2026" && q.id === "q1"
-                          ? entityOptions
-                          : undefined
+                        q.optionsSource === "companies" ? companyOptions : undefined
                       }
                     />
                   ))}

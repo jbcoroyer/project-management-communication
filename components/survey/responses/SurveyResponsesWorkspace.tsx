@@ -15,7 +15,6 @@ import {
 } from "../../../lib/survey/surveyAnalytics";
 import { surveyResponsesToCsv } from "../../../lib/survey/surveyExport";
 import { mapSurveyResponseRow } from "../../../lib/survey/surveyMappers";
-import { getDefaultSurveyDefinition } from "../../../lib/survey/surveyRegistry";
 import type { SurveyDefinition, SurveyResponse } from "../../../lib/survey/surveyTypes";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../../lib/toast";
@@ -78,18 +77,30 @@ export default function SurveyResponsesWorkspace({
   const [prestation, setPrestation] = useState("all");
   const [period, setPeriod] = useState<PeriodPreset>("all");
 
-  const activeDefinition = definition ?? getDefaultSurveyDefinition(surveyId) ?? null;
+  const activeDefinition = definition;
 
   const entityOptions = useMemo(
-    () => activeDefinition ? findQuestion(activeDefinition, "q1")?.options ?? [] : [],
+    () =>
+      activeDefinition && activeDefinition.exports?.entityQuestionId
+        ? (findQuestion(activeDefinition, activeDefinition.exports.entityQuestionId)?.options ??
+          [])
+        : [],
     [activeDefinition],
   );
   const serviceOptions = useMemo(
-    () => activeDefinition ? findQuestion(activeDefinition, "q2")?.options ?? [] : [],
+    () =>
+      activeDefinition && activeDefinition.exports?.serviceQuestionId
+        ? (findQuestion(activeDefinition, activeDefinition.exports.serviceQuestionId)?.options ??
+          [])
+        : [],
     [activeDefinition],
   );
   const prestationOptions = useMemo(
-    () => activeDefinition ? findQuestion(activeDefinition, "q4")?.options ?? [] : [],
+    () =>
+      activeDefinition && activeDefinition.exports?.prestationsQuestionId
+        ? (findQuestion(activeDefinition, activeDefinition.exports.prestationsQuestionId)
+            ?.options ?? [])
+        : [],
     [activeDefinition],
   );
 

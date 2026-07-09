@@ -7,7 +7,7 @@ alter table public.survey_definitions add column if not exists description text 
 
 grant delete on public.survey_definitions to authenticated;
 
--- Amorce du questionnaire existant (la vraie définition reste le fichier groupé tant que non édité).
+-- Amorce du questionnaire existant (définition complète en base, colonne definition JSONB).
 insert into public.survey_definitions (id, version, title, description, status, definition)
 values (
   'satisfaction-2026',

@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function QuestionnairePage() {
-  return <SurveyForm />;
+  return <SurveyForm surveyId="satisfaction-2026" />;
 }

@@ -1,5 +1,4 @@
 import type { SurveyDefinition, SurveyResponse } from "./surveyTypes";
-import { satisfaction2026 } from "./satisfaction2026";
 
 function csvEscape(value: string | number | null | undefined): string {
   const normalized = String(value ?? "");
@@ -15,7 +14,7 @@ function formatAnswer(value: string | number | string[] | undefined): string {
 /** Une colonne par question + méta (date, entité, service, nom). */
 export function surveyResponsesToCsv(
   responses: readonly SurveyResponse[],
-  definition: SurveyDefinition = satisfaction2026,
+  definition: SurveyDefinition,
 ): string {
   const questions = definition.questions.filter((q) => q.type !== "text");
 

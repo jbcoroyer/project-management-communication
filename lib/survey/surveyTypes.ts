@@ -1,7 +1,6 @@
 /**
- * Types partagés du module "Questionnaire de satisfaction".
- * La définition du questionnaire (lib/survey/satisfaction2026.ts) est la source
- * de vérité unique : le formulaire, la soumission et l'agrégation en dérivent.
+ * Types partagés du module questionnaire.
+ * Les définitions sont stockées en base (table survey_definitions, colonne definition JSONB).
  */
 
 export type QuestionType =
@@ -35,6 +34,21 @@ export type Question = {
   showIfPrestation?: string;
   /** Placeholder pour les champs texte / ouverts. */
   placeholder?: string;
+  /**
+   * Source dynamique pour les options (ex. liste des entités du groupe depuis la base).
+   * Remplace les options statiques au moment de l'affichage.
+   */
+  optionsSource?: "companies";
+};
+
+/** Mapping optionnel question → colonnes dénormalisées de survey_responses. */
+export type SurveyExports = {
+  entityQuestionId?: string;
+  serviceQuestionId?: string;
+  prestationsQuestionId?: string;
+  satisfactionQuestionId?: string;
+  npsQuestionId?: string;
+  respondentNameQuestionId?: string;
 };
 
 export type SurveyStep = {
@@ -58,6 +72,8 @@ export type SurveyDefinition = {
   };
   questions: readonly Question[];
   steps: readonly SurveyStep[];
+  /** Liens question → colonnes indexées (facultatif, pour l'analyse). */
+  exports?: SurveyExports;
 };
 
 /** Une réponse individuelle : clé = id de question. */

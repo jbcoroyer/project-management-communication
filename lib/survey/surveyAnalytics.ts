@@ -1,6 +1,5 @@
 import { findQuestion } from "./surveyDefinitionUtils";
 import type { SurveyDefinition, SurveyResponse } from "./surveyTypes";
-import { satisfaction2026 } from "./satisfaction2026";
 
 export type NpsBreakdown = {
   total: number;
@@ -61,7 +60,7 @@ export function computeSatisfactionAverage(responses: readonly SurveyResponse[])
 /** Moyennes de toutes les questions de type rating (hors NPS). */
 export function computeRatingStats(
   responses: readonly SurveyResponse[],
-  definition: SurveyDefinition = satisfaction2026,
+  definition: SurveyDefinition,
 ): RatingStat[] {
   return definition.questions
     .filter((q) => q.type === "rating")
@@ -87,7 +86,7 @@ export function computeRatingStats(
 /** Répartition des réponses pour toutes les questions fermées (single/multiple). */
 export function computeChoiceDistributions(
   responses: readonly SurveyResponse[],
-  definition: SurveyDefinition = satisfaction2026,
+  definition: SurveyDefinition,
 ): ChoiceDistribution[] {
   return definition.questions
     .filter((q) => (q.type === "single" || q.type === "multiple") && q.options)
@@ -123,7 +122,7 @@ export type Verbatim = {
 /** Aplati toutes les réponses ouvertes en une liste de verbatims. */
 export function collectVerbatims(
   responses: readonly SurveyResponse[],
-  definition: SurveyDefinition = satisfaction2026,
+  definition: SurveyDefinition,
 ): Verbatim[] {
   const openQuestionIds = definition.questions
     .filter((q) => q.type === "open")

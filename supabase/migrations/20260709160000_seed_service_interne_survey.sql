@@ -1,6 +1,5 @@
 -- Amorce du questionnaire interne « Fonctionnement du service Communication ».
--- La définition détaillée reste le fichier groupé (lib/survey/serviceInterne2026.ts)
--- tant qu'elle n'est pas éditée depuis l'éditeur.
+-- La définition complète est stockée en base (colonne definition JSONB).
 insert into public.survey_definitions (id, version, title, description, status, definition)
 values (
   'service-interne-2026',
