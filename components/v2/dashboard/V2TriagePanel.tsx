@@ -91,7 +91,12 @@ export default function V2TriagePanel({
                       ) : null}
                       {request.concern ? (
                         <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-                          {request.concern}
+                          Support : {request.concern}
+                        </span>
+                      ) : null}
+                      {request.supportFormat ? (
+                        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
+                          Format : {request.supportFormat}
                         </span>
                       ) : null}
                       <span className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2 py-0.5 font-semibold text-[var(--accent)]">
@@ -102,24 +107,6 @@ export default function V2TriagePanel({
                           {request.requesterName}
                         </span>
                       ) : null}
-                      {request.requesterService ? (
-                        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-                          {request.requesterService}
-                        </span>
-                      ) : null}
-                      {request.budget ? (
-                        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-                          Budget {request.budget}
-                        </span>
-                      ) : null}
-                      {request.estimatedHours > 0 ? (
-                        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-                          ~{request.estimatedHours} h
-                        </span>
-                      ) : null}
-                      <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-                        Priorité {request.priority}
-                      </span>
                       {request.suggestedDomain ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 font-semibold text-[var(--accent)]">
                           <Sparkles className="h-3 w-3" /> {request.suggestedDomain}

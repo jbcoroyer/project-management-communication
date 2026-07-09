@@ -30,7 +30,9 @@ export type DuplicateHit = { task: Task; score: number };
 
 /** Détecte les tâches existantes proches d'une demande (déduplication du triage). */
 export function findDuplicateTasks(request: IntakeRequest, tasks: Task[], threshold = 0.3): DuplicateHit[] {
-  const reqTokens = tokenize(`${request.title} ${request.description}`);
+  const reqTokens = tokenize(
+    `${request.title} ${request.concern} ${request.supportFormat} ${request.description}`,
+  );
   return tasks
     .filter((t) => !t.isArchived && !t.parentTaskId)
     .map((task) => ({ task, score: jaccard(reqTokens, tokenize(`${task.projectName} ${task.description}`)) }))

@@ -28,10 +28,11 @@ export function buildTaskDraftFromRequest(
     defaultAdmin?: string;
   },
 ): IntakeTaskDraft {
+  const domainText = `${request.title} ${request.concern} ${request.supportFormat} ${request.description}`;
   const domain =
     request.suggestedDomain && options.domains.includes(request.suggestedDomain)
       ? request.suggestedDomain
-      : suggestDomainFromText(`${request.title} ${request.concern} ${request.description}`);
+      : suggestDomainFromText(domainText);
 
   const assignee =
     request.suggestedAssignee ??
@@ -40,9 +41,12 @@ export function buildTaskDraftFromRequest(
     "";
 
   const descriptionParts = [
-    request.concern ? `Concerne : ${request.concern}` : "",
+    request.concern ? `Support attendu : ${request.concern}` : "",
+    request.supportFormat ? `Format : ${request.supportFormat}` : "",
     request.description.trim(),
-    request.requesterService ? `Demandeur : ${request.requesterName || "—"} (${request.requesterService})` : "",
+    request.requesterName || request.requesterService
+      ? `Demandeur : ${request.requesterName || "—"}${request.requesterService ? ` (${request.requesterService})` : ""}`
+      : "",
   ].filter(Boolean);
 
   return {

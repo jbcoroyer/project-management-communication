@@ -46,7 +46,7 @@ export default function IntakeTaskMappingModal({
           <div>
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Créer la tâche depuis la demande</h2>
             <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-              Vérifiez et ajustez le mapping avant de créer la tâche dans le Kanban.
+              Renseignez le budget, la charge estimée et la priorité avant de créer la tâche dans le Kanban.
             </p>
           </div>
           <button type="button" onClick={onClose} className="ui-transition rounded-lg p-1.5 text-[color:var(--foreground)]/50 hover:bg-[var(--surface-soft)]" aria-label="Fermer">
@@ -140,7 +140,7 @@ export default function IntakeTaskMappingModal({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="text-[11px] font-semibold text-[color:var(--foreground)]/55">Budget (optionnel)</span>
+              <span className="text-[11px] font-semibold text-[color:var(--foreground)]/55">Budget</span>
               <input
                 value={form.budget}
                 onChange={(e) => set("budget", e.target.value)}
@@ -149,7 +149,7 @@ export default function IntakeTaskMappingModal({
               />
             </label>
             <label className="block">
-              <span className="text-[11px] font-semibold text-[color:var(--foreground)]/55">Heures estimées</span>
+              <span className="text-[11px] font-semibold text-[color:var(--foreground)]/55">Charge estimée (heures)</span>
               <input
                 type="number"
                 min={0}
