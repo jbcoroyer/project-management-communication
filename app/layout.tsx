@@ -20,12 +20,12 @@ const schibsted = Schibsted_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Thuesday",
-    template: "%s | Thuesday",
+    default: "Tuesday",
+    template: "%s | Tuesday",
   },
   description:
-    "Thuesday — outil interne du service Communication IDENA : gestion de projet, événements, réseaux sociaux et stock.",
-  applicationName: "Thuesday",
+    "Tuesday — outil interne du service Communication IDENA : gestion de projet, événements, réseaux sociaux et stock.",
+  applicationName: "Tuesday",
 };
 
 export default function RootLayout({

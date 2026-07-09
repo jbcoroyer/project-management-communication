@@ -12,11 +12,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Laisser passer les routes publiques (boîte à idées accessible sans compte)
+  // Laisser passer les routes publiques (boîte à idées + questionnaire accessibles sans compte).
+  // Attention : /questionnaire/reponses reste protégé (page interne du service Communication).
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/ideas") ||
+    pathname === "/questionnaire" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".")

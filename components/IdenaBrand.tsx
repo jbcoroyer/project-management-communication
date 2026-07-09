@@ -38,7 +38,7 @@ export function IdenaMark({ className = "h-9 w-9" }: { className?: string }) {
 
 type WordmarkSize = "sidebar" | "login" | "compact";
 
-export function ThuesdayWordmark({ size = "sidebar" }: { size?: WordmarkSize }) {
+export function TuesdayWordmark({ size = "sidebar" }: { size?: WordmarkSize }) {
   const sizeClass =
     size === "login"
       ? "text-[2.75rem] sm:text-[3.25rem]"
@@ -48,10 +48,10 @@ export function ThuesdayWordmark({ size = "sidebar" }: { size?: WordmarkSize }) 
 
   return (
     <span
-      className={["thuesday-wordmark ui-display text-[var(--foreground)]", sizeClass].join(" ")}
-      aria-label="Thuesday"
+      className={["tuesday-wordmark ui-display text-[var(--foreground)]", sizeClass].join(" ")}
+      aria-label="Tuesday"
     >
-      Thues
+      Tues
       <span className="text-[var(--accent)]">day</span>
     </span>
   );
@@ -70,7 +70,7 @@ export function ServiceCommunicationIdenaHeading({ size = "sidebar", children }:
         <div className="mb-5 flex justify-center">
           <IdenaMark className="h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]" />
         </div>
-        <ThuesdayWordmark size="login" />
+        <TuesdayWordmark size="login" />
         <p className="ui-kicker mt-3">Service Communication · IDENA</p>
         {children}
       </div>
@@ -81,7 +81,7 @@ export function ServiceCommunicationIdenaHeading({ size = "sidebar", children }:
       <div className="flex items-start gap-3">
         <IdenaMark className="mt-0.5 h-10 w-10" />
         <div className="min-w-0">
-          <ThuesdayWordmark size="sidebar" />
+          <TuesdayWordmark size="sidebar" />
           <p className="mt-1 text-[11px] font-medium tracking-[0.08em] text-[color:var(--foreground)]/50">
             Service Communication · IDENA
           </p>

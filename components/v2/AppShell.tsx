@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   CalendarRange,
+  ClipboardList,
   FolderOpen,
   Inbox,
   LayoutGrid,
@@ -23,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
+import { useCurrentUser } from "../../lib/useCurrentUser";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import AppVersionToggle from "../AppVersionToggle";
 
@@ -112,7 +114,20 @@ export default function V2AppShell({
 }: V2AppShellProps) {
   const pathname = usePathname();
   const supabase = getSupabaseBrowser();
+  const { user } = useCurrentUser();
+  const isCommMember = Boolean(user?.teamMemberId);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const items = isCommMember
+    ? [
+        ...navItems,
+        {
+          href: "/questionnaire/reponses",
+          label: "Questionnaire",
+          icon: ClipboardList,
+        } as const,
+      ]
+    : navItems;
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -153,7 +168,7 @@ export default function V2AppShell({
     <>
       <ServiceCommunicationIdenaHeading />
       <nav className="mt-6 flex-1 space-y-0.5">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           const active = isNavActive(item.href, pathname);
           return (

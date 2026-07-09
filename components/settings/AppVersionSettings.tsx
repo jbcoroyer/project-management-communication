@@ -16,7 +16,7 @@ export default function AppVersionSettings() {
         <div className="flex-1">
           <h2 className="font-semibold text-[var(--foreground)]">Interface V1</h2>
           <p className="text-xs text-[color:var(--foreground)]/60">
-            Thuesday utilise la V2 par défaut. Activez la V1 pour l&apos;interface classique.
+            Tuesday utilise la V2 par défaut. Activez la V1 pour l&apos;interface classique.
           </p>
         </div>
         <button

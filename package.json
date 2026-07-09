@@ -13,7 +13,8 @@
     "db:ideas-public": "node scripts/apply-stock-ideas-public.mjs",
     "db:event-organization": "node scripts/apply-event-organization.mjs",
     "db:outlook-calendar-sync": "node scripts/apply-outlook-calendar-sync.mjs",
-    "db:v2-automations-intake": "node scripts/apply-v2-automations-intake.mjs"
+    "db:v2-automations-intake": "node scripts/apply-v2-automations-intake.mjs",
+    "db:satisfaction-survey": "node scripts/apply-satisfaction-survey.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
