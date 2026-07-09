@@ -1,7 +1,6 @@
 "use client";
 
-import { FileText } from "lucide-react";
-import { isPdfUrl } from "../../lib/stockVisualUtils";
+import { isPdfUrl, pdfEmbedSrc } from "../../lib/stockVisualUtils";
 
 type StockVisualPreviewProps = {
   url: string;
@@ -9,6 +8,34 @@ type StockVisualPreviewProps = {
   mode?: "thumb" | "detail" | "full";
   className?: string;
 };
+
+function PdfEmbed({
+  url,
+  name,
+  className,
+  badge = false,
+}: {
+  url: string;
+  name: string;
+  className?: string;
+  badge?: boolean;
+}) {
+  return (
+    <div className={["relative overflow-hidden bg-slate-100", className].filter(Boolean).join(" ")}>
+      <iframe
+        src={pdfEmbedSrc(url)}
+        title={name}
+        className="pointer-events-none absolute inset-0 h-full w-full border-0 bg-white"
+        tabIndex={-1}
+      />
+      {badge ? (
+        <span className="absolute bottom-1.5 right-1.5 rounded border border-rose-200/90 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 shadow-sm backdrop-blur-sm">
+          PDF
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export default function StockVisualPreview({
   url,
@@ -18,31 +45,12 @@ export default function StockVisualPreview({
 }: StockVisualPreviewProps) {
   if (isPdfUrl(url)) {
     if (mode === "thumb") {
-      return (
-        <div
-          className={[
-            "flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-rose-50 via-white to-slate-50",
-            className,
-          ].join(" ")}
-        >
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-200 bg-white shadow-sm">
-            <FileText className="h-7 w-7 text-rose-600" />
-          </div>
-          <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-700">
-            PDF
-          </span>
-        </div>
-      );
+      return <PdfEmbed url={url} name={name} className={["h-full w-full", className].join(" ")} badge />;
     }
 
-    const heightClass = mode === "full" ? "h-[80vh]" : mode === "detail" ? "h-full min-h-[14rem]" : "h-52";
-    return (
-      <iframe
-        src={url}
-        title={name}
-        className={["w-full rounded-lg border border-[var(--line)] bg-white", heightClass, className].join(" ")}
-      />
-    );
+    const heightClass =
+      mode === "full" ? "h-[80vh] min-h-[20rem]" : "h-full min-h-[14rem] rounded-lg border border-[var(--line)]";
+    return <PdfEmbed url={url} name={name} className={[heightClass, className].join(" ")} />;
   }
 
   const objectClass =
