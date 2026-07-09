@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import DashboardHomePage from "../../../components/dashboard/DashboardHomePage";
 
-const VALID_TABS = new Set(["kanban", "todo", "calendar", "analytics", "archives", "workload", "ask"]);
+const VALID_TABS = new Set(["kanban", "todo", "calendar", "analytics", "archives", "workload"]);
 
 export default async function DashboardTabPage({
   params,

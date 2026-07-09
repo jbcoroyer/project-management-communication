@@ -12,7 +12,6 @@ import {
   Megaphone,
   Menu,
   Package,
-  Send,
   Settings2,
   UserCircle2,
   X,
@@ -32,7 +31,6 @@ type AppShellProps = {
 
 const navItems = [
   { href: "/dashboard/kanban", label: "Tableau de bord", icon: LayoutGrid },
-  { href: "/dashboard/ask", label: "Faire une demande", icon: Send },
   { href: "/events/dashboard", label: "Événements", icon: CalendarRange },
   { href: "/social", label: "Réseaux sociaux", icon: Megaphone },
   { href: "/stock", label: "Stock", icon: Package },
@@ -42,8 +40,7 @@ const navItems = [
 
 function isNavActive(href: string, pathname: string): boolean {
   if (href === "/events/dashboard") return pathname.startsWith("/events");
-  if (href === "/dashboard/kanban") return pathname === "/" || (pathname.startsWith("/dashboard") && pathname !== "/dashboard/ask");
-  if (href === "/dashboard/ask") return pathname === "/dashboard/ask";
+  if (href === "/dashboard/kanban") return pathname === "/" || pathname.startsWith("/dashboard");
   if (href === "/stock") return pathname.startsWith("/stock");
   if (href === "/ideas") return pathname.startsWith("/ideas");
   return pathname === href;

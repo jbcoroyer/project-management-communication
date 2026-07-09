@@ -13,7 +13,6 @@ import {
   PartyPopper,
   Plus,
   Search,
-  Send,
   Users,
 } from "lucide-react";
 import { toastError } from "../../lib/toast";
@@ -41,14 +40,13 @@ import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { getAdminColorPaletteSize } from "../../lib/kanbanStyles";
 import DashboardNotificationBell from "../DashboardNotificationBell";
 
-type MainTab = "kanban" | "todo" | "calendar" | "analytics" | "archives" | "workload" | "ask";
-const MAIN_TAB_SET = new Set<MainTab>(["kanban", "todo", "calendar", "analytics", "archives", "workload", "ask"]);
+type MainTab = "kanban" | "todo" | "calendar" | "analytics" | "archives" | "workload";
+const MAIN_TAB_SET = new Set<MainTab>(["kanban", "todo", "calendar", "analytics", "archives", "workload"]);
 
 const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
   { id: "todo", label: "Ma To-Do List", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", icon: KanbanSquare },
   { id: "calendar", label: "Calendrier", icon: CalendarDays },
-  { id: "ask", label: "Faire une demande", icon: Send },
   { id: "workload", label: "Charge equipe", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "archives", label: "Archives", icon: Archive },
@@ -59,7 +57,6 @@ const AnalyticsView = dynamic(() => import("../AnalyticsView"));
 const ArchivesView = dynamic(() => import("../ArchivesView"));
 const CalendarView = dynamic(() => import("../CalendarView"));
 const WorkloadView = dynamic(() => import("../WorkloadView"));
-const AskForm = dynamic(() => import("../v2/AskForm"));
 const TaskDetailPanel = dynamic(() => import("../TaskDetailPanel"));
 const NewTaskModal = dynamic(() => import("../NewTaskModal"));
 const CommandBar = dynamic(() => import("../CommandBar"));
@@ -593,8 +590,6 @@ export default function DashboardHomePage() {
           )}
 
           {activeTab === "analytics" && <AnalyticsView tasks={analyticsTasks} />}
-
-          {activeTab === "ask" && <AskForm />}
 
           {activeTab === "archives" && (
             <ArchivesView

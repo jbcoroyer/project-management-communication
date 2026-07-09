@@ -17,7 +17,6 @@ import {
   PartyPopper,
   Plus,
   Search,
-  Send,
   Table2,
   Users,
 } from "lucide-react";
@@ -76,8 +75,7 @@ type MainTab =
   | "analytics"
   | "archives"
   | "workload"
-  | "triage"
-  | "ask";
+  | "triage";
 const MAIN_TAB_SET = new Set<MainTab>([
   "inbox",
   "kanban",
@@ -88,7 +86,6 @@ const MAIN_TAB_SET = new Set<MainTab>([
   "archives",
   "workload",
   "triage",
-  "ask",
 ]);
 
 const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
@@ -96,7 +93,6 @@ const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
   { id: "todo", label: "Ma To-Do List", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", icon: KanbanSquare },
   { id: "list", label: "Vue liste", icon: Table2 },
-  { id: "ask", label: "Faire une demande", icon: Send },
   { id: "calendar", label: "Calendrier", icon: CalendarDays },
   { id: "workload", label: "Charge équipe", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -109,7 +105,6 @@ const AnalyticsView = dynamic(() => import("../../AnalyticsView"));
 const ArchivesView = dynamic(() => import("../../ArchivesView"));
 const CalendarView = dynamic(() => import("../../CalendarView"));
 const WorkloadView = dynamic(() => import("../../WorkloadView"));
-const AskForm = dynamic(() => import("../AskForm"));
 const TaskDetailPanel = dynamic(() => import("../../TaskDetailPanel"));
 const NewTaskModal = dynamic(() => import("../../NewTaskModal"));
 
@@ -914,7 +909,7 @@ export default function V2DashboardHomePage() {
       { id: "nav-analytics", group: "Navigation", label: "Analytics", hint: "G A", perform: () => navigateToTab("analytics") },
       { id: "nav-archives", group: "Navigation", label: "Archives", hint: "G R", perform: () => navigateToTab("archives") },
       { id: "nav-triage", group: "Navigation", label: "Triage des demandes", hint: "G D", perform: () => navigateToTab("triage") },
-      { id: "open-asks", group: "Navigation", label: "Ouvrir le portail de demandes", keywords: ["asks", "intake"], perform: () => router.push("/v2/asks") },
+      { id: "open-asks", group: "Navigation", label: "Faire une demande", keywords: ["asks", "intake", "demande"], perform: () => router.push("/v2/asks") },
       { id: "open-automations", group: "Navigation", label: "Automatisations (paramètres)", keywords: ["règles", "automation"], perform: () => router.push("/v2/settings") },
       ...TASK_TEMPLATES.map((tpl) => ({
         id: `template-${tpl.id}`,
@@ -1223,8 +1218,6 @@ export default function V2DashboardHomePage() {
           )}
 
           {activeTab === "analytics" && <AnalyticsView tasks={analyticsTasks} />}
-
-          {activeTab === "ask" && <AskForm />}
 
           {activeTab === "archives" && (
             <ArchivesView
