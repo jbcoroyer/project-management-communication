@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, PartyPopper, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, PartyPopper, Send } from "lucide-react";
 import { fetchSurveyDefinition, submitSurveyResponse } from "../../app/actions/survey";
 import { NO_OPINION } from "../../lib/survey/surveyConstants";
 import { isQuestionVisible } from "../../lib/survey/surveyDefinitionUtils";
@@ -11,6 +11,7 @@ import type { Question, SurveyAnswers, SurveyDefinition } from "../../lib/survey
 import { toastError } from "../../lib/toast";
 import { useReferenceData } from "../../lib/useReferenceData";
 import QuestionField from "./QuestionField";
+import SurveyBrandHeader from "./SurveyBrandHeader";
 
 type Phase = "intro" | "form" | "done";
 
@@ -144,25 +145,26 @@ export default function SurveyForm({ surveyId }: SurveyFormProps) {
 
   if (loadError) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-12">
-        <p className="text-sm text-[color:var(--foreground)]/55">{loadError}</p>
+      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-12">
+        <SurveyBrandHeader />
+        <p className="mt-8 text-sm text-[color:var(--foreground)]/55">{loadError}</p>
       </div>
     );
   }
 
   if (!definition) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-4 py-12">
-        <p className="text-sm text-[color:var(--foreground)]/55">Chargement du questionnaire…</p>
+      <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-12">
+        <SurveyBrandHeader />
+        <p className="mt-8 text-sm text-[color:var(--foreground)]/55">Chargement du questionnaire…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-8 sm:py-12">
-      <header className="mb-6 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-[color:var(--foreground)]/50">
-        <Sparkles className="h-4 w-4 text-[var(--accent)]" />
-        Service Communication IDENA
+      <header className="mb-6">
+        <SurveyBrandHeader />
       </header>
 
       <AnimatePresence mode="wait">
@@ -175,9 +177,7 @@ export default function SurveyForm({ surveyId }: SurveyFormProps) {
             transition={{ duration: 0.3 }}
             className="ui-surface flex flex-1 flex-col justify-center rounded-[28px] p-8 sm:p-12"
           >
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--foreground)] text-[var(--accent-contrast)]">
-              <Sparkles className="h-8 w-8" strokeWidth={1.75} />
-            </div>
+            <SurveyBrandHeader variant="hero" />
             <h1 className="ui-display text-3xl font-semibold text-[var(--foreground)] sm:text-4xl">
               {definition.intro.title}
             </h1>
@@ -310,8 +310,11 @@ export default function SurveyForm({ surveyId }: SurveyFormProps) {
             </h1>
             <p className="mt-3 max-w-md text-base leading-relaxed text-[color:var(--foreground)]/65">
               Vos réponses ont bien été enregistrées. Elles vont directement aider le service
-              Communication à progresser. On vous en est très reconnaissants !
+              Communication IDENA à progresser. On vous en est très reconnaissants !
             </p>
+            <div className="mt-8 flex justify-center opacity-80">
+              <SurveyBrandHeader variant="header" />
+            </div>
           </motion.section>
         ) : null}
       </AnimatePresence>
