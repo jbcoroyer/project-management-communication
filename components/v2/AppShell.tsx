@@ -5,11 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
   CalendarDays,
   CalendarRange,
   FolderOpen,
-  Gauge,
   Inbox,
   LayoutGrid,
   Lightbulb,
@@ -42,8 +40,6 @@ const navItems = [
   { href: "/v2/asks", label: "Faire une demande", icon: Send },
   { href: "/v2/todo", label: "Mon espace", icon: ListTodo },
   { href: "/v2/planning", label: "Planning", icon: CalendarDays },
-  { href: "/v2/capacity", label: "Charge d'équipe", icon: Gauge },
-  { href: "/v2/assistant", label: "Assistant IA", icon: Bot },
   { href: "/v2/dashboard/triage", label: "Demandes (triage)", icon: Inbox },
   { href: "/v2/events/dashboard", label: "Événements", icon: CalendarRange },
   { href: "/v2/social", label: "Réseaux sociaux", icon: Megaphone },

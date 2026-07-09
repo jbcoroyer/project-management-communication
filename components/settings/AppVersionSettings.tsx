@@ -16,7 +16,7 @@ export default function AppVersionSettings() {
         <div className="flex-1">
           <h2 className="font-semibold text-[var(--foreground)]">Interface avancée</h2>
           <p className="text-xs text-[color:var(--foreground)]/60">
-            Active la version expérimentale (vue liste, assistant, automatisations).
+            Active la version expérimentale (vue liste, automatisations).
           </p>
         </div>
         <button
