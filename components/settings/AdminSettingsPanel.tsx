@@ -25,7 +25,7 @@ import CompanyAvatar from "../CompanyAvatar";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { useIdenaMark } from "../../lib/idenaMarkContext";
-import { getIdenaMarkStaticSrc } from "../../lib/idenaMarkSrc";
+import { IdenaMark } from "../IdenaBrand";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { adminSolidColorFor, getAdminColorPaletteSize } from "../../lib/kanbanStyles";
@@ -380,20 +380,21 @@ export default function AdminSettingsPanel() {
         <Section
           icon={ImageIcon}
           title="Identité visuelle"
-          subtitle="Pictogramme affiché dans la barre latérale et sur la page de connexion."
+          subtitle="Pictogramme SVG IDENA affiché dans la barre latérale et sur la page de connexion."
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element -- URL Supabase ou fallback */}
-              <img
-                src={idenaMarkUrl ?? getIdenaMarkStaticSrc()}
-                alt="Pictogramme IDENA"
-                className="h-16 w-16 object-contain"
-              />
+              {idenaMarkUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- pictogramme personnalisé uploadé
+                <img src={idenaMarkUrl} alt="Pictogramme IDENA" className="h-16 w-16 object-contain" />
+              ) : (
+                <IdenaMark className="h-16 w-16" />
+              )}
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <p className="text-sm text-[color:var(--foreground)]/70">
-                Envoyez une image PNG, WebP, JPG ou SVG. Elle remplace le fichier par défaut et la variable{" "}
+                Par défaut, le logo vectoriel IDENA est utilisé (fond transparent). Vous pouvez envoyer une image
+                personnalisée (PNG, WebP, JPG ou SVG) pour remplacer le pictogramme, ou la variable{" "}
                 <code className="rounded bg-[var(--surface-soft)] px-1 text-xs">NEXT_PUBLIC_IDENA_MARK_SRC</code>{" "}
                 lorsqu’elle est définie en base.
               </p>

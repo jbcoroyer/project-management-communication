@@ -10,12 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
-import { getIdenaMarkStaticSrc } from "./idenaMarkSrc";
+import { getIdenaMarkCustomSrc } from "./idenaMarkSrc";
 
 type IdenaMarkContextValue = {
-  /** URL finale (base de données, sinon `.env`, sinon fichier par défaut). */
-  src: string;
-  /** URL issue de Supabase, ou `null` si non définie en base. */
+  /** URL personnalisée (base ou .env) ; `null` = pictogramme SVG par défaut. */
+  customSrc: string | null;
   dbUrl: string | null;
   loading: boolean;
   reload: () => Promise<void>;
@@ -72,19 +71,19 @@ export function IdenaMarkProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase, load]);
 
-  const src = useMemo(() => {
+  const customSrc = useMemo(() => {
     if (dbUrl) return dbUrl;
-    return getIdenaMarkStaticSrc();
+    return getIdenaMarkCustomSrc();
   }, [dbUrl]);
 
   const value = useMemo<IdenaMarkContextValue>(
     () => ({
-      src,
+      customSrc,
       dbUrl,
       loading,
       reload: load,
     }),
-    [src, dbUrl, loading, load],
+    [customSrc, dbUrl, loading, load],
   );
 
   return <IdenaMarkContext.Provider value={value}>{children}</IdenaMarkContext.Provider>;
@@ -94,7 +93,7 @@ export function useIdenaMark() {
   const ctx = useContext(IdenaMarkContext);
   if (!ctx) {
     return {
-      src: getIdenaMarkStaticSrc(),
+      customSrc: getIdenaMarkCustomSrc(),
       dbUrl: null,
       loading: false,
       reload: async () => {},

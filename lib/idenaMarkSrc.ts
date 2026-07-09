@@ -1,11 +1,10 @@
 /**
- * Fallback statique (hors base) : `.env` ou fichier par défaut dans `public/`.
- * La résolution finale utilise `useIdenaMark()` (priorité à Supabase).
+ * Pictogramme IDENA par défaut : composant SVG (`IdenaLogo`).
+ * `NEXT_PUBLIC_IDENA_MARK_SRC` ou Supabase peuvent encore surcharger par une URL externe.
  */
-export function getIdenaMarkStaticSrc(): string {
+export function getIdenaMarkCustomSrc(): string | null {
   const v = process.env.NEXT_PUBLIC_IDENA_MARK_SRC?.trim();
-  if (v) return v;
-  return "/idena-picto.png";
+  return v || null;
 }
 
 export function isExternalImageSrc(src: string): boolean {

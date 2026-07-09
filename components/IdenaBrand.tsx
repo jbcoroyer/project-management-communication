@@ -1,39 +1,30 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Image from "next/image";
+import IdenaLogo from "./IdenaLogo";
 import { useIdenaMark } from "../lib/idenaMarkContext";
 import { isExternalImageSrc } from "../lib/idenaMarkSrc";
 
 export function IdenaMark({ className = "h-9 w-9" }: { className?: string }) {
-  const { src } = useIdenaMark();
-  const external = isExternalImageSrc(src);
+  const { customSrc } = useIdenaMark();
 
-  return (
-    <div
-      className={[
-        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--surface)] ring-1 ring-[var(--line)]",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <div className="relative h-full w-full min-h-[18px] min-w-[18px]">
-        {external ? (
-          // eslint-disable-next-line @next/next/no-img-element -- URL externe sans config domains
-          <img src={src} alt="IDENA" className="h-full w-full object-contain object-center" />
-        ) : (
-          <Image
-            src={src}
-            alt="IDENA"
-            fill
-            className="object-contain object-center"
-            sizes="96px"
-          />
-        )}
+  if (customSrc && isExternalImageSrc(customSrc)) {
+    return (
+      <div
+        className={[
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--surface)] ring-1 ring-[var(--line)]",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- pictogramme personnalisé (URL externe) */}
+        <img src={customSrc} alt="IDENA" className="h-full w-full object-contain object-center" />
       </div>
-    </div>
-  );
+    );
+  }
+
+  return <IdenaLogo variant="icon" className={className} />;
 }
 
 type WordmarkSize = "sidebar" | "login" | "compact";
