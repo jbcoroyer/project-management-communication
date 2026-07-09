@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, Download, Inbox, Smile, ThumbsUp, Users } from "lucide-react";
+import { BarChart3, Download, ExternalLink, Inbox, Smile, ThumbsUp, Users } from "lucide-react";
 import { getQuestion, satisfaction2026 } from "../../../lib/survey/satisfaction2026";
 import {
   collectVerbatims,
@@ -140,10 +140,21 @@ export default function SurveyResponsesWorkspace() {
             Questionnaire de satisfaction · version {satisfaction2026.version}
           </p>
         </div>
-        <button type="button" onClick={handleExport} className="ui-btn ui-btn-secondary gap-2">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/questionnaire"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ui-btn ui-btn-primary gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Accéder au questionnaire
+          </a>
+          <button type="button" onClick={handleExport} className="ui-btn ui-btn-secondary gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+        </div>
       </header>
 
       {/* Filtres */}
