@@ -90,6 +90,7 @@ export async function saveSurveyDefinition(
   revalidatePath("/questionnaire");
   revalidatePath("/questionnaire/reponses");
   revalidatePath(`/questionnaire/reponses/${surveyId}`);
+  revalidatePath(`/questionnaire/reponses/${surveyId}/reponses`);
   revalidatePath(`/questionnaire/reponses/${surveyId}/edit`);
   return { ok: true };
 }

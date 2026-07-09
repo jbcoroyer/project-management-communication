@@ -1,19 +1,27 @@
 import { notFound } from "next/navigation";
 import SurveyAdminGuard from "../../../../components/survey/responses/SurveyAdminGuard";
-import SurveyResponsesWorkspace from "../../../../components/survey/responses/SurveyResponsesWorkspace";
+import SurveyHubWorkspace from "../../../../components/survey/responses/SurveyHubWorkspace";
 import { getSurveyRegistryEntry } from "../../../../lib/survey/surveyRegistry";
+import { createServerSupabase } from "../../../../lib/server/supabaseServer";
 
 type PageProps = {
   params: Promise<{ surveyId: string }>;
 };
 
-export default async function SurveyResponsesDetailPage({ params }: PageProps) {
+export default async function SurveyHubPage({ params }: PageProps) {
   const { surveyId } = await params;
-  if (!getSurveyRegistryEntry(surveyId)) notFound();
+  const entry = getSurveyRegistryEntry(surveyId);
+  if (!entry) notFound();
+
+  const supabase = await createServerSupabase();
+  const { count } = await supabase
+    .from("survey_responses")
+    .select("*", { count: "exact", head: true })
+    .eq("survey_version", entry.version);
 
   return (
     <SurveyAdminGuard>
-      <SurveyResponsesWorkspace surveyId={surveyId} />
+      <SurveyHubWorkspace surveyId={surveyId} responseCount={count ?? 0} />
     </SurveyAdminGuard>
   );
 }

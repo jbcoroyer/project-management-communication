@@ -175,11 +175,11 @@ export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWo
       <header className="ui-surface flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
           <Link
-            href="/questionnaire/reponses"
+            href={`/questionnaire/reponses/${surveyId}`}
             className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--foreground)]/50 hover:text-[var(--foreground)]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Retour à la liste
+            Retour au questionnaire
           </Link>
           <p className="ui-kicker mb-1">Service Communication</p>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Réponses</h1>

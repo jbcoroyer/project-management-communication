@@ -4,12 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  BarChart3,
-  ClipboardList,
-  ExternalLink,
-  Pencil,
-} from "lucide-react";
+import { ChevronRight, ClipboardList } from "lucide-react";
 import { surveyRegistry } from "../../../lib/survey/surveyRegistry";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 
@@ -56,26 +51,35 @@ export default function SurveyListWorkspace() {
         <p className="ui-kicker mb-1">Service Communication</p>
         <h1 className="ui-display text-2xl text-[var(--foreground)]">Questionnaires</h1>
         <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-          Gérez vos questionnaires : ouvrir le formulaire, modifier les questions ou consulter les
-          réponses.
+          Sélectionnez un questionnaire pour ouvrir le formulaire, modifier les questions ou
+          consulter les réponses.
         </p>
       </header>
 
-      <div className="grid gap-4">
-        {surveyRegistry.map((survey) => {
-          const responseCount = counts[survey.version] ?? 0;
-          return (
-            <article
-              key={survey.id}
-              className="ui-surface flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex min-w-0 gap-4">
+      {surveyRegistry.length === 0 ? (
+        <div className="ui-surface rounded-2xl p-8 text-center text-sm text-[color:var(--foreground)]/55">
+          Aucun questionnaire configuré pour le moment.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]/45">
+            {surveyRegistry.length} questionnaire{surveyRegistry.length !== 1 ? "s" : ""} disponible
+            {surveyRegistry.length !== 1 ? "s" : ""}
+          </p>
+          {surveyRegistry.map((survey) => {
+            const responseCount = counts[survey.version] ?? 0;
+            return (
+              <Link
+                key={survey.id}
+                href={`/questionnaire/reponses/${survey.id}`}
+                className="ui-surface ui-transition group flex items-center gap-4 rounded-2xl border border-[var(--line)] p-5 hover:border-[var(--accent)] hover:shadow-[var(--shadow-1)]"
+              >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
                   <ClipboardList className="h-6 w-6" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    <h2 className="text-lg font-semibold text-[var(--foreground)] group-hover:text-[var(--accent)]">
                       {survey.title}
                     </h2>
                     <span
@@ -89,45 +93,18 @@ export default function SurveyListWorkspace() {
                       {survey.status === "active" ? "Actif" : "Brouillon"}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-                    {survey.description}
-                  </p>
+                  <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{survey.description}</p>
                   <p className="mt-2 text-xs text-[color:var(--foreground)]/45">
                     Créé le {formatDate(survey.createdAt)} · version {survey.version}
                     {loading ? "" : ` · ${responseCount} réponse${responseCount !== 1 ? "s" : ""}`}
                   </p>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 sm:shrink-0">
-                <a
-                  href={survey.publicPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ui-btn ui-btn-secondary gap-2 text-xs"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Ouvrir
-                </a>
-                <Link
-                  href={`/questionnaire/reponses/${survey.id}/edit`}
-                  className="ui-btn ui-btn-secondary gap-2 text-xs"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Éditer
-                </Link>
-                <Link
-                  href={`/questionnaire/reponses/${survey.id}`}
-                  className="ui-btn ui-btn-primary gap-2 text-xs"
-                >
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Voir les réponses
-                </Link>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-[color:var(--foreground)]/30 group-hover:text-[var(--accent)]" />
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

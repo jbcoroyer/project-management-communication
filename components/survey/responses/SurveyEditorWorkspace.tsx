@@ -66,13 +66,13 @@ export default function SurveyEditorWorkspace({
     <div className="space-y-5">
       <header className="ui-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
         <div>
-          <Link
-            href="/questionnaire/reponses"
-            className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--foreground)]/50 hover:text-[var(--foreground)]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Retour à la liste
-          </Link>
+        <Link
+          href={`/questionnaire/reponses/${surveyId}`}
+          className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--foreground)]/50 hover:text-[var(--foreground)]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Retour au questionnaire
+        </Link>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Éditer le questionnaire</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{entry.title}</p>
         </div>
