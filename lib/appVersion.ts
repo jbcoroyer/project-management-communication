@@ -34,3 +34,9 @@ export function toV1Path(pathname: string): string {
   if (!stripped || stripped === "/") return "/dashboard/kanban";
   return stripped;
 }
+
+export function kanbanHref(pathname: string, taskId?: string | null): string {
+  const base =
+    detectVersionFromPath(pathname) === "v2" ? "/v2/dashboard/kanban" : "/dashboard/kanban";
+  return taskId ? `${base}?task=${encodeURIComponent(taskId)}` : base;
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, Schibsted_Grotesk } from "next/font/google";
+import { Inter, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import AppProviders from "../components/AppProviders";
 import SonnerToaster from "../components/SonnerToaster";
@@ -15,13 +15,6 @@ const schibsted = Schibsted_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  variable: "--font-logo",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -42,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${inter.variable} ${schibsted.variable} ${fraunces.variable} antialiased`}>
+      <body className={`${inter.variable} ${schibsted.variable} antialiased`}>
         <AppProviders>
           <SonnerToaster />
           {children}

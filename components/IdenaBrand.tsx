@@ -48,7 +48,7 @@ export function ThuesdayWordmark({ size = "sidebar" }: { size?: WordmarkSize }) 
 
   return (
     <span
-      className={["thuesday-wordmark text-[var(--foreground)]", sizeClass].join(" ")}
+      className={["thuesday-wordmark ui-display text-[var(--foreground)]", sizeClass].join(" ")}
       aria-label="Thuesday"
     >
       Thues

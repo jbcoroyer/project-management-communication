@@ -1,33 +1,33 @@
 "use client";
 
-import { FlaskConical } from "lucide-react";
+import { Layers } from "lucide-react";
 import { useAppVersion } from "../../lib/appVersionContext";
 
 export default function AppVersionSettings() {
   const { version, switchVersion, isSwitching } = useAppVersion();
-  const v2Enabled = version === "v2";
+  const onV2 = version === "v2";
 
   return (
     <div className="ui-surface overflow-hidden rounded-2xl">
       <div className="flex items-center gap-3 border-b border-[var(--line)] px-5 py-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-soft)]">
-          <FlaskConical className="h-5 w-5 text-[color:var(--foreground)]/45" />
+          <Layers className="h-5 w-5 text-[color:var(--foreground)]/45" />
         </div>
         <div className="flex-1">
-          <h2 className="font-semibold text-[var(--foreground)]">Interface avancée</h2>
+          <h2 className="font-semibold text-[var(--foreground)]">Interface V1</h2>
           <p className="text-xs text-[color:var(--foreground)]/60">
-            Active la version expérimentale (vue liste, automatisations).
+            Thuesday utilise la V2 par défaut. Activez la V1 pour l&apos;interface classique.
           </p>
         </div>
         <button
           type="button"
           role="switch"
-          aria-checked={v2Enabled}
+          aria-checked={!onV2}
           disabled={isSwitching}
-          onClick={() => switchVersion(v2Enabled ? "v1" : "v2")}
+          onClick={() => switchVersion(onV2 ? "v1" : "v2")}
           className={[
             "ui-transition relative h-7 w-12 shrink-0 rounded-full border disabled:opacity-50",
-            v2Enabled
+            !onV2
               ? "border-[var(--accent)] bg-[var(--accent)]"
               : "border-[var(--line)] bg-[var(--surface-soft)]",
           ].join(" ")}
@@ -35,16 +35,16 @@ export default function AppVersionSettings() {
           <span
             className={[
               "ui-transition absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm",
-              v2Enabled ? "left-[calc(100%-1.375rem)]" : "left-0.5",
+              !onV2 ? "left-[calc(100%-1.375rem)]" : "left-0.5",
             ].join(" ")}
           />
         </button>
       </div>
       <div className="px-5 py-3">
         <p className="text-xs text-[color:var(--foreground)]/50">
-          {v2Enabled
-            ? "Vous utilisez l'interface avancée. Désactivez pour revenir à l'interface standard."
-            : "Désactivée par défaut. Aucun changement visible tant que l'option est inactive."}
+          {onV2
+            ? "Vous êtes sur l'interface V2 (recommandée). Utilisez le sélecteur en haut ou ce bouton pour passer en V1."
+            : "Vous utilisez l'interface V1 classique. Réactivez la V2 pour retrouver l'expérience par défaut."}
         </p>
       </div>
     </div>

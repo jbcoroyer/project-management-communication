@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "./IdenaBrand";
+import AppVersionToggle from "./AppVersionToggle";
 
 type AppShellProps = {
   children: ReactNode;
@@ -245,7 +246,10 @@ export default function AppShell({
                 </div>
               )}
             </div>
-            {toolbarRight}
+            <div className="flex shrink-0 items-center gap-2">
+              <AppVersionToggle />
+              {toolbarRight}
+            </div>
           </header>
 
           <main className="pb-10">{children}</main>

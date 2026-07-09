@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
+import AppVersionToggle from "../AppVersionToggle";
 
 type V2AppShellProps = {
   children: ReactNode;
@@ -150,12 +151,7 @@ export default function V2AppShell({
 
   const sidebarContent = (onNavClick?: () => void) => (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <ServiceCommunicationIdenaHeading />
-        <span className="rounded-full border border-[var(--line-strong)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/70">
-          V2
-        </span>
-      </div>
+      <ServiceCommunicationIdenaHeading />
       <nav className="mt-6 flex-1 space-y-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -227,12 +223,7 @@ export default function V2AppShell({
               style={{ zIndex: "calc(var(--z-overlay) + 1)" }}
             >
               <div className="mb-4 flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <ServiceCommunicationIdenaHeading />
-                  <span className="rounded-full border border-[var(--line-strong)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/70">
-                    V2
-                  </span>
-                </div>
+                <ServiceCommunicationIdenaHeading />
                 <button
                   type="button"
                   onClick={() => setMobileNavOpen(false)}
@@ -274,7 +265,10 @@ export default function V2AppShell({
                 </div>
               )}
             </div>
-            {toolbarRight}
+            <div className="flex shrink-0 items-center gap-2">
+              <AppVersionToggle />
+              {toolbarRight}
+            </div>
           </header>
 
           <main className="pb-10">{children}</main>

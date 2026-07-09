@@ -36,6 +36,11 @@ export function AppVersionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setVersion(pathVersion);
     setIsSwitching(false);
+    try {
+      window.localStorage.setItem(APP_VERSION_STORAGE_KEY, pathVersion);
+    } catch {
+      // Préférence locale optionnelle
+    }
   }, [pathVersion]);
 
   useEffect(() => {

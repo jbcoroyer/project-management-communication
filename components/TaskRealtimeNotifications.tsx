@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import { useCurrentUser } from "../lib/useCurrentUser";
 import { deadlineDateOnly, daysFromTodayUtc, taskRowConcernsUser } from "../lib/taskConcernsUser";
+import { kanbanHref } from "../lib/appVersion";
 import { wasTaskMutatedLocally } from "../lib/taskMutatedLocally";
 import type { InAppNotificationInput } from "../lib/inAppNotificationTypes";
 import { DONE_COLUMN_NAME } from "../lib/workflowConstants";
@@ -97,7 +98,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
             pushRef.current({
               title: "Nouvelle tâche",
               body: `« ${name} » vous concerne.`,
-              href: taskId ? `/dashboard/kanban?task=${encodeURIComponent(taskId)}` : "/dashboard/kanban",
+              href: kanbanHref(window.location.pathname, taskId),
             });
             return;
           }
@@ -122,7 +123,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
               pushRef.current({
                 title: "Ajout au projet",
                 body: `Vous suivez désormais « ${projectName(newRow)} ».`,
-                href: taskId ? `/dashboard/kanban?task=${encodeURIComponent(taskId)}` : "/dashboard/kanban",
+                href: kanbanHref(window.location.pathname, taskId),
               });
               return;
             }
@@ -143,7 +144,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
                 pushRef.current({
                   title: `« ${projectName(newRow)} »`,
                   body: label,
-                  href: taskId ? `/dashboard/kanban?task=${encodeURIComponent(taskId)}` : "/dashboard/kanban",
+                  href: kanbanHref(window.location.pathname, taskId),
                 });
               }
             }
@@ -159,7 +160,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
                 pushRef.current({
                   title: "Tâche déplacée",
                   body: `« ${projectName(newRow)} » → ${newCol}`,
-                  href: taskId ? `/dashboard/kanban?task=${encodeURIComponent(taskId)}` : "/dashboard/kanban",
+                  href: kanbanHref(window.location.pathname, taskId),
                 });
               }
             }
@@ -239,7 +240,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
         pushRef.current({
           title,
           body,
-          href: taskId ? `/dashboard/kanban?task=${encodeURIComponent(taskId)}` : "/dashboard/kanban",
+          href: kanbanHref(window.location.pathname, taskId),
         });
       }
     };

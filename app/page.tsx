@@ -11,7 +11,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/dashboard/kanban");
+      router.replace("/v2/dashboard/kanban");
     }
   }, [loading, user, router]);
 
