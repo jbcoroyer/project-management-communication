@@ -56,7 +56,12 @@ function isNavActive(href: string, pathname: string): boolean {
   if (href === "/v2/events/dashboard") return pathname.startsWith("/v2/events");
   if (href === "/v2/dashboard/triage") return pathname === "/v2/dashboard/triage";
   if (href === "/v2/dashboard/kanban") {
-    return pathname === "/v2" || (pathname.startsWith("/v2/dashboard") && pathname !== "/v2/dashboard/triage");
+    return (
+      pathname === "/v2" ||
+      (pathname.startsWith("/v2/dashboard") &&
+        pathname !== "/v2/dashboard/triage" &&
+        pathname !== "/v2/dashboard/ask")
+    );
   }
   if (href === "/v2/stock") return pathname.startsWith("/v2/stock");
   if (href === "/v2/ideas") return pathname.startsWith("/v2/ideas");

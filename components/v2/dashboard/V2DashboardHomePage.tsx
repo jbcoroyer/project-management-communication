@@ -17,6 +17,7 @@ import {
   PartyPopper,
   Plus,
   Search,
+  Send,
   Table2,
   Users,
 } from "lucide-react";
@@ -75,7 +76,8 @@ type MainTab =
   | "analytics"
   | "archives"
   | "workload"
-  | "triage";
+  | "triage"
+  | "ask";
 const MAIN_TAB_SET = new Set<MainTab>([
   "inbox",
   "kanban",
@@ -86,6 +88,7 @@ const MAIN_TAB_SET = new Set<MainTab>([
   "archives",
   "workload",
   "triage",
+  "ask",
 ]);
 
 const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
@@ -98,6 +101,7 @@ const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "archives", label: "Archives", icon: Archive },
   { id: "triage", label: "Triage", icon: ListFilter },
+  { id: "ask", label: "Faire une demande", icon: Send },
 ];
 
 const ToDoListView = dynamic(() => import("../../ToDoListView"));
@@ -105,6 +109,7 @@ const AnalyticsView = dynamic(() => import("../../AnalyticsView"));
 const ArchivesView = dynamic(() => import("../../ArchivesView"));
 const CalendarView = dynamic(() => import("../../CalendarView"));
 const WorkloadView = dynamic(() => import("../../WorkloadView"));
+const AskForm = dynamic(() => import("../AskForm"));
 const TaskDetailPanel = dynamic(() => import("../../TaskDetailPanel"));
 const NewTaskModal = dynamic(() => import("../../NewTaskModal"));
 
@@ -1218,6 +1223,8 @@ export default function V2DashboardHomePage() {
           )}
 
           {activeTab === "analytics" && <AnalyticsView tasks={analyticsTasks} />}
+
+          {activeTab === "ask" && <AskForm />}
 
           {activeTab === "archives" && (
             <ArchivesView

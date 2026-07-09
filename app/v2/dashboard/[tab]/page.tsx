@@ -12,6 +12,7 @@ const VALID_TABS = new Set([
   "archives",
   "workload",
   "triage",
+  "ask",
 ]);
 
 export default async function V2DashboardTabPage({
