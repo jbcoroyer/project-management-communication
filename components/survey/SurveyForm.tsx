@@ -213,7 +213,11 @@ export default function SurveyForm({ surveyId = "satisfaction-2026" }: SurveyFor
                       question={q}
                       value={answers[q.id]}
                       onChange={(v) => setAnswer(q.id, v)}
-                      optionsOverride={q.id === "q1" ? entityOptions : undefined}
+                      optionsOverride={
+                        surveyId === "satisfaction-2026" && q.id === "q1"
+                          ? entityOptions
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
