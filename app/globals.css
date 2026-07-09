@@ -90,6 +90,14 @@ body {
   font-weight: 600;
 }
 
+.thuesday-wordmark {
+  font-family: var(--font-logo), var(--font-display), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  font-feature-settings: "ss01" on, "liga" on;
+  line-height: 1;
+}
+
 .ui-kicker {
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 0.6875rem;

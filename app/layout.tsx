@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Schibsted_Grotesk } from "next/font/google";
+import { Fraunces, Inter, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import AppProviders from "../components/AppProviders";
 import SonnerToaster from "../components/SonnerToaster";
@@ -18,14 +18,21 @@ const schibsted = Schibsted_Grotesk({
   display: "swap",
 });
 
+const fraunces = Fraunces({
+  variable: "--font-logo",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "Service Communication IDENA",
-    template: "%s | Service Communication IDENA",
+    default: "Thuesday",
+    template: "%s | Thuesday",
   },
   description:
-    "Outil interne du service Communication IDENA — gestion de projet, événements, réseaux sociaux et stock.",
-  applicationName: "Service Communication IDENA",
+    "Thuesday — outil interne du service Communication IDENA : gestion de projet, événements, réseaux sociaux et stock.",
+  applicationName: "Thuesday",
 };
 
 export default function RootLayout({
@@ -35,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${inter.variable} ${schibsted.variable} antialiased`}>
+      <body className={`${inter.variable} ${schibsted.variable} ${fraunces.variable} antialiased`}>
         <AppProviders>
           <SonnerToaster />
           {children}
