@@ -5,7 +5,9 @@ import { Trash2, Upload, X } from "lucide-react";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import type { InventoryItem, InventoryItemDraft } from "../lib/inventoryTypes";
 import { uploadStockVisual } from "../lib/stockVisualUpload";
+import { STOCK_VISUAL_ACCEPT, stockVisualFileError } from "../lib/stockVisualUtils";
 import { toastError } from "../lib/toast";
+import StockVisualPreview from "./stock/StockVisualPreview";
 
 type Props = {
   open: boolean;
@@ -187,7 +189,7 @@ export default function InventoryGoodiesModal(props: Props) {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">URL photo (optionnel)</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">URL image ou PDF (optionnel)</label>
               <input
                 value={visualUrl}
                 onChange={(event) => setVisualUrl(event.target.value)}
@@ -197,16 +199,22 @@ export default function InventoryGoodiesModal(props: Props) {
             </div>
 
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Photo de l&apos;article</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Image ou PDF de l&apos;article</label>
               <label className="ui-transition flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 py-4 text-sm font-medium text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)]">
                 <Upload className="h-4 w-4" />
-                Choisir une image
+                Choisir un fichier
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={STOCK_VISUAL_ACCEPT}
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
+                    const err = file ? stockVisualFileError(file) : null;
+                    if (err) {
+                      toastError(err);
+                      event.target.value = "";
+                      return;
+                    }
                     if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
                     setVisualFile(file);
                     setVisualPreviewUrl(file ? URL.createObjectURL(file) : null);
@@ -218,15 +226,8 @@ export default function InventoryGoodiesModal(props: Props) {
 
           {(visualPreviewUrl || visualUrl) && (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-                Aperçu photo
-              </p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={visualPreviewUrl ?? visualUrl}
-                alt="Aperçu du goodies"
-                className="h-52 w-full rounded-lg border border-[var(--line)] bg-white object-contain"
-              />
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">Aperçu</p>
+              <StockVisualPreview url={visualPreviewUrl ?? visualUrl} name="Aperçu du goodies" mode="detail" />
             </div>
           )}
 

@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Image as ImageIcon, Trash2, Upload, X } from "lucide-react";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import type { InventoryItem, InventoryItemDraft } from "../lib/inventoryTypes";
+import { uploadStockVisual } from "../lib/stockVisualUpload";
+import { STOCK_VISUAL_ACCEPT, stockVisualFileError } from "../lib/stockVisualUtils";
 import { toastError } from "../lib/toast";
+import StockVisualPreview from "./stock/StockVisualPreview";
 
 type Props = {
   open: boolean;
@@ -90,18 +93,12 @@ export default function InventoryPlvModal(props: Props) {
     try {
       let resolvedVisualUrl = visualUrl.trim() || null;
       if (visualFile) {
-        const extRaw = visualFile.name.split(".").pop() ?? "png";
-        const ext = extRaw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "png";
-        const path = `plv/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("stock-plv-visuals")
-          .upload(path, visualFile, { upsert: true, contentType: visualFile.type });
-        if (upErr) {
-          toastError(`Upload image impossible : ${upErr.message}`);
+        const { url, error } = await uploadStockVisual(supabase, visualFile, "plv");
+        if (error) {
+          toastError(`Upload impossible : ${error}`);
           return;
         }
-        const { data: urlData } = supabase.storage.from("stock-plv-visuals").getPublicUrl(path);
-        resolvedVisualUrl = urlData.publicUrl;
+        resolvedVisualUrl = url;
       }
 
       await onSubmit({
@@ -211,7 +208,7 @@ export default function InventoryPlvModal(props: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">URL image (optionnel)</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">URL image ou PDF (optionnel)</label>
               <input
                 value={visualUrl}
                 onChange={(event) => setVisualUrl(event.target.value)}
@@ -220,16 +217,22 @@ export default function InventoryPlvModal(props: Props) {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Importer une photo</label>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Importer une image ou un PDF</label>
               <label className="ui-transition flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 py-4 text-sm font-medium text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)]">
                 <Upload className="h-4 w-4" />
-                Choisir un fichier image
+                Choisir un fichier
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={STOCK_VISUAL_ACCEPT}
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
+                    const err = file ? stockVisualFileError(file) : null;
+                    if (err) {
+                      toastError(err);
+                      event.target.value = "";
+                      return;
+                    }
                     if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
                     setVisualFile(file);
                     setVisualPreviewUrl(file ? URL.createObjectURL(file) : null);
@@ -242,12 +245,7 @@ export default function InventoryPlvModal(props: Props) {
           {(visualPreviewUrl || visualUrl) && (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">Aperçu visuel</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={visualPreviewUrl ?? visualUrl}
-                alt="Aperçu du visuel PLV"
-                className="h-52 w-full rounded-lg border border-[var(--line)] object-contain bg-white"
-              />
+              <StockVisualPreview url={visualPreviewUrl ?? visualUrl} name="Aperçu du visuel PLV" mode="detail" />
             </div>
           )}
 

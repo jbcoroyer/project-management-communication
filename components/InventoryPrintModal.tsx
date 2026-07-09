@@ -13,7 +13,9 @@ import {
 } from "../lib/printSpecies";
 import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import { uploadStockVisual } from "../lib/stockVisualUpload";
+import { STOCK_VISUAL_ACCEPT, stockVisualFileError } from "../lib/stockVisualUtils";
 import { toastError } from "../lib/toast";
+import StockVisualPreview from "./stock/StockVisualPreview";
 
 type Props = {
   open: boolean;
@@ -459,7 +461,7 @@ export default function InventoryPrintModal(props: Props) {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">
-                URL photo (optionnel)
+                URL image ou PDF (optionnel)
               </label>
               <input
                 value={visualUrl}
@@ -470,17 +472,23 @@ export default function InventoryPrintModal(props: Props) {
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">
-                Photo du document
+                Importer une image ou un PDF
               </label>
               <label className="ui-transition flex h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 text-sm font-medium text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)]">
                 <Upload className="h-4 w-4" />
-                Choisir une image
+                Choisir un fichier
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={STOCK_VISUAL_ACCEPT}
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
+                    const err = file ? stockVisualFileError(file) : null;
+                    if (err) {
+                      toastError(err);
+                      event.target.value = "";
+                      return;
+                    }
                     if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
                     setVisualFile(file);
                     setVisualPreviewUrl(file ? URL.createObjectURL(file) : null);
@@ -493,13 +501,12 @@ export default function InventoryPrintModal(props: Props) {
           {(visualPreviewUrl || visualUrl) && (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-                Aperçu photo
+                Aperçu
               </p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={visualPreviewUrl ?? visualUrl}
-                alt="Aperçu du document"
-                className="h-52 w-full rounded-lg border border-[var(--line)] bg-white object-contain"
+              <StockVisualPreview
+                url={visualPreviewUrl ?? visualUrl}
+                name="Aperçu du document"
+                mode="detail"
               />
             </div>
           )}

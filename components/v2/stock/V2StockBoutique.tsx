@@ -32,6 +32,7 @@ import InventoryPlvModal from "../../InventoryPlvModal";
 import InventoryPrintModal from "../../InventoryPrintModal";
 import InventoryReorderModal from "../../InventoryReorderModal";
 import StockMovementModal from "../../StockMovementModal";
+import StockVisualPreview from "../../stock/StockVisualPreview";
 import { useConfirm } from "../../ui/ConfirmDialog";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
@@ -48,6 +49,7 @@ import { useStockProjects } from "../../../lib/useStockProjects";
 import { formatCurrency, formatNumber } from "../../../lib/stockUtils";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { uploadStockVisual } from "../../../lib/stockVisualUpload";
+import { isPdfFile, isPdfUrl, STOCK_VISUAL_ACCEPT, stockVisualFileError } from "../../../lib/stockVisualUtils";
 import {
   decodePrintItemType,
   PRINT_SPECIES_OPTIONS,
@@ -404,6 +406,11 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
 
   const handleDetailPhotoUpload = async (file: File) => {
     if (!detail) return;
+    const formatError = stockVisualFileError(file);
+    if (formatError) {
+      toastError(formatError);
+      return;
+    }
     setPhotoUploading(true);
     try {
       const { url, error } = await uploadStockVisual(supabase, file, visualUploadFolder(detail.category));
@@ -421,7 +428,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         language: detail.language,
         visualUrl: url,
       });
-      toastSuccess("Photo enregistrée");
+      toastSuccess(isPdfFile(file) ? "PDF enregistré" : "Photo enregistrée");
     } catch (err) {
       toastError(getInventoryErrorMessage(err, "Impossible d'enregistrer la photo."));
     } finally {
@@ -433,57 +440,61 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   const renderDetailPreview = (item: InventoryItem) => {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
+    const hasVisual = Boolean(item.visualUrl);
+    const isPdf = hasVisual && isPdfUrl(item.visualUrl!);
     return (
-      <div className="relative h-56 w-full">
+      <div className={`relative w-full ${isPdf ? "h-72" : "h-56"}`}>
         <input
           ref={photoInputRef}
           type="file"
-          accept="image/*"
+          accept={STOCK_VISUAL_ACCEPT}
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void handleDetailPhotoUpload(file);
           }}
         />
-        <button
-          type="button"
-          disabled={photoUploading}
-          onClick={() => photoInputRef.current?.click()}
-          className="group/preview relative h-full w-full overflow-hidden bg-white text-left"
-          title={item.visualUrl ? "Changer la photo" : "Ajouter une photo"}
-        >
-          {item.visualUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.visualUrl} alt={item.name} className="h-full w-full object-cover" />
-              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-[var(--foreground)]/55 py-2 text-xs font-semibold text-white opacity-0 transition group-hover/preview:opacity-100">
-                <Upload className="h-3.5 w-3.5" />
-                Changer la photo
-              </span>
-            </>
-          ) : (
-            <div className={`flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br ${meta.gradient}`}>
-              <Icon className="h-12 w-12 text-[color:var(--foreground)]/25" />
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/70 shadow-sm">
-                <Upload className="h-3.5 w-3.5" />
-                Ajouter une photo
-              </span>
-            </div>
-          )}
-          {photoUploading ? (
-            <span className="absolute inset-0 flex items-center justify-center bg-[var(--surface)]/80">
-              <Loader2 className="h-8 w-8 animate-spin text-[color:var(--foreground)]/50" />
-            </span>
-          ) : null}
-        </button>
-        {item.visualUrl ? (
+        {hasVisual ? (
+          <div className="relative h-full w-full overflow-hidden bg-white">
+            <StockVisualPreview url={item.visualUrl!} name={item.name} mode="detail" className="h-full" />
+            <button
+              type="button"
+              disabled={photoUploading}
+              onClick={() => photoInputRef.current?.click()}
+              className="ui-transition absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-[var(--foreground)]/55 py-2 text-xs font-semibold text-white hover:bg-[var(--foreground)]/70"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {isPdf ? "Remplacer le PDF" : "Changer la photo"}
+            </button>
+            {!isPdf ? (
+              <button
+                type="button"
+                onClick={() => setLightbox({ url: item.visualUrl!, name: item.name })}
+                className="ui-transition absolute bottom-10 left-3 rounded-lg border border-[var(--line)] bg-[var(--surface)]/90 px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/75 backdrop-blur hover:bg-[var(--surface)]"
+              >
+                Agrandir
+              </button>
+            ) : null}
+          </div>
+        ) : (
           <button
             type="button"
-            onClick={() => setLightbox({ url: item.visualUrl!, name: item.name })}
-            className="ui-transition absolute bottom-3 left-3 rounded-lg border border-[var(--line)] bg-[var(--surface)]/90 px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/75 backdrop-blur hover:bg-[var(--surface)]"
+            disabled={photoUploading}
+            onClick={() => photoInputRef.current?.click()}
+            className={`flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br ${meta.gradient}`}
+            title="Ajouter une image ou un PDF"
           >
-            Agrandir
+            <Icon className="h-12 w-12 text-[color:var(--foreground)]/25" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/70 shadow-sm">
+              <Upload className="h-3.5 w-3.5" />
+              Image ou PDF
+            </span>
           </button>
+        )}
+        {photoUploading ? (
+          <span className="absolute inset-0 flex items-center justify-center bg-[var(--surface)]/80">
+            <Loader2 className="h-8 w-8 animate-spin text-[color:var(--foreground)]/50" />
+          </span>
         ) : null}
       </div>
     );
@@ -501,14 +512,9 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             setLightbox({ url: item.visualUrl!, name: item.name });
           }}
           className={`group/vis relative ${height} w-full overflow-hidden bg-white`}
-          title="Agrandir le visuel"
+          title={isPdfUrl(item.visualUrl) ? "Ouvrir le PDF" : "Agrandir le visuel"}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.visualUrl}
-            alt={item.name}
-            className="h-full w-full object-cover transition duration-300 group-hover/vis:scale-105"
-          />
+          <StockVisualPreview url={item.visualUrl} name={item.name} mode="thumb" />
         </button>
       );
     }
@@ -1200,8 +1206,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             </button>
             <p className="mb-2 text-sm font-semibold text-[var(--foreground)]">{lightbox.name}</p>
             <div className="max-h-[80vh] overflow-hidden rounded-xl border border-[var(--line)] bg-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={lightbox.url} alt={lightbox.name} className="h-full max-h-[80vh] w-full object-contain" />
+              <StockVisualPreview url={lightbox.url} name={lightbox.name} mode="full" />
             </div>
           </div>
         </div>
