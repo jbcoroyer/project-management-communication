@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -13,6 +13,7 @@ import {
   Gift,
   Image as ImageIcon,
   LayoutGrid,
+  Loader2,
   Minus,
   Package,
   Pencil,
@@ -22,6 +23,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  Upload,
   Wallet,
   X,
 } from "lucide-react";
@@ -44,6 +46,8 @@ import {
 import { getInventoryErrorMessage, useInventory } from "../../../lib/useInventory";
 import { useStockProjects } from "../../../lib/useStockProjects";
 import { formatCurrency, formatNumber } from "../../../lib/stockUtils";
+import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
+import { uploadStockVisual } from "../../../lib/stockVisualUpload";
 import {
   decodePrintItemType,
   PRINT_SPECIES_OPTIONS,
@@ -149,6 +153,8 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   } = useInventory();
   const { projects } = useStockProjects();
   const confirm = useConfirm();
+  const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -168,6 +174,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   const [reorderItem, setReorderItem] = useState<InventoryItem | null>(null);
   const [movementItem, setMovementItem] = useState<InventoryItem | null>(null);
   const [movementMode, setMovementMode] = useState<"add" | "remove">("remove");
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const detail = useMemo(
     () => (detailItem ? items.find((it) => it.id === detailItem.id) ?? detailItem : null),
@@ -288,10 +295,16 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   };
 
   const openEdit = (item: InventoryItem) => {
+    setDetailItem(null);
     setEditingItem(item);
     if (item.category === "Print") setPrintModalOpen(true);
     else if (item.category === "PLV") setPlvModalOpen(true);
     else setGoodiesModalOpen(true);
+  };
+
+  const openReorder = (item: InventoryItem) => {
+    setDetailItem(null);
+    setReorderItem(item);
   };
 
   const handleSaveItem = async (draft: InventoryItemDraft) => {
@@ -378,8 +391,102 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   };
 
   const startMovement = (item: InventoryItem, mode: "add" | "remove") => {
+    setDetailItem(null);
     setMovementItem(item);
     setMovementMode(mode);
+  };
+
+  const visualUploadFolder = (category: InventoryCategory): "print" | "goodies" | "plv" => {
+    if (category === "Print") return "print";
+    if (category === "PLV") return "plv";
+    return "goodies";
+  };
+
+  const handleDetailPhotoUpload = async (file: File) => {
+    if (!detail) return;
+    setPhotoUploading(true);
+    try {
+      const { url, error } = await uploadStockVisual(supabase, file, visualUploadFolder(detail.category));
+      if (error || !url) {
+        toastError(error ? `Upload impossible : ${error}` : "Upload impossible.");
+        return;
+      }
+      await updateItem(detail.id, {
+        category: detail.category,
+        itemType: detail.itemType,
+        name: detail.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        alertThreshold: detail.alertThreshold,
+        language: detail.language,
+        visualUrl: url,
+      });
+      toastSuccess("Photo enregistrée");
+    } catch (err) {
+      toastError(getInventoryErrorMessage(err, "Impossible d'enregistrer la photo."));
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
+  const renderDetailPreview = (item: InventoryItem) => {
+    const meta = CATEGORY_META[item.category];
+    const Icon = meta.icon;
+    return (
+      <div className="relative h-56 w-full">
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleDetailPhotoUpload(file);
+          }}
+        />
+        <button
+          type="button"
+          disabled={photoUploading}
+          onClick={() => photoInputRef.current?.click()}
+          className="group/preview relative h-full w-full overflow-hidden bg-white text-left"
+          title={item.visualUrl ? "Changer la photo" : "Ajouter une photo"}
+        >
+          {item.visualUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.visualUrl} alt={item.name} className="h-full w-full object-cover" />
+              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-[var(--foreground)]/55 py-2 text-xs font-semibold text-white opacity-0 transition group-hover/preview:opacity-100">
+                <Upload className="h-3.5 w-3.5" />
+                Changer la photo
+              </span>
+            </>
+          ) : (
+            <div className={`flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br ${meta.gradient}`}>
+              <Icon className="h-12 w-12 text-[color:var(--foreground)]/25" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/70 shadow-sm">
+                <Upload className="h-3.5 w-3.5" />
+                Ajouter une photo
+              </span>
+            </div>
+          )}
+          {photoUploading ? (
+            <span className="absolute inset-0 flex items-center justify-center bg-[var(--surface)]/80">
+              <Loader2 className="h-8 w-8 animate-spin text-[color:var(--foreground)]/50" />
+            </span>
+          ) : null}
+        </button>
+        {item.visualUrl ? (
+          <button
+            type="button"
+            onClick={() => setLightbox({ url: item.visualUrl!, name: item.name })}
+            className="ui-transition absolute bottom-3 left-3 rounded-lg border border-[var(--line)] bg-[var(--surface)]/90 px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/75 backdrop-blur hover:bg-[var(--surface)]"
+          >
+            Agrandir
+          </button>
+        ) : null}
+      </div>
+    );
   };
 
   const renderVisual = (item: InventoryItem, height: string) => {
@@ -939,7 +1046,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
           />
           <div className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col overflow-y-auto bg-[var(--surface)] shadow-2xl">
             <div className="relative">
-              {renderVisual(detail, "h-56")}
+              {renderDetailPreview(detail)}
               <button
                 type="button"
                 onClick={() => setDetailItem(null)}
@@ -1055,7 +1162,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReorderItem(detail)}
+                  onClick={() => openReorder(detail)}
                   className="ui-transition inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5 text-sm font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface)]"
                 >
                   Infos / devis
