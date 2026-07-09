@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, X } from "lucide-react";
+import { Trash2, Upload, X } from "lucide-react";
+import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import type { InventoryItem, InventoryItemDraft } from "../lib/inventoryTypes";
+import { uploadStockVisual } from "../lib/stockVisualUpload";
 import { toastError } from "../lib/toast";
 
 type Props = {
@@ -16,6 +18,7 @@ type Props = {
 export default function InventoryGoodiesModal(props: Props) {
   const { open, initialItem, onClose, onSubmit, onDelete } = props;
   const isEditing = Boolean(initialItem?.id);
+  const supabase = useMemo(() => getSupabaseBrowser(), []);
 
   const defaultDraft = useMemo<InventoryItemDraft>(
     () => ({
@@ -35,6 +38,9 @@ export default function InventoryGoodiesModal(props: Props) {
   const [quantity, setQuantity] = useState("0");
   const [unitPrice, setUnitPrice] = useState("0");
   const [alertThreshold, setAlertThreshold] = useState("0");
+  const [visualUrl, setVisualUrl] = useState("");
+  const [visualFile, setVisualFile] = useState<File | null>(null);
+  const [visualPreviewUrl, setVisualPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -45,7 +51,16 @@ export default function InventoryGoodiesModal(props: Props) {
     setQuantity(String(source.quantity));
     setUnitPrice(String(source.unitPrice));
     setAlertThreshold(String(source.alertThreshold));
+    setVisualUrl(initialItem?.visualUrl ?? "");
+    setVisualFile(null);
+    setVisualPreviewUrl(null);
   }, [open, initialItem, defaultDraft]);
+
+  useEffect(() => {
+    return () => {
+      if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
+    };
+  }, [visualPreviewUrl]);
 
   if (!open) return null;
 
@@ -62,6 +77,16 @@ export default function InventoryGoodiesModal(props: Props) {
 
     setSubmitting(true);
     try {
+      let resolvedVisualUrl = visualUrl.trim() || null;
+      if (visualFile) {
+        const { url, error } = await uploadStockVisual(supabase, visualFile, "goodies");
+        if (error) {
+          toastError(`Upload image impossible : ${error}`);
+          return;
+        }
+        resolvedVisualUrl = url;
+      }
+
       await onSubmit({
         id: initialItem?.id,
         category: "Goodies",
@@ -71,6 +96,7 @@ export default function InventoryGoodiesModal(props: Props) {
         unitPrice: Math.max(0, Number(unitPrice.replace(",", ".")) || 0),
         alertThreshold: Math.max(0, Math.round(Number(alertThreshold) || 0)),
         language: null,
+        visualUrl: resolvedVisualUrl,
       });
       onClose();
     } finally {
@@ -159,7 +185,50 @@ export default function InventoryGoodiesModal(props: Props) {
                 className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
               />
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">URL photo (optionnel)</label>
+              <input
+                value={visualUrl}
+                onChange={(event) => setVisualUrl(event.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">Photo de l&apos;article</label>
+              <label className="ui-transition flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 py-4 text-sm font-medium text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)]">
+                <Upload className="h-4 w-4" />
+                Choisir une image
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
+                    setVisualFile(file);
+                    setVisualPreviewUrl(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
+              </label>
+            </div>
           </div>
+
+          {(visualPreviewUrl || visualUrl) && (
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
+                Aperçu photo
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={visualPreviewUrl ?? visualUrl}
+                alt="Aperçu du goodies"
+                className="h-52 w-full rounded-lg border border-[var(--line)] bg-white object-contain"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
             <div>

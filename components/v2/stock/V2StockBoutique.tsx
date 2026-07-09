@@ -44,10 +44,23 @@ import {
 import { getInventoryErrorMessage, useInventory } from "../../../lib/useInventory";
 import { useStockProjects } from "../../../lib/useStockProjects";
 import { formatCurrency, formatNumber } from "../../../lib/stockUtils";
+import {
+  decodePrintItemType,
+  PRINT_SPECIES_OPTIONS,
+  type PrintSpeciesValue,
+} from "../../../lib/printSpecies";
 
 type CategoryFilter = "all" | InventoryCategory;
+type SpeciesFilter = "all" | PrintSpeciesValue;
 type SortKey = "name" | "quantity" | "value" | "alert";
 type ViewMode = "grid" | "list";
+
+type DisplaySection = {
+  id: string;
+  title: string | null;
+  chipClass?: string;
+  items: InventoryItem[];
+};
 
 const CATEGORY_META: Record<
   InventoryCategory,
@@ -73,6 +86,21 @@ const CATEGORY_META: Record<
   },
 };
 
+const SPECIES_CHIP: Record<PrintSpeciesValue, string> = {
+  general: "border-slate-200 bg-slate-50 text-slate-700",
+  volaille: "border-amber-200 bg-amber-50 text-amber-700",
+  ruminants: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  porcs: "border-rose-200 bg-rose-50 text-rose-700",
+  multi: "border-violet-200 bg-violet-50 text-violet-700",
+};
+
+function getPrintMeta(item: InventoryItem) {
+  const decoded = decodePrintItemType(item.itemType ?? "");
+  const speciesLabel =
+    PRINT_SPECIES_OPTIONS.find((o) => o.value === decoded.species)?.label ?? decoded.species;
+  return { docType: decoded.docType, species: decoded.species, speciesLabel };
+}
+
 function stockGauge(item: InventoryItem): { pct: number; tone: "ok" | "warn" | "low" } {
   const low = isLowStock(item);
   if (low) return { pct: item.quantity <= 0 ? 6 : 22, tone: "low" };
@@ -92,9 +120,19 @@ const GAUGE_TONE: Record<"ok" | "warn" | "low", string> = {
 
 function itemSubtitle(item: InventoryItem): string {
   if (item.category === "Print") {
-    return [item.itemType, item.language].filter(Boolean).join(" · ") || "Document print";
+    const { docType } = getPrintMeta(item);
+    const lang = item.language?.trim();
+    return lang ? `${docType} · ${lang}` : docType;
   }
   return item.itemType || CATEGORY_META[item.category].label;
+}
+
+function itemSearchHaystack(item: InventoryItem): string {
+  if (item.category === "Print") {
+    const { docType, speciesLabel } = getPrintMeta(item);
+    return [item.name, docType, speciesLabel, item.language, item.lastQuoteInfo].filter(Boolean).join(" ");
+  }
+  return [item.name, item.itemType, item.lastQuoteInfo].filter(Boolean).join(" ");
 }
 
 export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?: string }) {
@@ -114,6 +152,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [speciesFilter, setSpeciesFilter] = useState<SpeciesFilter>("all");
   const [alertOnly, setAlertOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("alert");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -144,17 +183,34 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
     return base;
   }, [items]);
 
+  const showSpeciesFilters = categoryFilter === "all" || categoryFilter === "Print";
+
+  const speciesCounts = useMemo(() => {
+    const printItems = items.filter(
+      (it) => it.category === "Print" && (categoryFilter === "all" || categoryFilter === "Print"),
+    );
+    const counts: Record<SpeciesFilter, number> = {
+      all: printItems.length,
+      general: 0,
+      volaille: 0,
+      ruminants: 0,
+      porcs: 0,
+      multi: 0,
+    };
+    for (const item of printItems) counts[getPrintMeta(item).species] += 1;
+    return counts;
+  }, [items, categoryFilter]);
+
   const visibleItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const list = items.filter((item) => {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+      if (speciesFilter !== "all") {
+        if (item.category !== "Print" || getPrintMeta(item).species !== speciesFilter) return false;
+      }
       if (alertOnly && !isLowStock(item)) return false;
       if (!query) return true;
-      const haystack = [item.name, item.itemType, item.lastQuoteInfo, item.language]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(query);
+      return itemSearchHaystack(item).toLowerCase().includes(query);
     });
     const sorted = [...list];
     sorted.sort((a, b) => {
@@ -174,7 +230,54 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
       }
     });
     return sorted;
-  }, [items, searchQuery, categoryFilter, alertOnly, sortKey]);
+  }, [items, searchQuery, categoryFilter, speciesFilter, alertOnly, sortKey]);
+
+  const displaySections = useMemo((): DisplaySection[] => {
+    const groupBySpecies =
+      showSpeciesFilters && speciesFilter === "all" && visibleItems.some((it) => it.category === "Print");
+
+    if (!groupBySpecies) {
+      return [{ id: "all", title: null, items: visibleItems }];
+    }
+
+    const sections: DisplaySection[] = [];
+    const printItems = visibleItems.filter((it) => it.category === "Print");
+    const otherItems = visibleItems.filter((it) => it.category !== "Print");
+
+    for (const opt of PRINT_SPECIES_OPTIONS) {
+      const group = printItems.filter((it) => getPrintMeta(it).species === opt.value);
+      if (group.length === 0) continue;
+      sections.push({
+        id: `species-${opt.value}`,
+        title: opt.label,
+        chipClass: SPECIES_CHIP[opt.value],
+        items: group,
+      });
+    }
+
+    if (otherItems.length > 0) {
+      const goodies = otherItems.filter((it) => it.category === "Goodies");
+      const plv = otherItems.filter((it) => it.category === "PLV");
+      if (goodies.length > 0) {
+        sections.push({
+          id: "goodies",
+          title: "Goodies",
+          chipClass: CATEGORY_META.Goodies.chip,
+          items: goodies,
+        });
+      }
+      if (plv.length > 0) {
+        sections.push({
+          id: "plv",
+          title: "PLV",
+          chipClass: CATEGORY_META.PLV.chip,
+          items: plv,
+        });
+      }
+    }
+
+    return sections.length > 0 ? sections : [{ id: "all", title: null, items: visibleItems }];
+  }, [visibleItems, showSpeciesFilters, speciesFilter]);
 
   const openCreate = (category: InventoryCategory) => {
     setEditingItem(null);
@@ -360,6 +463,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
     const gauge = stockGauge(item);
+    const printMeta = item.category === "Print" ? getPrintMeta(item) : null;
     return (
       <article
         key={item.id}
@@ -374,6 +478,13 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             <Icon className="h-3 w-3" />
             {meta.label}
           </span>
+          {printMeta && printMeta.species !== "general" ? (
+            <span
+              className={`absolute bottom-3 left-3 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${SPECIES_CHIP[printMeta.species]}`}
+            >
+              {printMeta.speciesLabel}
+            </span>
+          ) : null}
           {isLowStock(item) ? (
             <span className="absolute right-3 top-3">{statusPill(item, true)}</span>
           ) : null}
@@ -412,6 +523,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
   const renderRow = (item: InventoryItem) => {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
+    const printMeta = item.category === "Print" ? getPrintMeta(item) : null;
     return (
       <div
         key={item.id}
@@ -422,11 +534,18 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
           {renderVisual(item, "h-16")}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${meta.chip}`}>
               <Icon className="h-3 w-3" />
               {meta.label}
             </span>
+            {printMeta && printMeta.species !== "general" ? (
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${SPECIES_CHIP[printMeta.species]}`}
+              >
+                {printMeta.speciesLabel}
+              </span>
+            ) : null}
             {isLowStock(item) ? statusPill(item, true) : null}
           </div>
           <p className="mt-1 line-clamp-1 font-semibold text-[var(--foreground)]">{item.name}</p>
@@ -443,6 +562,52 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         <div className="w-[180px] shrink-0" onClick={(e) => e.stopPropagation()}>
           {quickActions(item)}
         </div>
+      </div>
+    );
+  };
+
+  const renderCatalog = () => {
+    if (displaySections.length === 1 && !displaySections[0]?.title) {
+      const sectionItems = displaySections[0]?.items ?? [];
+      if (viewMode === "grid") {
+        return (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {sectionItems.map(renderCard)}
+          </div>
+        );
+      }
+      return <div className="flex flex-col gap-2">{sectionItems.map(renderRow)}</div>;
+    }
+
+    return (
+      <div className="space-y-8">
+        {displaySections.map((section) => (
+          <section key={section.id}>
+            {section.title ? (
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  className={[
+                    "inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold",
+                    section.chipClass ?? "border-[var(--line)] bg-[var(--surface-soft)]",
+                  ].join(" ")}
+                >
+                  {section.title}
+                </span>
+                <span className="text-sm text-[color:var(--foreground)]/50">
+                  {formatNumber(section.items.length)} réf.
+                </span>
+                <div className="h-px flex-1 bg-[var(--line)]" />
+              </div>
+            ) : null}
+            {viewMode === "grid" ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {section.items.map(renderCard)}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">{section.items.map(renderRow)}</div>
+            )}
+          </section>
+        ))}
       </div>
     );
   };
@@ -660,7 +825,10 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             <button
               key={cat}
               type="button"
-              onClick={() => setCategoryFilter(cat)}
+              onClick={() => {
+                setCategoryFilter(cat);
+                if (cat !== "all" && cat !== "Print") setSpeciesFilter("all");
+              }}
               className={[
                 "ui-transition inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold",
                 active
@@ -695,6 +863,47 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         </button>
       </div>
 
+      {showSpeciesFilters && speciesCounts.all > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)]/60 p-3">
+          <span className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/45">
+            Espèce
+          </span>
+          {(["all", ...PRINT_SPECIES_OPTIONS.map((o) => o.value)] as SpeciesFilter[]).map((sp) => {
+            const active = speciesFilter === sp;
+            const label = sp === "all" ? "Toutes" : PRINT_SPECIES_OPTIONS.find((o) => o.value === sp)?.label ?? sp;
+            const count = speciesCounts[sp];
+            if (sp !== "all" && count === 0) return null;
+            return (
+              <button
+                key={sp}
+                type="button"
+                onClick={() => setSpeciesFilter(sp)}
+                className={[
+                  "ui-transition inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold",
+                  active
+                    ? sp === "all"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]"
+                      : `border-transparent ${SPECIES_CHIP[sp as PrintSpeciesValue]} ring-2 ring-[var(--accent)]/30`
+                    : sp === "all"
+                      ? "border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]"
+                      : `border-transparent ${SPECIES_CHIP[sp as PrintSpeciesValue]} opacity-80 hover:opacity-100`,
+                ].join(" ")}
+              >
+                {label}
+                <span
+                  className={[
+                    "rounded-full px-1.5 py-0.5 text-[11px] font-bold",
+                    active && sp === "all" ? "bg-white/25" : "bg-black/5",
+                  ].join(" ")}
+                >
+                  {formatNumber(count)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {/* Contenu */}
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -710,17 +919,13 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
           <Package className="h-10 w-10 text-[color:var(--foreground)]/30" />
           <p className="mt-4 text-base font-semibold text-[var(--foreground)]">Aucun article à afficher</p>
           <p className="mt-1 max-w-sm text-sm text-[color:var(--foreground)]/55">
-            {searchQuery || alertOnly || categoryFilter !== "all"
+            {searchQuery || alertOnly || categoryFilter !== "all" || speciesFilter !== "all"
               ? "Aucun résultat pour ces filtres. Essayez d'élargir votre recherche."
               : "Commencez par ajouter un document, un goodies ou un support PLV."}
           </p>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visibleItems.map(renderCard)}
-        </div>
       ) : (
-        <div className="flex flex-col gap-2">{visibleItems.map(renderRow)}</div>
+        renderCatalog()
       )}
 
       {/* Panneau de détail (slide-over) */}
@@ -757,6 +962,23 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
                   {statusPill(detail)}
                 </div>
                 <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{itemSubtitle(detail)}</p>
+                {detail.category === "Print" ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${SPECIES_CHIP[getPrintMeta(detail).species]}`}
+                    >
+                      {getPrintMeta(detail).speciesLabel}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--foreground)]/70">
+                      {getPrintMeta(detail).docType}
+                    </span>
+                    {detail.language ? (
+                      <span className="inline-flex items-center rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--foreground)]/70">
+                        {detail.language}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

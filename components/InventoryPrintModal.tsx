@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, Upload, X } from "lucide-react";
 import { printDocumentTypeOptions } from "../lib/printDocumentTypes";
 import { PRINT_LANGUAGES_FR, PRINT_LANGUAGES_FEATURED_FR } from "../lib/printLanguages";
 import type { InventoryItem, InventoryItemDraft } from "../lib/inventoryTypes";
@@ -11,6 +11,8 @@ import {
   PRINT_SPECIES_OPTIONS,
   type PrintSpeciesValue,
 } from "../lib/printSpecies";
+import { getSupabaseBrowser } from "../lib/supabaseBrowser";
+import { uploadStockVisual } from "../lib/stockVisualUpload";
 import { toastError } from "../lib/toast";
 
 type Props = {
@@ -47,6 +49,7 @@ function newLangRow(partial?: Partial<LangRow>): LangRow {
 export default function InventoryPrintModal(props: Props) {
   const { open, initialItem, allItems, onClose, onSubmit, onSubmitMany, onDelete } = props;
   const isEditing = Boolean(initialItem?.id);
+  const supabase = useMemo(() => getSupabaseBrowser(), []);
 
   const docOptions = useMemo(() => printDocumentTypeOptions(allItems), [allItems]);
   const restLang = useMemo(() => {
@@ -62,8 +65,17 @@ export default function InventoryPrintModal(props: Props) {
   const [quantity, setQuantity] = useState("0");
   const [unitPrice, setUnitPrice] = useState("0");
   const [alertThreshold, setAlertThreshold] = useState("0");
+  const [visualUrl, setVisualUrl] = useState("");
+  const [visualFile, setVisualFile] = useState<File | null>(null);
+  const [visualPreviewUrl, setVisualPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [langRows, setLangRows] = useState<LangRow[]>(() => [newLangRow()]);
+
+  useEffect(() => {
+    return () => {
+      if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
+    };
+  }, [visualPreviewUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,6 +92,9 @@ export default function InventoryPrintModal(props: Props) {
       setQuantity(String(source.quantity));
       setUnitPrice(String(source.unitPrice));
       setAlertThreshold(String(source.alertThreshold));
+      setVisualUrl(source.visualUrl ?? "");
+      setVisualFile(null);
+      setVisualPreviewUrl(null);
     } else {
       setDocSelect(docOptions[0] ?? "Fiches Commerciales");
       setCustomDocType("");
@@ -89,6 +104,9 @@ export default function InventoryPrintModal(props: Props) {
       setQuantity("0");
       setUnitPrice("0");
       setAlertThreshold("0");
+      setVisualUrl("");
+      setVisualFile(null);
+      setVisualPreviewUrl(null);
       setLangRows([newLangRow()]);
     }
   }, [open, initialItem, docOptions]);
@@ -115,13 +133,24 @@ export default function InventoryPrintModal(props: Props) {
     }
 
     const encodedType = encodePrintItemType(doc, species);
+
+    setSubmitting(true);
+    try {
+      let resolvedVisualUrl = visualUrl.trim() || null;
+      if (visualFile) {
+        const { url, error } = await uploadStockVisual(supabase, visualFile, "print");
+        if (error) {
+          toastError(`Upload image impossible : ${error}`);
+          return;
+        }
+        resolvedVisualUrl = url;
+      }
+
     if (isEditing) {
       if (!language.trim()) {
         toastError("La langue est obligatoire.");
         return;
       }
-      setSubmitting(true);
-      try {
         await onSubmit({
           id: initialItem?.id,
           category: "Print",
@@ -131,11 +160,9 @@ export default function InventoryPrintModal(props: Props) {
           unitPrice: parsePrice(unitPrice),
           alertThreshold: Math.max(0, Math.round(Number(alertThreshold) || 0)),
           language: language.trim(),
+          visualUrl: resolvedVisualUrl,
         });
         onClose();
-      } finally {
-        setSubmitting(false);
-      }
       return;
     }
 
@@ -158,6 +185,7 @@ export default function InventoryPrintModal(props: Props) {
         unitPrice: parsePrice(row.unitPrice),
         alertThreshold: Math.max(0, Math.round(Number(row.alertThreshold) || 0)),
         language: lang,
+        visualUrl: resolvedVisualUrl,
       });
     }
     if (drafts.length === 0) {
@@ -165,8 +193,6 @@ export default function InventoryPrintModal(props: Props) {
       return;
     }
 
-    setSubmitting(true);
-    try {
       if (drafts.length > 1 && onSubmitMany) {
         await onSubmitMany(drafts);
       } else {
@@ -429,6 +455,54 @@ export default function InventoryPrintModal(props: Props) {
               </div>
             )}
           </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">
+                URL photo (optionnel)
+              </label>
+              <input
+                value={visualUrl}
+                onChange={(event) => setVisualUrl(event.target.value)}
+                className="ui-focus-ring w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-[color:var(--foreground)]/65">
+                Photo du document
+              </label>
+              <label className="ui-transition flex h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 text-sm font-medium text-[color:var(--foreground)]/70 hover:border-[var(--line-strong)]">
+                <Upload className="h-4 w-4" />
+                Choisir une image
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (visualPreviewUrl) URL.revokeObjectURL(visualPreviewUrl);
+                    setVisualFile(file);
+                    setVisualPreviewUrl(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {(visualPreviewUrl || visualUrl) && (
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
+                Aperçu photo
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={visualPreviewUrl ?? visualUrl}
+                alt="Aperçu du document"
+                className="h-52 w-full rounded-lg border border-[var(--line)] bg-white object-contain"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
             <div>
