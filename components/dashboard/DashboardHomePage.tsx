@@ -48,9 +48,9 @@ const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
   { id: "todo", label: "Ma To-Do List", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", icon: KanbanSquare },
   { id: "calendar", label: "Calendrier", icon: CalendarDays },
+  { id: "ask", label: "Faire une demande", icon: Send },
   { id: "workload", label: "Charge equipe", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "ask", label: "Faire une demande", icon: Send },
   { id: "archives", label: "Archives", icon: Archive },
 ];
 

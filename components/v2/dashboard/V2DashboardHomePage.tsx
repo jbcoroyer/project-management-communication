@@ -96,12 +96,12 @@ const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
   { id: "todo", label: "Ma To-Do List", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", icon: KanbanSquare },
   { id: "list", label: "Vue liste", icon: Table2 },
+  { id: "ask", label: "Faire une demande", icon: Send },
   { id: "calendar", label: "Calendrier", icon: CalendarDays },
   { id: "workload", label: "Charge équipe", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "archives", label: "Archives", icon: Archive },
   { id: "triage", label: "Triage", icon: ListFilter },
-  { id: "ask", label: "Faire une demande", icon: Send },
 ];
 
 const ToDoListView = dynamic(() => import("../../ToDoListView"));

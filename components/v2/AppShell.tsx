@@ -18,6 +18,7 @@ import {
   Megaphone,
   Menu,
   Package,
+  Send,
   Settings2,
   Target,
   UserCircle2,
@@ -38,6 +39,7 @@ type V2AppShellProps = {
 
 const navItems = [
   { href: "/v2/dashboard/kanban", label: "Tableau de bord", icon: LayoutGrid },
+  { href: "/v2/dashboard/ask", label: "Faire une demande", icon: Send },
   { href: "/v2/todo", label: "Mon espace", icon: ListTodo },
   { href: "/v2/planning", label: "Planning", icon: CalendarDays },
   { href: "/v2/capacity", label: "Charge d'équipe", icon: Gauge },
@@ -55,6 +57,7 @@ const navItems = [
 function isNavActive(href: string, pathname: string): boolean {
   if (href === "/v2/events/dashboard") return pathname.startsWith("/v2/events");
   if (href === "/v2/dashboard/triage") return pathname === "/v2/dashboard/triage";
+  if (href === "/v2/dashboard/ask") return pathname === "/v2/dashboard/ask";
   if (href === "/v2/dashboard/kanban") {
     return (
       pathname === "/v2" ||
