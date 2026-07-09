@@ -1,19 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, PartyPopper, Send, Sparkles } from "lucide-react";
-import { submitSurveyResponse } from "../../app/actions/survey";
-import {
-  isQuestionVisible,
-  NO_OPINION,
-  satisfaction2026,
-} from "../../lib/survey/satisfaction2026";
+import { fetchSurveyDefinition, submitSurveyResponse } from "../../app/actions/survey";
+import { NO_OPINION, satisfaction2026 } from "../../lib/survey/satisfaction2026";
+import { isQuestionVisible } from "../../lib/survey/surveyDefinitionUtils";
 import { defaultCompanies } from "../../lib/types";
-import type { Question, SurveyAnswers } from "../../lib/survey/surveyTypes";
+import type { Question, SurveyAnswers, SurveyDefinition } from "../../lib/survey/surveyTypes";
 import { toastError } from "../../lib/toast";
 import { useReferenceData } from "../../lib/useReferenceData";
 import QuestionField from "./QuestionField";
+
+const SURVEY_ID = "satisfaction-2026";
 
 type Phase = "intro" | "form" | "done";
 
@@ -27,10 +26,17 @@ function isAnswered(question: Question, value: SurveyAnswers[string]): boolean {
 
 export default function SurveyForm() {
   const { companies } = useReferenceData();
+  const [definition, setDefinition] = useState<SurveyDefinition>(satisfaction2026);
   const [phase, setPhase] = useState<Phase>("intro");
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<SurveyAnswers>({});
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    void fetchSurveyDefinition(SURVEY_ID).then((result) => {
+      if (result.ok) setDefinition(result.definition);
+    });
+  }, []);
 
   const entityOptions = useMemo(() => {
     const names = companies.map((c) => c.name).filter(Boolean);
@@ -45,16 +51,16 @@ export default function SurveyForm() {
 
   // Étapes visibles = étapes dont au moins une question est affichée (logique conditionnelle).
   const visibleSteps = useMemo(() => {
-    return satisfaction2026.steps
+    return definition.steps
       .map((step) => ({
         step,
         questions: step.questionIds
-          .map((id) => satisfaction2026.questions.find((q) => q.id === id))
+          .map((id) => definition.questions.find((q) => q.id === id))
           .filter((q): q is Question => Boolean(q))
           .filter((q) => isQuestionVisible(q, selectedPrestations)),
       }))
       .filter((entry) => entry.questions.length > 0);
-  }, [selectedPrestations]);
+  }, [definition, selectedPrestations]);
 
   const totalSteps = visibleSteps.length;
   const safeIndex = Math.min(stepIndex, Math.max(0, totalSteps - 1));
@@ -97,7 +103,7 @@ export default function SurveyForm() {
     const { q23, ...rest } = answers;
     const respondentName = typeof q23 === "string" ? q23.trim() : "";
     const result = await submitSurveyResponse({
-      surveyVersion: satisfaction2026.version,
+      surveyVersion: definition.version,
       answers: rest,
       respondentName: respondentName || null,
     });
@@ -136,13 +142,13 @@ export default function SurveyForm() {
               <Sparkles className="h-8 w-8" strokeWidth={1.75} />
             </div>
             <h1 className="ui-display text-3xl font-semibold text-[var(--foreground)] sm:text-4xl">
-              {satisfaction2026.intro.title}
+              {definition.intro.title}
             </h1>
             <p className="mt-3 max-w-lg text-base leading-relaxed text-[color:var(--foreground)]/65">
-              {satisfaction2026.intro.subtitle}
+              {definition.intro.subtitle}
             </p>
             <p className="mt-2 text-sm text-[color:var(--foreground)]/45">
-              ⏱️ Environ {satisfaction2026.intro.estimatedMinutes} minutes · {totalSteps} étapes
+              ⏱️ Environ {definition.intro.estimatedMinutes} minutes · {totalSteps} étapes
             </p>
             <button
               type="button"

@@ -65,6 +65,7 @@ function isNavActive(href: string, pathname: string): boolean {
   }
   if (href === "/v2/stock") return pathname.startsWith("/v2/stock");
   if (href === "/v2/ideas") return pathname.startsWith("/v2/ideas");
+  if (href === "/questionnaire/reponses") return pathname.startsWith("/questionnaire/reponses");
   return pathname === href;
 }
 

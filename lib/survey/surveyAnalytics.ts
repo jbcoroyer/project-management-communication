@@ -1,5 +1,6 @@
-import { getQuestion, satisfaction2026 } from "./satisfaction2026";
-import type { SurveyResponse } from "./surveyTypes";
+import { findQuestion } from "./surveyDefinitionUtils";
+import type { SurveyDefinition, SurveyResponse } from "./surveyTypes";
+import { satisfaction2026 } from "./satisfaction2026";
 
 export type NpsBreakdown = {
   total: number;
@@ -58,8 +59,11 @@ export function computeSatisfactionAverage(responses: readonly SurveyResponse[])
 }
 
 /** Moyennes de toutes les questions de type rating (hors NPS). */
-export function computeRatingStats(responses: readonly SurveyResponse[]): RatingStat[] {
-  return satisfaction2026.questions
+export function computeRatingStats(
+  responses: readonly SurveyResponse[],
+  definition: SurveyDefinition = satisfaction2026,
+): RatingStat[] {
+  return definition.questions
     .filter((q) => q.type === "rating")
     .map((q) => {
       const values = responses
@@ -83,8 +87,9 @@ export function computeRatingStats(responses: readonly SurveyResponse[]): Rating
 /** Répartition des réponses pour toutes les questions fermées (single/multiple). */
 export function computeChoiceDistributions(
   responses: readonly SurveyResponse[],
+  definition: SurveyDefinition = satisfaction2026,
 ): ChoiceDistribution[] {
-  return satisfaction2026.questions
+  return definition.questions
     .filter((q) => (q.type === "single" || q.type === "multiple") && q.options)
     .map((q) => {
       const counts = new Map<string, number>();
@@ -116,8 +121,11 @@ export type Verbatim = {
 };
 
 /** Aplati toutes les réponses ouvertes en une liste de verbatims. */
-export function collectVerbatims(responses: readonly SurveyResponse[]): Verbatim[] {
-  const openQuestionIds = satisfaction2026.questions
+export function collectVerbatims(
+  responses: readonly SurveyResponse[],
+  definition: SurveyDefinition = satisfaction2026,
+): Verbatim[] {
+  const openQuestionIds = definition.questions
     .filter((q) => q.type === "open")
     .map((q) => q.id);
 
@@ -131,7 +139,7 @@ export function collectVerbatims(responses: readonly SurveyResponse[]): Verbatim
         responseId: r.id,
         createdAt: r.createdAt,
         questionId: qid,
-        questionLabel: getQuestion(qid)?.label ?? qid,
+        questionLabel: findQuestion(definition, qid)?.label ?? qid,
         text,
         respondentName: r.respondentName,
         entity: r.entity,

@@ -1,6 +1,8 @@
 import { defaultCompanies } from "../types";
 import type { Question, SurveyDefinition, SurveyStep } from "./surveyTypes";
 
+export { isQuestionVisible } from "./surveyDefinitionUtils";
+
 export const SURVEY_VERSION = "satisfaction-2026";
 
 /** Réponse neutre proposée sur plusieurs questions fermées. */
@@ -313,14 +315,3 @@ export function getQuestion(id: string): Question | undefined {
   return questions.find((q) => q.id === id);
 }
 
-/**
- * Détermine si une question doit être affichée compte tenu des prestations
- * cochées en q4 (logique conditionnelle de la section 4).
- */
-export function isQuestionVisible(
-  question: Question,
-  selectedPrestations: readonly string[],
-): boolean {
-  if (!question.showIfPrestation) return true;
-  return selectedPrestations.includes(question.showIfPrestation);
-}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, Download, ExternalLink, Inbox, Smile, ThumbsUp, Users } from "lucide-react";
-import { getQuestion, satisfaction2026 } from "../../../lib/survey/satisfaction2026";
+import Link from "next/link";
+import { ArrowLeft, BarChart3, Download, Inbox, Smile, ThumbsUp, Users } from "lucide-react";
+import { fetchSurveyDefinition } from "../../../app/actions/survey";
+import { findQuestion } from "../../../lib/survey/surveyDefinitionUtils";
 import {
   collectVerbatims,
   computeChoiceDistributions,
@@ -12,7 +14,8 @@ import {
 } from "../../../lib/survey/surveyAnalytics";
 import { surveyResponsesToCsv } from "../../../lib/survey/surveyExport";
 import { mapSurveyResponseRow } from "../../../lib/survey/surveyMappers";
-import type { SurveyResponse } from "../../../lib/survey/surveyTypes";
+import { getDefaultSurveyDefinition, getSurveyRegistryEntry } from "../../../lib/survey/surveyRegistry";
+import type { SurveyDefinition, SurveyResponse } from "../../../lib/survey/surveyTypes";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { useRealtimeReload } from "../../../lib/useRealtimeReload";
@@ -21,9 +24,9 @@ import SurveyVerbatims from "./SurveyVerbatims";
 
 type PeriodPreset = "all" | "30" | "90" | "365";
 
-const ENTITY_OPTIONS = getQuestion("q1")?.options ?? [];
-const SERVICE_OPTIONS = getQuestion("q2")?.options ?? [];
-const PRESTATION_OPTIONS = getQuestion("q4")?.options ?? [];
+type SurveyResponsesWorkspaceProps = {
+  surveyId: string;
+};
 
 function KpiCard({
   icon: Icon,
@@ -51,8 +54,10 @@ function KpiCard({
   );
 }
 
-export default function SurveyResponsesWorkspace() {
+export default function SurveyResponsesWorkspace({ surveyId }: SurveyResponsesWorkspaceProps) {
+  const entry = getSurveyRegistryEntry(surveyId);
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const [definition, setDefinition] = useState<SurveyDefinition | null>(null);
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,20 +67,45 @@ export default function SurveyResponsesWorkspace() {
   const [prestation, setPrestation] = useState("all");
   const [period, setPeriod] = useState<PeriodPreset>("all");
 
+  const activeDefinition = definition ?? getDefaultSurveyDefinition(surveyId) ?? null;
+
+  const entityOptions = useMemo(
+    () => activeDefinition ? findQuestion(activeDefinition, "q1")?.options ?? [] : [],
+    [activeDefinition],
+  );
+  const serviceOptions = useMemo(
+    () => activeDefinition ? findQuestion(activeDefinition, "q2")?.options ?? [] : [],
+    [activeDefinition],
+  );
+  const prestationOptions = useMemo(
+    () => activeDefinition ? findQuestion(activeDefinition, "q4")?.options ?? [] : [],
+    [activeDefinition],
+  );
+
   const load = useCallback(async () => {
+    if (!entry) {
+      setLoading(false);
+      return;
+    }
     try {
-      const { data, error } = await supabase
-        .from("survey_responses")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setResponses((data ?? []).map(mapSurveyResponseRow));
+      const [defResult, responsesResult] = await Promise.all([
+        fetchSurveyDefinition(surveyId),
+        supabase
+          .from("survey_responses")
+          .select("*")
+          .eq("survey_version", entry.version)
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (defResult.ok) setDefinition(defResult.definition);
+      if (responsesResult.error) throw responsesResult.error;
+      setResponses((responsesResult.data ?? []).map(mapSurveyResponseRow));
     } catch {
       toastError("Chargement des réponses impossible.");
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [entry, supabase, surveyId]);
 
   useEffect(() => {
     void load().catch(() => {});
@@ -83,15 +113,14 @@ export default function SurveyResponsesWorkspace() {
 
   useRealtimeReload({
     table: "survey_responses",
-    channelName: "survey-responses-realtime",
+    channelName: `survey-responses-${surveyId}`,
     onChange: useCallback(() => {
       void load();
     }, [load]),
   });
 
   const filtered = useMemo(() => {
-    const periodMs =
-      period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
+    const periodMs = period === "all" ? null : Number(period) * 24 * 60 * 60 * 1000;
     return responses.filter((r) => {
       if (entity !== "all" && r.entity !== entity) return false;
       if (service !== "all" && r.service !== service) return false;
@@ -105,21 +134,30 @@ export default function SurveyResponsesWorkspace() {
 
   const nps = useMemo(() => computeNps(filtered), [filtered]);
   const satisfactionAvg = useMemo(() => computeSatisfactionAverage(filtered), [filtered]);
-  const ratingStats = useMemo(() => computeRatingStats(filtered), [filtered]);
-  const distributions = useMemo(() => computeChoiceDistributions(filtered), [filtered]);
-  const verbatims = useMemo(() => collectVerbatims(filtered), [filtered]);
+  const ratingStats = useMemo(
+    () => (activeDefinition ? computeRatingStats(filtered, activeDefinition) : []),
+    [filtered, activeDefinition],
+  );
+  const distributions = useMemo(
+    () => (activeDefinition ? computeChoiceDistributions(filtered, activeDefinition) : []),
+    [filtered, activeDefinition],
+  );
+  const verbatims = useMemo(
+    () => (activeDefinition ? collectVerbatims(filtered, activeDefinition) : []),
+    [filtered, activeDefinition],
+  );
 
   const handleExport = () => {
-    if (filtered.length === 0) {
+    if (!activeDefinition || filtered.length === 0) {
       toastError("Aucune réponse à exporter.");
       return;
     }
-    const csv = surveyResponsesToCsv(filtered);
+    const csv = surveyResponsesToCsv(filtered, activeDefinition);
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `questionnaire-satisfaction-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `questionnaire-${surveyId}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toastSuccess("Export CSV généré");
@@ -128,43 +166,40 @@ export default function SurveyResponsesWorkspace() {
   const selectClass =
     "ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]";
 
+  if (!entry) {
+    return <p className="text-sm text-[color:var(--foreground)]/55">Questionnaire introuvable.</p>;
+  }
+
   return (
     <div className="space-y-5">
       <header className="ui-surface flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
+          <Link
+            href="/questionnaire/reponses"
+            className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--foreground)]/50 hover:text-[var(--foreground)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Retour à la liste
+          </Link>
           <p className="ui-kicker mb-1">Service Communication</p>
-          <h1 className="ui-display text-2xl text-[var(--foreground)]">
-            Réponses au questionnaire
-          </h1>
+          <h1 className="ui-display text-2xl text-[var(--foreground)]">Réponses</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-            Questionnaire de satisfaction · version {satisfaction2026.version}
+            {entry.title} · version {entry.version}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/questionnaire"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ui-btn ui-btn-primary gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Accéder au questionnaire
-          </a>
-          <button type="button" onClick={handleExport} className="ui-btn ui-btn-secondary gap-2">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </button>
-        </div>
+        <button type="button" onClick={handleExport} className="ui-btn ui-btn-secondary gap-2">
+          <Download className="h-4 w-4" />
+          Export CSV
+        </button>
       </header>
 
-      {/* Filtres */}
       <div className="ui-surface flex flex-wrap items-center gap-3 rounded-2xl p-4">
         <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]/45">
           Filtres
         </span>
         <select value={entity} onChange={(e) => setEntity(e.target.value)} className={selectClass}>
           <option value="all">Toutes les entités</option>
-          {ENTITY_OPTIONS.map((o) => (
+          {entityOptions.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
@@ -172,7 +207,7 @@ export default function SurveyResponsesWorkspace() {
         </select>
         <select value={service} onChange={(e) => setService(e.target.value)} className={selectClass}>
           <option value="all">Tous les services</option>
-          {SERVICE_OPTIONS.map((o) => (
+          {serviceOptions.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
@@ -184,7 +219,7 @@ export default function SurveyResponsesWorkspace() {
           className={selectClass}
         >
           <option value="all">Toutes les prestations</option>
-          {PRESTATION_OPTIONS.map((o) => (
+          {prestationOptions.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
@@ -208,13 +243,20 @@ export default function SurveyResponsesWorkspace() {
         <div className="ui-surface flex flex-col items-center gap-2 rounded-2xl p-12 text-center">
           <Inbox className="h-8 w-8 text-[color:var(--foreground)]/35" />
           <p className="text-sm text-[color:var(--foreground)]/55">
-            Aucune réponse pour le moment. Partagez le lien du questionnaire{" "}
-            <span className="font-semibold">/questionnaire</span>.
+            Aucune réponse pour le moment. Partagez le lien{" "}
+            <a
+              href={entry.publicPath}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              {entry.publicPath}
+            </a>
+            .
           </p>
         </div>
       ) : (
         <>
-          {/* KPIs */}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               icon={Users}
@@ -242,7 +284,6 @@ export default function SurveyResponsesWorkspace() {
             />
           </div>
 
-          {/* Moyennes notées */}
           <section className="ui-surface rounded-2xl p-5">
             <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
               <BarChart3 className="h-4 w-4 text-[color:var(--foreground)]/50" />
@@ -251,7 +292,6 @@ export default function SurveyResponsesWorkspace() {
             <RatingAveragesChart stats={ratingStats} />
           </section>
 
-          {/* Répartitions des fermées */}
           <div className="grid gap-5 xl:grid-cols-2">
             {distributions.map((dist) => (
               <section key={dist.questionId} className="ui-surface rounded-2xl p-5">
