@@ -2,7 +2,7 @@
 
 import V2AppShell from "../AppShell";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
-import StockInventoryWorkspace from "../../stock/StockInventoryWorkspace";
+import V2StockBoutique from "./V2StockBoutique";
 
 export default function V2StockPage() {
   const { user } = useCurrentUser();
@@ -14,7 +14,7 @@ export default function V2StockPage() {
       currentUserAvatarUrl={user?.avatarUrl}
       currentUserJobTitle={user?.jobTitle}
     >
-      <StockInventoryWorkspace basePath="/v2/stock" />
+      <V2StockBoutique basePath="/v2/stock" />
     </V2AppShell>
   );
 }
