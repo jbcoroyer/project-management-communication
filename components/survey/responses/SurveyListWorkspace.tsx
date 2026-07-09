@@ -5,8 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronRight, ClipboardList, Plus, X } from "lucide-react";
-import { createSurvey, listSurveys, type SurveyListItem } from "../../../app/actions/survey";
+import {
+  Building2,
+  ChevronRight,
+  ExternalLink,
+  Layers,
+  MessageSquare,
+  Plus,
+  Sparkles,
+  Users,
+  X,
+} from "lucide-react";
+import {
+  createSurvey,
+  listSurveys,
+  type SurveyAudience,
+  type SurveyListItem,
+} from "../../../app/actions/survey";
 import { toastError, toastSuccess } from "../../../lib/toast";
 
 function formatDate(iso: string): string {
@@ -16,6 +31,147 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+const AUDIENCE_THEMES: Record<
+  SurveyAudience,
+  {
+    label: string;
+    subtitle: string;
+    icon: typeof Users;
+    border: string;
+    iconBg: string;
+    iconColor: string;
+    badge: string;
+    accent: string;
+    cardHover: string;
+  }
+> = {
+  externe: {
+    label: "Collaborateurs groupe",
+    subtitle: "Diffusé à l'échelle de l'entreprise",
+    icon: Users,
+    border: "border-l-sky-500",
+    iconBg: "bg-gradient-to-br from-sky-100 to-sky-50",
+    iconColor: "text-sky-700",
+    badge: "bg-sky-100 text-sky-800 ring-sky-200",
+    accent: "group-hover:text-sky-700",
+    cardHover: "hover:border-sky-300 hover:shadow-[0_8px_30px_-12px_rgba(14,165,233,0.35)]",
+  },
+  interne: {
+    label: "Équipe Communication",
+    subtitle: "Réservé aux membres du service",
+    icon: Building2,
+    border: "border-l-violet-500",
+    iconBg: "bg-gradient-to-br from-violet-100 to-fuchsia-50",
+    iconColor: "text-violet-700",
+    badge: "bg-violet-100 text-violet-800 ring-violet-200",
+    accent: "group-hover:text-violet-700",
+    cardHover: "hover:border-violet-300 hover:shadow-[0_8px_30px_-12px_rgba(139,92,246,0.35)]",
+  },
+  general: {
+    label: "Personnalisé",
+    subtitle: "Questionnaire sur mesure",
+    icon: Sparkles,
+    border: "border-l-amber-500",
+    iconBg: "bg-gradient-to-br from-amber-100 to-orange-50",
+    iconColor: "text-amber-800",
+    badge: "bg-amber-100 text-amber-900 ring-amber-200",
+    accent: "group-hover:text-amber-800",
+    cardHover: "hover:border-amber-300 hover:shadow-[0_8px_30px_-12px_rgba(245,158,11,0.3)]",
+  },
+};
+
+function SurveyCard({ survey }: { survey: SurveyListItem }) {
+  const theme = AUDIENCE_THEMES[survey.audience];
+  const Icon = theme.icon;
+
+  return (
+    <Link
+      href={`/questionnaire/reponses/${survey.id}`}
+      className={[
+        "ui-surface ui-transition group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--line)] border-l-4 p-5",
+        theme.border,
+        theme.cardHover,
+      ].join(" ")}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div
+          className={[
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 ring-black/5",
+            theme.iconBg,
+            theme.iconColor,
+          ].join(" ")}
+        >
+          <Icon className="h-6 w-6" strokeWidth={1.75} />
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <span
+            className={[
+              "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset",
+              theme.badge,
+            ].join(" ")}
+          >
+            {theme.label}
+          </span>
+          <span
+            className={[
+              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              survey.status === "active"
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-[var(--surface-soft)] text-[color:var(--foreground)]/55",
+            ].join(" ")}
+          >
+            {survey.status === "active" ? "Actif" : "Brouillon"}
+          </span>
+        </div>
+      </div>
+
+      <h2
+        className={[
+          "text-lg font-semibold leading-snug text-[var(--foreground)] transition-colors",
+          theme.accent,
+        ].join(" ")}
+      >
+        {survey.title}
+      </h2>
+      <p className="mt-1 text-xs font-medium text-[color:var(--foreground)]/45">{theme.subtitle}</p>
+
+      {survey.description ? (
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[color:var(--foreground)]/60">
+          {survey.description}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/60">
+          <MessageSquare className="h-3 w-3" />
+          {survey.questionCount} question{survey.questionCount !== 1 ? "s" : ""}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/60">
+          <Layers className="h-3 w-3" />
+          {survey.stepCount} écran{survey.stepCount !== 1 ? "s" : ""}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/60">
+          <Users className="h-3 w-3" />
+          {survey.responseCount} réponse{survey.responseCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
+        <p className="min-w-0 truncate text-[11px] text-[color:var(--foreground)]/45">
+          Créé le {formatDate(survey.createdAt)}
+        </p>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--foreground)]/50">
+            <ExternalLink className="h-3 w-3" />
+            <span className="max-w-[120px] truncate font-mono">{survey.publicPath}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-[color:var(--foreground)]/30 transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 export default function SurveyListWorkspace() {
@@ -65,8 +221,8 @@ export default function SurveyListWorkspace() {
           <p className="ui-kicker mb-1">Service Communication</p>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Questionnaires</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-            Sélectionnez un questionnaire pour ouvrir le formulaire, modifier les questions ou
-            consulter les réponses.
+            Chaque carte est codée par couleur selon son public cible : collaborateurs du groupe,
+            équipe interne, ou questionnaire personnalisé.
           </p>
         </div>
         <button
@@ -108,6 +264,27 @@ export default function SurveyListWorkspace() {
         </div>
       ) : null}
 
+      {!loading && surveys.length > 0 ? (
+        <div className="flex flex-wrap gap-3">
+          {(["externe", "interne", "general"] as const).map((audience) => {
+            const theme = AUDIENCE_THEMES[audience];
+            if (!surveys.some((s) => s.audience === audience)) return null;
+            return (
+              <span
+                key={audience}
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset",
+                  theme.badge,
+                ].join(" ")}
+              >
+                <theme.icon className="h-3 w-3" />
+                {theme.label}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       {loading ? (
         <p className="text-sm text-[color:var(--foreground)]/55">Chargement des questionnaires…</p>
       ) : surveys.length === 0 ? (
@@ -115,47 +292,9 @@ export default function SurveyListWorkspace() {
           Aucun questionnaire pour le moment. Créez-en un avec le bouton ci-dessus.
         </div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--foreground)]/45">
-            {surveys.length} questionnaire{surveys.length !== 1 ? "s" : ""}
-          </p>
+        <div className="grid gap-4 lg:grid-cols-2">
           {surveys.map((survey) => (
-            <Link
-              key={survey.id}
-              href={`/questionnaire/reponses/${survey.id}`}
-              className="ui-surface ui-transition group flex items-center gap-4 rounded-2xl border border-[var(--line)] p-5 hover:border-[var(--accent)] hover:shadow-[var(--shadow-1)]"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-                <ClipboardList className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold text-[var(--foreground)] group-hover:text-[var(--accent)]">
-                    {survey.title}
-                  </h2>
-                  <span
-                    className={[
-                      "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                      survey.status === "active"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-[var(--surface-soft)] text-[color:var(--foreground)]/55",
-                    ].join(" ")}
-                  >
-                    {survey.status === "active" ? "Actif" : "Brouillon"}
-                  </span>
-                </div>
-                {survey.description ? (
-                  <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
-                    {survey.description}
-                  </p>
-                ) : null}
-                <p className="mt-2 text-xs text-[color:var(--foreground)]/45">
-                  Créé le {formatDate(survey.createdAt)} ·{" "}
-                  {survey.responseCount} réponse{survey.responseCount !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-[color:var(--foreground)]/30 group-hover:text-[var(--accent)]" />
-            </Link>
+            <SurveyCard key={survey.id} survey={survey} />
           ))}
         </div>
       )}

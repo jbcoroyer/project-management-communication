@@ -21,16 +21,23 @@ export type SurveyDefinitionResult =
 export type SaveSurveyDefinitionResult = { ok: true } | { ok: false; error: string };
 export type DeleteSurveyResponseResult = { ok: true } | { ok: false; error: string };
 
+export type SurveyAudience = "externe" | "interne" | "general";
+
 export type SurveyMeta = {
   id: string;
   title: string;
   description: string;
   version: string;
   status: "active" | "draft";
+  audience: SurveyAudience;
   createdAt: string;
   publicPath: string;
 };
-export type SurveyListItem = SurveyMeta & { responseCount: number };
+export type SurveyListItem = SurveyMeta & {
+  responseCount: number;
+  questionCount: number;
+  stepCount: number;
+};
 export type CreateSurveyResult = { ok: true; surveyId: string } | { ok: false; error: string };
 export type RenameSurveyResult = { ok: true } | { ok: false; error: string };
 
@@ -96,9 +103,16 @@ type SurveyDefinitionRow = {
   description: string | null;
   version: string | null;
   status: string | null;
+  audience: string | null;
   created_at: string | null;
   public_path: string | null;
+  definition?: unknown;
 };
+
+function parseAudience(raw: string | null): SurveyAudience {
+  if (raw === "externe" || raw === "interne") return raw;
+  return "general";
+}
 
 function rowToSurveyMeta(row: SurveyDefinitionRow): SurveyMeta {
   return {
@@ -107,8 +121,17 @@ function rowToSurveyMeta(row: SurveyDefinitionRow): SurveyMeta {
     description: row.description ?? "",
     version: row.version ?? row.id,
     status: row.status === "draft" ? "draft" : "active",
+    audience: parseAudience(row.audience),
     createdAt: row.created_at ?? "",
     publicPath: row.public_path ?? defaultPublicPathForSurvey(row.id),
+  };
+}
+
+function countFromDefinition(raw: unknown): { questionCount: number; stepCount: number } {
+  const def = parseSurveyDefinition(raw);
+  return {
+    questionCount: def?.questions.length ?? 0,
+    stepCount: def?.steps.length ?? 0,
   };
 }
 
@@ -134,7 +157,7 @@ export async function getSurveyMeta(surveyId: string): Promise<SurveyMeta | null
   const supabase = await createServerSupabase();
   const { data } = await supabase
     .from("survey_definitions")
-    .select("id, title, description, version, status, created_at, public_path")
+    .select("id, title, description, version, status, audience, created_at, public_path")
     .eq("id", surveyId)
     .maybeSingle();
 
@@ -147,7 +170,7 @@ export async function listSurveys(): Promise<SurveyListItem[]> {
   const supabase = await createServerSupabase();
   const { data: defs } = await supabase
     .from("survey_definitions")
-    .select("id, title, description, version, status, created_at, public_path")
+    .select("id, title, description, version, status, audience, created_at, public_path, definition")
     .order("created_at", { ascending: true });
 
   const { data: resp } = await supabase.from("survey_responses").select("survey_version");
@@ -159,7 +182,13 @@ export async function listSurveys(): Promise<SurveyListItem[]> {
 
   return ((defs ?? []) as SurveyDefinitionRow[]).map((row) => {
     const meta = rowToSurveyMeta(row);
-    return { ...meta, responseCount: counts[meta.version] ?? 0 };
+    const structure = countFromDefinition(row.definition);
+    return {
+      ...meta,
+      responseCount: counts[meta.version] ?? 0,
+      questionCount: structure.questionCount,
+      stepCount: structure.stepCount,
+    };
   });
 }
 
