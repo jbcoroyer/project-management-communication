@@ -1,12 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import {
+  closestCorners,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
   Copy,
+  GripVertical,
   Plus,
   Save,
   Trash2,
@@ -34,6 +56,15 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "text", label: "Champ court" },
 ];
 
+const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
+  single: "Choix unique",
+  multiple: "Choix multiple",
+  rating: "Note",
+  nps: "NPS",
+  open: "Texte libre",
+  text: "Champ court",
+};
+
 type SurveyEditorWorkspaceProps = {
   surveyId: string;
   initialDefinition: SurveyDefinition;
@@ -42,6 +73,75 @@ type SurveyEditorWorkspaceProps = {
 const inputClass =
   "ui-focus-ring w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-normal text-[var(--foreground)]";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold text-[color:var(--foreground)]/55";
+const handleClass =
+  "flex h-8 w-6 cursor-grab touch-none items-center justify-center rounded-md text-[color:var(--foreground)]/35 hover:bg-[var(--surface)] hover:text-[color:var(--foreground)]/70 active:cursor-grabbing";
+
+const optionId = (questionId: string, index: number) => `${questionId}::opt::${index}`;
+
+/** Enveloppe sortable pour une question (fournit les props du poignée de drag). */
+function SortableQuestion({
+  id,
+  children,
+}: {
+  id: string;
+  children: (handleProps: Record<string, unknown>) => ReactNode;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
+    id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4"
+    >
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+}
+
+/** Enveloppe sortable pour une option de réponse. */
+function SortableOption({
+  id,
+  children,
+}: {
+  id: string;
+  children: (handleProps: Record<string, unknown>) => ReactNode;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
+    id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1.5">
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+}
+
+/** Zone de dépôt d'une section (accepte les questions, même si vide). */
+function SectionDropZone({ id, children }: { id: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`space-y-3 rounded-xl transition-colors ${
+        isOver ? "bg-[var(--accent)]/5 outline-dashed outline-1 outline-[var(--accent)]/40" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function SurveyEditorWorkspace({
   surveyId,
@@ -54,8 +154,13 @@ export default function SurveyEditorWorkspace({
     buildEditorSections(initialDefinition),
   );
   const [saving, setSaving] = useState(false);
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
 
-  // Options de la question "prestations" (q4) pour la logique conditionnelle.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const prestationOptions = useMemo(() => {
     for (const s of sections) {
       const q4 = s.questions.find((q) => q.id === "q4");
@@ -64,6 +169,110 @@ export default function SurveyEditorWorkspace({
     return [];
   }, [sections]);
 
+  const activeQuestion = useMemo(() => {
+    if (!activeQuestionId) return null;
+    for (const s of sections) {
+      const q = s.questions.find((qq) => qq.id === activeQuestionId);
+      if (q) return q;
+    }
+    return null;
+  }, [activeQuestionId, sections]);
+
+  // --- Localisation d'une question / section ---
+  const findSectionIndexByContainer = (containerId: string) =>
+    sections.findIndex((s) => s.key === containerId);
+
+  const findSectionIndexByQuestion = (questionId: string) =>
+    sections.findIndex((s) => s.questions.some((q) => q.id === questionId));
+
+  /** Résout l'index de section pour un id (question ou conteneur de section). */
+  const resolveSectionIndex = (id: string) => {
+    const byContainer = findSectionIndexByContainer(id);
+    if (byContainer !== -1) return byContainer;
+    return findSectionIndexByQuestion(id);
+  };
+
+  // --- Drag & drop des questions (inter-écrans) ---
+  const handleQuestionDragStart = (event: DragStartEvent) => {
+    setActiveQuestionId(String(event.active.id));
+  };
+
+  const handleQuestionDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const fromIndex = findSectionIndexByQuestion(activeId);
+    const toIndex = resolveSectionIndex(overId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    setSections((prev) => {
+      const from = prev[fromIndex];
+      const to = prev[toIndex];
+      const moving = from.questions.find((q) => q.id === activeId);
+      if (!moving) return prev;
+
+      const overQuestionIndex = to.questions.findIndex((q) => q.id === overId);
+      const insertAt = overQuestionIndex === -1 ? to.questions.length : overQuestionIndex;
+
+      const next = [...prev];
+      next[fromIndex] = {
+        ...from,
+        questions: from.questions.filter((q) => q.id !== activeId),
+      };
+      const toQuestions = [...to.questions];
+      toQuestions.splice(insertAt, 0, moving);
+      next[toIndex] = { ...to, questions: toQuestions };
+      return next;
+    });
+  };
+
+  const handleQuestionDragEnd = (event: DragEndEvent) => {
+    setActiveQuestionId(null);
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const sectionIndex = findSectionIndexByQuestion(activeId);
+    if (sectionIndex === -1) return;
+
+    setSections((prev) => {
+      const section = prev[sectionIndex];
+      const oldIndex = section.questions.findIndex((q) => q.id === activeId);
+      const overIndex = section.questions.findIndex((q) => q.id === overId);
+      const newIndex = overIndex === -1 ? section.questions.length - 1 : overIndex;
+      if (oldIndex === -1 || oldIndex === newIndex) return prev;
+      const next = [...prev];
+      next[sectionIndex] = {
+        ...section,
+        questions: arrayMove(section.questions, oldIndex, newIndex),
+      };
+      return next;
+    });
+  };
+
+  const handleOptionDragEnd = (sectionIndex: number, questionIndex: number) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = Number(String(active.id).split("::").pop());
+    const to = Number(String(over.id).split("::").pop());
+    if (Number.isNaN(from) || Number.isNaN(to)) return;
+    setSections((prev) =>
+      prev.map((s, i) => {
+        if (i !== sectionIndex) return s;
+        return {
+          ...s,
+          questions: s.questions.map((q, qi) =>
+            qi === questionIndex
+              ? { ...q, options: arrayMove([...(q.options ?? [])], from, to) }
+              : q,
+          ),
+        };
+      }),
+    );
+  };
+
+  // --- Mutations ---
   const mutateSection = (index: number, patch: Partial<EditorSection>) => {
     setSections((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   };
@@ -109,7 +318,11 @@ export default function SurveyEditorWorkspace({
       prev.map((s, i) => {
         if (i !== sectionIndex) return s;
         const source = s.questions[questionIndex];
-        const copy: Question = { ...source, id: generateQuestionId(), label: `${source.label} (copie)` };
+        const copy: Question = {
+          ...source,
+          id: generateQuestionId(),
+          label: `${source.label} (copie)`,
+        };
         const next = [...s.questions];
         next.splice(questionIndex + 1, 0, copy);
         return { ...s, questions: next };
@@ -134,26 +347,11 @@ export default function SurveyEditorWorkspace({
     );
   };
 
-  const moveQuestion = (sectionIndex: number, questionIndex: number, dir: -1 | 1) => {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const target = questionIndex + dir;
-        if (target < 0 || target >= s.questions.length) return s;
-        const next = [...s.questions];
-        [next[questionIndex], next[target]] = [next[target], next[questionIndex]];
-        return { ...s, questions: next };
-      }),
-    );
-  };
-
   const moveSection = (sectionIndex: number, dir: -1 | 1) => {
     setSections((prev) => {
       const target = sectionIndex + dir;
       if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      [next[sectionIndex], next[target]] = [next[target], next[sectionIndex]];
-      return next;
+      return arrayMove(prev, sectionIndex, target);
     });
   };
 
@@ -180,7 +378,6 @@ export default function SurveyEditorWorkspace({
     setSections((prev) => prev.filter((_, i) => i !== sectionIndex));
   };
 
-  // --- Options (choix unique / multiple) ---
   const setOption = (sectionIndex: number, questionIndex: number, optIndex: number, value: string) => {
     setSections((prev) =>
       prev.map((s, i) => {
@@ -255,7 +452,7 @@ export default function SurveyEditorWorkspace({
 
   return (
     <div className="space-y-5">
-      <header className="ui-surface sticky top-2 z-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
+      <header className="ui-surface sticky top-2 z-20 flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
         <div>
           <Link
             href={`/questionnaire/reponses/${surveyId}`}
@@ -302,272 +499,350 @@ export default function SurveyEditorWorkspace({
         </label>
       </section>
 
-      {sections.map((section, sectionIndex) => (
-        <section key={section.key} className="ui-surface space-y-4 rounded-2xl p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-4">
-            <div className="flex-1 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/40">
-                Écran {sectionIndex + 1}
-              </span>
-              <input
-                value={section.title}
-                onChange={(e) => mutateSection(sectionIndex, { title: e.target.value })}
-                placeholder="Titre de l'écran"
-                className={`${inputClass} font-semibold`}
-              />
-              <input
-                value={section.subtitle}
-                onChange={(e) => mutateSection(sectionIndex, { subtitle: e.target.value })}
-                placeholder="Sous-titre (facultatif)"
-                className={inputClass}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => moveSection(sectionIndex, -1)}
-                disabled={sectionIndex === 0}
-                className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
-                aria-label="Monter l'écran"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => moveSection(sectionIndex, 1)}
-                disabled={sectionIndex === sections.length - 1}
-                className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
-                aria-label="Descendre l'écran"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => void removeSection(sectionIndex)}
-                className="ui-btn ui-btn-ghost h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
-                aria-label="Supprimer l'écran"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+      <p className="flex items-center gap-1.5 text-xs text-[color:var(--foreground)]/50">
+        <GripVertical className="h-3.5 w-3.5" />
+        Glissez les questions par leur poignée pour les réordonner, y compris d&apos;un écran à
+        l&apos;autre.
+      </p>
 
-          {section.questions.map((question, questionIndex) => (
-            <div
-              key={question.id}
-              className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <select
-                  value={question.type}
-                  onChange={(e) =>
-                    changeQuestionType(sectionIndex, questionIndex, e.target.value as QuestionType)
-                  }
-                  className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)]"
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleQuestionDragStart}
+        onDragOver={handleQuestionDragOver}
+        onDragEnd={handleQuestionDragEnd}
+      >
+        {sections.map((section, sectionIndex) => (
+          <section key={section.key} className="ui-surface mb-5 space-y-4 rounded-2xl p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-4">
+              <div className="flex-1 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground)]/40">
+                  Écran {sectionIndex + 1}
+                </span>
+                <input
+                  value={section.title}
+                  onChange={(e) => mutateSection(sectionIndex, { title: e.target.value })}
+                  placeholder="Titre de l'écran"
+                  className={`${inputClass} font-semibold`}
+                />
+                <input
+                  value={section.subtitle}
+                  onChange={(e) => mutateSection(sectionIndex, { subtitle: e.target.value })}
+                  placeholder="Sous-titre (facultatif)"
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveSection(sectionIndex, -1)}
+                  disabled={sectionIndex === 0}
+                  className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
+                  aria-label="Monter l'écran"
                 >
-                  {QUESTION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => moveQuestion(sectionIndex, questionIndex, -1)}
-                    disabled={questionIndex === 0}
-                    className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
-                    aria-label="Monter la question"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveQuestion(sectionIndex, questionIndex, 1)}
-                    disabled={questionIndex === section.questions.length - 1}
-                    className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
-                    aria-label="Descendre la question"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => duplicateQuestion(sectionIndex, questionIndex)}
-                    className="ui-btn ui-btn-ghost h-8 w-8 p-0"
-                    aria-label="Dupliquer la question"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void removeQuestion(sectionIndex, questionIndex)}
-                    className="ui-btn ui-btn-ghost h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
-                    aria-label="Supprimer la question"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <label className={labelClass}>
-                Intitulé de la question
-                <input
-                  value={question.label}
-                  onChange={(e) =>
-                    mutateQuestion(sectionIndex, questionIndex, { label: e.target.value })
-                  }
-                  className={inputClass}
-                />
-              </label>
-
-              <label className={labelClass}>
-                Précision (facultatif)
-                <input
-                  value={question.help ?? ""}
-                  onChange={(e) =>
-                    mutateQuestion(sectionIndex, questionIndex, {
-                      help: e.target.value || undefined,
-                    })
-                  }
-                  className={inputClass}
-                />
-              </label>
-
-              {(question.type === "single" || question.type === "multiple") && (
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-[color:var(--foreground)]/55">
-                    Options de réponse
-                  </span>
-                  {(question.options ?? []).map((opt, optIndex) => (
-                    <div key={optIndex} className="flex items-center gap-2">
-                      <input
-                        value={opt}
-                        onChange={(e) =>
-                          setOption(sectionIndex, questionIndex, optIndex, e.target.value)
-                        }
-                        className={inputClass}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeOption(sectionIndex, questionIndex, optIndex)}
-                        className="ui-btn ui-btn-ghost h-9 w-9 shrink-0 p-0 text-rose-600 hover:bg-rose-50"
-                        aria-label="Supprimer l'option"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addOption(sectionIndex, questionIndex)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] hover:underline"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Ajouter une option
-                  </button>
-                </div>
-              )}
-
-              {(question.type === "rating" || question.type === "nps") && (
-                <div className="flex flex-wrap gap-3">
-                  <label className={labelClass}>
-                    Minimum
-                    <input
-                      type="number"
-                      value={question.scale?.min ?? 0}
-                      onChange={(e) =>
-                        mutateQuestion(sectionIndex, questionIndex, {
-                          scale: {
-                            min: Number(e.target.value),
-                            max: question.scale?.max ?? 5,
-                          },
-                        })
-                      }
-                      className={`${inputClass} w-24`}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    Maximum
-                    <input
-                      type="number"
-                      value={question.scale?.max ?? 5}
-                      onChange={(e) =>
-                        mutateQuestion(sectionIndex, questionIndex, {
-                          scale: {
-                            min: question.scale?.min ?? 0,
-                            max: Number(e.target.value),
-                          },
-                        })
-                      }
-                      className={`${inputClass} w-24`}
-                    />
-                  </label>
-                </div>
-              )}
-
-              {(question.type === "open" || question.type === "text") && (
-                <label className={labelClass}>
-                  Placeholder (facultatif)
-                  <input
-                    value={question.placeholder ?? ""}
-                    onChange={(e) =>
-                      mutateQuestion(sectionIndex, questionIndex, {
-                        placeholder: e.target.value || undefined,
-                      })
-                    }
-                    className={inputClass}
-                  />
-                </label>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
-                <label className="inline-flex items-center gap-2 text-sm text-[var(--foreground)]">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(question.required)}
-                    onChange={(e) =>
-                      mutateQuestion(sectionIndex, questionIndex, { required: e.target.checked })
-                    }
-                    className="ui-focus-ring h-4 w-4 rounded border-[var(--line)]"
-                  />
-                  Obligatoire
-                </label>
-
-                {prestationOptions.length > 0 && question.id !== "q4" ? (
-                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--foreground)]/55">
-                    Afficher si prestation
-                    <select
-                      value={question.showIfPrestation ?? ""}
-                      onChange={(e) =>
-                        mutateQuestion(sectionIndex, questionIndex, {
-                          showIfPrestation: e.target.value || undefined,
-                        })
-                      }
-                      className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--foreground)]"
-                    >
-                      <option value="">Toujours</option>
-                      {prestationOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveSection(sectionIndex, 1)}
+                  disabled={sectionIndex === sections.length - 1}
+                  className="ui-btn ui-btn-ghost h-8 w-8 p-0 disabled:opacity-30"
+                  aria-label="Descendre l'écran"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void removeSection(sectionIndex)}
+                  className="ui-btn ui-btn-ghost h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
+                  aria-label="Supprimer l'écran"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
-          ))}
 
-          <button
-            type="button"
-            onClick={() => addQuestion(sectionIndex)}
-            className="ui-btn ui-btn-secondary w-full justify-center gap-2 text-xs"
-          >
-            <Plus className="h-4 w-4" />
-            Ajouter une question
-          </button>
-        </section>
-      ))}
+            <SortableContext
+              items={section.questions.map((q) => q.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <SectionDropZone id={section.key}>
+                {section.questions.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-[var(--line)] py-6 text-center text-xs text-[color:var(--foreground)]/40">
+                    Aucune question. Ajoutez-en une ci-dessous ou glissez-en une ici.
+                  </p>
+                ) : null}
+                {section.questions.map((question, questionIndex) => (
+                  <SortableQuestion key={question.id} id={question.id}>
+                    {(handleProps) => (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              className={handleClass}
+                              aria-label="Déplacer la question"
+                              {...handleProps}
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </button>
+                            <select
+                              value={question.type}
+                              onChange={(e) =>
+                                changeQuestionType(
+                                  sectionIndex,
+                                  questionIndex,
+                                  e.target.value as QuestionType,
+                                )
+                              }
+                              className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)]"
+                            >
+                              {QUESTION_TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => duplicateQuestion(sectionIndex, questionIndex)}
+                              className="ui-btn ui-btn-ghost h-8 w-8 p-0"
+                              aria-label="Dupliquer la question"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void removeQuestion(sectionIndex, questionIndex)}
+                              className="ui-btn ui-btn-ghost h-8 w-8 p-0 text-rose-600 hover:bg-rose-50"
+                              aria-label="Supprimer la question"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <label className={labelClass}>
+                          Intitulé de la question
+                          <input
+                            value={question.label}
+                            onChange={(e) =>
+                              mutateQuestion(sectionIndex, questionIndex, { label: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                        </label>
+
+                        <label className={labelClass}>
+                          Précision (facultatif)
+                          <input
+                            value={question.help ?? ""}
+                            onChange={(e) =>
+                              mutateQuestion(sectionIndex, questionIndex, {
+                                help: e.target.value || undefined,
+                              })
+                            }
+                            className={inputClass}
+                          />
+                        </label>
+
+                        {(question.type === "single" || question.type === "multiple") && (
+                          <div className="space-y-2">
+                            <span className="text-xs font-semibold text-[color:var(--foreground)]/55">
+                              Options de réponse
+                            </span>
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCorners}
+                              onDragEnd={handleOptionDragEnd(sectionIndex, questionIndex)}
+                            >
+                              <SortableContext
+                                items={(question.options ?? []).map((_, oi) =>
+                                  optionId(question.id, oi),
+                                )}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                <div className="space-y-2">
+                                  {(question.options ?? []).map((opt, optIndex) => (
+                                    <SortableOption
+                                      key={optionId(question.id, optIndex)}
+                                      id={optionId(question.id, optIndex)}
+                                    >
+                                      {(optHandleProps) => (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className={handleClass}
+                                            aria-label="Déplacer l'option"
+                                            {...optHandleProps}
+                                          >
+                                            <GripVertical className="h-3.5 w-3.5" />
+                                          </button>
+                                          <input
+                                            value={opt}
+                                            onChange={(e) =>
+                                              setOption(
+                                                sectionIndex,
+                                                questionIndex,
+                                                optIndex,
+                                                e.target.value,
+                                              )
+                                            }
+                                            className={inputClass}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              removeOption(sectionIndex, questionIndex, optIndex)
+                                            }
+                                            className="ui-btn ui-btn-ghost h-9 w-9 shrink-0 p-0 text-rose-600 hover:bg-rose-50"
+                                            aria-label="Supprimer l'option"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </SortableOption>
+                                  ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                            <button
+                              type="button"
+                              onClick={() => addOption(sectionIndex, questionIndex)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] hover:underline"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Ajouter une option
+                            </button>
+                          </div>
+                        )}
+
+                        {(question.type === "rating" || question.type === "nps") && (
+                          <div className="flex flex-wrap gap-3">
+                            <label className={labelClass}>
+                              Minimum
+                              <input
+                                type="number"
+                                value={question.scale?.min ?? 0}
+                                onChange={(e) =>
+                                  mutateQuestion(sectionIndex, questionIndex, {
+                                    scale: {
+                                      min: Number(e.target.value),
+                                      max: question.scale?.max ?? 5,
+                                    },
+                                  })
+                                }
+                                className={`${inputClass} w-24`}
+                              />
+                            </label>
+                            <label className={labelClass}>
+                              Maximum
+                              <input
+                                type="number"
+                                value={question.scale?.max ?? 5}
+                                onChange={(e) =>
+                                  mutateQuestion(sectionIndex, questionIndex, {
+                                    scale: {
+                                      min: question.scale?.min ?? 0,
+                                      max: Number(e.target.value),
+                                    },
+                                  })
+                                }
+                                className={`${inputClass} w-24`}
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {(question.type === "open" || question.type === "text") && (
+                          <label className={labelClass}>
+                            Placeholder (facultatif)
+                            <input
+                              value={question.placeholder ?? ""}
+                              onChange={(e) =>
+                                mutateQuestion(sectionIndex, questionIndex, {
+                                  placeholder: e.target.value || undefined,
+                                })
+                              }
+                              className={inputClass}
+                            />
+                          </label>
+                        )}
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-3">
+                          <label className="inline-flex items-center gap-2 text-sm text-[var(--foreground)]">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(question.required)}
+                              onChange={(e) =>
+                                mutateQuestion(sectionIndex, questionIndex, {
+                                  required: e.target.checked,
+                                })
+                              }
+                              className="ui-focus-ring h-4 w-4 rounded border-[var(--line)]"
+                            />
+                            Obligatoire
+                          </label>
+
+                          {prestationOptions.length > 0 && question.id !== "q4" ? (
+                            <label className="inline-flex items-center gap-2 text-xs font-semibold text-[color:var(--foreground)]/55">
+                              Afficher si prestation
+                              <select
+                                value={question.showIfPrestation ?? ""}
+                                onChange={(e) =>
+                                  mutateQuestion(sectionIndex, questionIndex, {
+                                    showIfPrestation: e.target.value || undefined,
+                                  })
+                                }
+                                className="ui-focus-ring rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--foreground)]"
+                              >
+                                <option value="">Toujours</option>
+                                {prestationOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : null}
+                        </div>
+                      </>
+                    )}
+                  </SortableQuestion>
+                ))}
+              </SectionDropZone>
+            </SortableContext>
+
+            <button
+              type="button"
+              onClick={() => addQuestion(sectionIndex)}
+              className="ui-btn ui-btn-secondary w-full justify-center gap-2 text-xs"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter une question
+            </button>
+          </section>
+        ))}
+
+        <DragOverlay>
+          {activeQuestion ? (
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--surface)] p-4 shadow-[var(--shadow-2)]">
+              <GripVertical className="h-4 w-4 text-[color:var(--foreground)]/40" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+                  {activeQuestion.label || "Question"}
+                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--foreground)]/45">
+                  {QUESTION_TYPE_LABEL[activeQuestion.type]}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <button
         type="button"
