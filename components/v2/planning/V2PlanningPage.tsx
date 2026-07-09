@@ -25,8 +25,6 @@ import {
   Scale,
   ShieldAlert,
 } from "lucide-react";
-import V2AppShell from "../AppShell";
-import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useTasks } from "../../../lib/useTasks";
 import type { Task } from "../../../lib/types";
 import { DONE_COLUMN_NAME } from "../../../lib/workflowConstants";
@@ -53,7 +51,6 @@ const PRIORITY_DOT: Record<string, string> = {
 };
 
 export default function V2PlanningPage() {
-  const { user } = useCurrentUser();
   const { tasks } = useTasks();
   const [view, setView] = useState<ViewId>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -118,12 +115,6 @@ export default function V2PlanningPage() {
   const totalDays = Math.max(1, monthDays.length);
 
   return (
-    <V2AppShell
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface flex flex-wrap items-start justify-between gap-4 rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <div>
@@ -388,6 +379,5 @@ export default function V2PlanningPage() {
           </section>
         ) : null}
       </div>
-    </V2AppShell>
   );
 }

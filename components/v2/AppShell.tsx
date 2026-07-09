@@ -115,7 +115,12 @@ export default function V2AppShell({
 }: V2AppShellProps) {
   const pathname = usePathname();
   const supabase = getSupabaseBrowser();
-  const { user } = useCurrentUser();
+  const { user, loading: userLoading } = useCurrentUser();
+  const displayName =
+    currentUserName ?? user?.teamMemberName ?? user?.displayName ?? undefined;
+  const displayEmail = currentUserEmail ?? user?.email;
+  const displayAvatar = currentUserAvatarUrl ?? user?.avatarUrl;
+  const displayJob = currentUserJobTitle ?? user?.jobTitle;
   const isAdmin = Boolean(user?.isAdmin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -150,7 +155,7 @@ export default function V2AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileNavOpen]);
 
-  const isGuest = !currentUserName && !currentUserEmail;
+  const isGuest = !userLoading && !displayName && !displayEmail;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -186,17 +191,19 @@ export default function V2AppShell({
         })}
       </nav>
       <div className="mt-4 space-y-2 border-t border-[var(--line)] pt-4">
-        {isGuest ? (
+        {userLoading ? (
+          <div className="h-[52px] animate-pulse rounded-xl bg-[var(--surface-soft)]" aria-hidden />
+        ) : isGuest ? (
           <Link href="/login" className="ui-btn ui-btn-primary w-full text-xs" onClick={onNavClick}>
             Se connecter
           </Link>
         ) : (
           <>
             <UserCard
-              name={currentUserName}
-              email={currentUserEmail}
-              avatarUrl={currentUserAvatarUrl}
-              jobTitle={currentUserJobTitle}
+              name={displayName}
+              email={displayEmail}
+              avatarUrl={displayAvatar}
+              jobTitle={displayJob}
             />
             <button
               type="button"

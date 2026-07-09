@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { RefreshCcw, Search } from "lucide-react";
-import V2AppShell from "../../../../components/v2/AppShell";
 import StockHistoryWorkspace from "../../../../components/stock/StockHistoryWorkspace";
-import { useCurrentUser } from "../../../../lib/useCurrentUser";
+import { V2ShellSlotSetter } from "../../../../lib/v2/shellSlotsContext";
 import { useStockMovements } from "../../../../lib/useStockMovements";
 
 export default function V2StockHistoryPage() {
-  const { user } = useCurrentUser();
   const { movements, loading, loadMovements } = useStockMovements(1000);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -38,20 +36,14 @@ export default function V2StockHistoryPage() {
   );
 
   return (
-    <V2AppShell
-      toolbarRight={toolbarRight}
-      searchSlot={searchSlot}
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
+    <>
+      <V2ShellSlotSetter toolbarRight={toolbarRight} searchSlot={searchSlot} />
       <StockHistoryWorkspace
         basePath="/v2/stock"
         movements={movements}
         loading={loading}
         searchQuery={searchQuery}
       />
-    </V2AppShell>
+    </>
   );
 }

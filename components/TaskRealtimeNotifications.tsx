@@ -21,15 +21,16 @@ function dedupeKey(parts: string[]) {
 }
 
 const REALTIME_STATUS_DEDUPE_TTL_MS = 6 * 60 * 60 * 1000;
+const REALTIME_BOOT_GRACE_MS = 4_000;
 
 function shouldDedupe(key: string, ttlMs: number): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const raw = window.sessionStorage.getItem(key);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return false;
     const t = Number(raw);
     if (!Number.isFinite(t) || Date.now() - t > ttlMs) {
-      window.sessionStorage.removeItem(key);
+      window.localStorage.removeItem(key);
       return false;
     }
     return true;
@@ -40,7 +41,7 @@ function shouldDedupe(key: string, ttlMs: number): boolean {
 
 function rememberDedupe(key: string) {
   try {
-    window.sessionStorage.setItem(key, String(Date.now()));
+    window.localStorage.setItem(key, String(Date.now()));
   } catch {
     /* ignore */
   }
@@ -53,6 +54,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
   const pushRef = useRef(pushNotification);
   const userRef = useRef(user);
   const realtimeWarnedRef = useRef(false);
+  const realtimeReadyAtRef = useRef(0);
 
   // Refs synchronisées via effect (jamais mutées pendant le render)
   useEffect(() => {
@@ -75,6 +77,8 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
           new?: Record<string, unknown>;
           old?: Record<string, unknown>;
         }) => {
+          if (Date.now() - realtimeReadyAtRef.current < REALTIME_BOOT_GRACE_MS) return;
+
           const u = userRef.current;
           if (!u) return;
 
@@ -168,7 +172,11 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
         },
       )
       .subscribe((status: string, err?: Error) => {
-        if (realtimeWarnedRef.current || status === "SUBSCRIBED") return;
+        if (status === "SUBSCRIBED") {
+          realtimeReadyAtRef.current = Date.now();
+          return;
+        }
+        if (realtimeWarnedRef.current) return;
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           const realtimeDedupe = dedupeKey(["realtime-unavailable"]);
           if (shouldDedupe(realtimeDedupe, REALTIME_STATUS_DEDUPE_TTL_MS)) return;
@@ -188,12 +196,12 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
       realtimeWarnedRef.current = false;
       void supabase.removeChannel(channel);
     };
-  }, [loading, supabase, user]);
+  }, [loading, supabase, user?.id]);
 
   useEffect(() => {
     if (loading || !user) return;
 
-    const runDeadlineScan = async () => {
+    const runDeadlineScan = async (showToasts: boolean) => {
       const u = userRef.current;
       if (!u) return;
 
@@ -231,6 +239,7 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
         }
 
         if (!title || !body) continue;
+        if (!showToasts) continue;
 
         const taskId = typeof row.id === "string" ? row.id : "";
         const dk = dedupeKey(["deadline-scan", taskId, d, title]);
@@ -245,10 +254,9 @@ export default function TaskRealtimeNotifications(props: { pushNotification: Pus
       }
     };
 
-    void runDeadlineScan();
-    const id = window.setInterval(() => void runDeadlineScan(), 30 * 60 * 1000);
+    const id = window.setInterval(() => void runDeadlineScan(true), 30 * 60 * 1000);
     return () => window.clearInterval(id);
-  }, [loading, supabase, user]);
+  }, [loading, supabase, user?.id]);
 
   return null;
 }

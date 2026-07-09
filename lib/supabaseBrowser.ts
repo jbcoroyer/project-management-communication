@@ -1,24 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
-import {
-  clearInvalidSupabaseSession,
-  isInvalidRefreshTokenError,
-} from "./supabaseAuthRecovery";
 
 let client: ReturnType<typeof createBrowserClient> | null = null;
-let recoveryScheduled = false;
-
-function scheduleStaleSessionCleanup(
-  supabase: NonNullable<typeof client>,
-) {
-  if (typeof window === "undefined" || recoveryScheduled) return;
-  recoveryScheduled = true;
-  void (async () => {
-    const { error } = await supabase.auth.getSession();
-    if (error && isInvalidRefreshTokenError(error)) {
-      await clearInvalidSupabaseSession(supabase);
-    }
-  })();
-}
 
 function requireEnv(value: string | undefined, name: string): string {
   if (!value) {
@@ -41,6 +23,5 @@ export function getSupabaseBrowser() {
       },
     },
   );
-  scheduleStaleSessionCleanup(client);
   return client;
 }

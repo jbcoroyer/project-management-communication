@@ -52,6 +52,7 @@ const nextConfig: NextConfig = {
       "recharts",
       "@dnd-kit/core",
       "@dnd-kit/sortable",
+      "framer-motion",
     ],
   },
 };

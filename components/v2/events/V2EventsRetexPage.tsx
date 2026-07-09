@@ -2,9 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CalendarRange, Copy, Loader2, Sparkles } from "lucide-react";
-import V2AppShell from "../AppShell";
 import EventsSectionNav from "../../events/EventsSectionNav";
-import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useEvents } from "../../../lib/useEvents";
 import type { EventRow } from "../../../lib/eventTypes";
 import { buildRetexDraft, useRetexInputs } from "../../../lib/v2/retex";
@@ -12,7 +10,6 @@ import { summarize } from "../../../lib/v2/aiClient";
 import { toastError, toastSuccess } from "../../../lib/toast";
 
 export default function V2EventsRetexPage() {
-  const { user } = useCurrentUser();
   const { events, loading } = useEvents();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -74,12 +71,6 @@ export default function V2EventsRetexPage() {
   };
 
   return (
-    <V2AppShell
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -216,6 +207,5 @@ export default function V2EventsRetexPage() {
           )}
         </div>
       </div>
-    </V2AppShell>
   );
 }

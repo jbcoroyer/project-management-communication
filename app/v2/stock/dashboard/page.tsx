@@ -1,16 +1,14 @@
 "use client";
 
 import { Download, RefreshCcw } from "lucide-react";
-import V2AppShell from "../../../../components/v2/AppShell";
 import StockDashboardWorkspace from "../../../../components/stock/StockDashboardWorkspace";
-import { useCurrentUser } from "../../../../lib/useCurrentUser";
+import { V2ShellSlotSetter } from "../../../../lib/v2/shellSlotsContext";
 import { useInventory } from "../../../../lib/useInventory";
 import { toastError, toastSuccess } from "../../../../lib/toast";
 import { inventoryItemsToCsv } from "../../../../lib/stockUtils";
 import { useStockMovements } from "../../../../lib/useStockMovements";
 
 export default function V2StockDashboardPage() {
-  const { user } = useCurrentUser();
   const { items, loading: itemsLoading, loadItems } = useInventory();
   const { movements, loading: movementsLoading, loadMovements } = useStockMovements(1000);
 
@@ -52,13 +50,8 @@ export default function V2StockDashboardPage() {
   );
 
   return (
-    <V2AppShell
-      toolbarRight={toolbarRight}
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
+    <>
+      <V2ShellSlotSetter toolbarRight={toolbarRight} />
       <StockDashboardWorkspace
         basePath="/v2/stock"
         items={items}
@@ -66,6 +59,6 @@ export default function V2StockDashboardPage() {
         itemsLoading={itemsLoading}
         movementsLoading={movementsLoading}
       />
-    </V2AppShell>
+    </>
   );
 }

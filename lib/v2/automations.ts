@@ -32,6 +32,31 @@ export type AutomationRule = {
 export type AutomationBackend = "supabase" | "local";
 
 const LOCAL_KEY = "v2-automation-rules";
+const PROCESSED_SESSION_KEY = "idena-automation-processed";
+
+function loadProcessedAutomationKeys(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.sessionStorage.getItem(PROCESSED_SESSION_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((x): x is string => typeof x === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveProcessedAutomationKeys(keys: Set<string>) {
+  try {
+    window.sessionStorage.setItem(
+      PROCESSED_SESSION_KEY,
+      JSON.stringify([...keys].slice(-500)),
+    );
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 export const TRIGGER_LABELS: Record<AutomationTriggerType, string> = {
   task_created: "Quand une tâche est créée",
@@ -237,7 +262,10 @@ export function useAutomationRunner(params: {
   enabled?: boolean;
 }) {
   const { rules, tasks, now, runAction, enabled = true } = params;
-  const processedRef = useRef<Set<string>>(new Set());
+  const processedRef = useRef<Set<string> | null>(null);
+  if (processedRef.current === null) {
+    processedRef.current = loadProcessedAutomationKeys();
+  }
   const runActionRef = useRef(runAction);
   runActionRef.current = runAction;
 
@@ -246,12 +274,16 @@ export function useAutomationRunner(params: {
     const activeRules = rules.filter((r) => r.enabled);
     if (activeRules.length === 0) return;
 
+    const processed = processedRef.current ?? loadProcessedAutomationKeys();
+    processedRef.current = processed;
+
     for (const rule of activeRules) {
       for (const task of tasks) {
         const key = `${rule.id}::${task.id}`;
-        if (processedRef.current.has(key)) continue;
+        if (processed.has(key)) continue;
         if (!taskMatchesTrigger(rule, task, now)) continue;
-        processedRef.current.add(key);
+        processed.add(key);
+        saveProcessedAutomationKeys(processed);
         void runActionRef.current(rule, task);
       }
     }

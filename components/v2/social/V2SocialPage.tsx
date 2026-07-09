@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Megaphone, PencilLine, Recycle, Sparkles, ThumbsUp, TrendingUp, XCircle } from "lucide-react";
-import V2AppShell from "../AppShell";
 import SocialPreview from "./SocialPreview";
 import RepurposePanel from "./RepurposePanel";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
@@ -108,12 +107,6 @@ export default function V2SocialPage() {
   };
 
   return (
-    <V2AppShell
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -396,6 +389,5 @@ export default function V2SocialPage() {
           </section>
         )}
       </div>
-    </V2AppShell>
   );
 }

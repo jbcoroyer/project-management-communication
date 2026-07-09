@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, Clock, Coffee, Loader2, Sparkles, Sun } from "lucide-react";
-import V2AppShell from "../AppShell";
 import V2Inbox from "../dashboard/V2Inbox";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useTasks } from "../../../lib/useTasks";
@@ -66,12 +65,6 @@ export default function V2TodoPage() {
   const openTask = () => router.push("/v2/dashboard/kanban");
 
   return (
-    <V2AppShell
-      currentUserName={userName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -198,6 +191,5 @@ export default function V2TodoPage() {
           <V2Inbox tasks={tasks} currentUserName={userName} now={now.getTime()} onOpenTask={openTask} />
         )}
       </div>
-    </V2AppShell>
   );
 }

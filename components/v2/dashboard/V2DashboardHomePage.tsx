@@ -21,8 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { toastError, toastSuccess } from "../../../lib/toast";
-import V2AppShell from "../AppShell";
-import KanbanBoardView from "../../KanbanBoardView";
+import { V2ShellSlotSetter } from "../../../lib/v2/shellSlotsContext";
 import { AdminAvatarContext } from "../../../lib/adminAvatarContext";
 import {
   priorities,
@@ -65,6 +64,16 @@ import IntakeTaskMappingModal from "./IntakeTaskMappingModal";
 import { buildTaskDraftFromRequest, type IntakeTaskDraft } from "../../../lib/v2/intakeMapping";
 
 const V2ListView = dynamic(() => import("../list/V2ListView"));
+
+const KanbanBoardView = dynamic(() => import("../../KanbanBoardView"), {
+  loading: () => (
+    <div className="grid gap-4 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="h-[min(70vh,520px)] animate-pulse rounded-2xl bg-[var(--surface-soft)]" />
+      ))}
+    </div>
+  ),
+});
 
 type MainTab =
   | "inbox"
@@ -240,12 +249,6 @@ export default function V2DashboardHomePage() {
     }, 400);
     return () => window.clearTimeout(t);
   }, [pathname, router, searchParams, searchQuery]);
-
-  useEffect(() => {
-    void loadTasks().catch(() => {
-      toastError("Impossible de charger les tâches. Veuillez réessayer.");
-    });
-  }, [loadTasks]);
 
   const lastHandledTaskFromUrlRef = useRef<string | null>(null);
   useEffect(() => {
@@ -989,11 +992,7 @@ export default function V2DashboardHomePage() {
 
   return (
     <AdminAvatarContext.Provider value={adminAvatarMap}>
-      <V2AppShell
-        currentUserName={effectiveUser ?? currentUser?.teamMemberName ?? currentUser?.displayName ?? undefined}
-        currentUserEmail={currentUser?.email}
-        currentUserAvatarUrl={currentUser?.avatarUrl ?? null}
-        currentUserJobTitle={currentUser?.jobTitle ?? null}
+      <V2ShellSlotSetter
         searchSlot={
           <button
             type="button"
@@ -1033,7 +1032,7 @@ export default function V2DashboardHomePage() {
             </button>
           </div>
         }
-      >
+      />
         <div className="space-y-5">
           <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1289,7 +1288,6 @@ export default function V2DashboardHomePage() {
           }}
           onConfirm={(mapped) => void handleConfirmMappedTask(mapped)}
         />
-      </V2AppShell>
     </AdminAvatarContext.Provider>
   );
 }

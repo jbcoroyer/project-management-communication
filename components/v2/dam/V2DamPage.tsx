@@ -2,13 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { FolderOpen, ImageIcon, Plus, Search, Tag, Trash2 } from "lucide-react";
-import V2AppShell from "../AppShell";
-import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useReferenceData } from "../../../lib/useReferenceData";
 import { DAM_TYPES, searchAssets, useDamAssets, type DamType } from "../../../lib/v2/dam";
 
 export default function V2DamPage() {
-  const { user } = useCurrentUser();
   const { companies } = useReferenceData();
   const { assets, add, remove } = useDamAssets();
 
@@ -38,12 +35,6 @@ export default function V2DamPage() {
   const isImage = (u: string) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(u);
 
   return (
-    <V2AppShell
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -129,6 +120,5 @@ export default function V2DamPage() {
           </section>
         </div>
       </div>
-    </V2AppShell>
   );
 }

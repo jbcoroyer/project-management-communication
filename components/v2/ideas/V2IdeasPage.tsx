@@ -8,7 +8,6 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import V2AppShell from "../AppShell";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useReferenceData } from "../../../lib/useReferenceData";
 import { useStockIdeas } from "../../../lib/useStockIdeas";
@@ -103,12 +102,6 @@ export default function V2IdeasPage() {
   };
 
   return (
-    <V2AppShell
-      currentUserName={user?.teamMemberName ?? user?.displayName ?? undefined}
-      currentUserEmail={user?.email}
-      currentUserAvatarUrl={user?.avatarUrl}
-      currentUserJobTitle={user?.jobTitle}
-    >
       <div className="space-y-5">
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -223,6 +216,5 @@ export default function V2IdeasPage() {
           ))}
         </div>
       </div>
-    </V2AppShell>
   );
 }

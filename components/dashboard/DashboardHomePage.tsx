@@ -174,12 +174,6 @@ export default function DashboardHomePage() {
     return () => window.clearTimeout(t);
   }, [pathname, router, searchParams, searchQuery]);
 
-  useEffect(() => {
-    void loadTasks().catch(() => {
-      toastError("Impossible de charger les taches. Veuillez reessayer.");
-    });
-  }, [loadTasks]);
-
   const lastHandledTaskFromUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const taskFromUrl = searchParams.get("task");
