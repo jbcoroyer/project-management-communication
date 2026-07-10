@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -24,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
+import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../../lib/adminAvatarContext";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import AppVersionToggle from "../AppVersionToggle";
@@ -80,13 +80,22 @@ function UserCard({
   avatarUrl?: string | null;
   jobTitle?: string | null;
 }) {
+  const [broken, setBroken] = useState(false);
   if (!name && !email) return null;
+  const showPhoto = Boolean(avatarUrl) && !broken;
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
       <div className="flex items-center gap-3">
         <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--line)]">
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt={name ?? ""} fill sizes="36px" className="object-cover" />
+          {showPhoto ? (
+            <img
+              src={avatarUrl!}
+              alt={name ?? ""}
+              className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+              onError={() => setBroken(true)}
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[var(--surface-soft)]">
               <UserCircle2 className="h-5 w-5 text-[color:var(--foreground)]/35" />
@@ -116,11 +125,15 @@ export default function V2AppShell({
   const pathname = usePathname();
   const supabase = getSupabaseBrowser();
   const { user, loading: userLoading } = useCurrentUser();
+  const avatarMap = useAdminAvatarMap();
   const displayName =
     currentUserName ?? user?.teamMemberName ?? user?.displayName ?? undefined;
   const displayEmail = currentUserEmail ?? user?.email;
-  const displayAvatar = currentUserAvatarUrl ?? user?.avatarUrl;
   const displayJob = currentUserJobTitle ?? user?.jobTitle;
+  const displayAvatar =
+    currentUserAvatarUrl ??
+    user?.avatarUrl ??
+    (displayName ? resolveAdminAvatarUrl(avatarMap, displayName) : null);
   const isAdmin = Boolean(user?.isAdmin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 

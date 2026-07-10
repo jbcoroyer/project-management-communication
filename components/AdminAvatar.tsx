@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import type { AdminId } from "../lib/types";
 import { adminAvatarMetaFor } from "../lib/kanbanStyles";
-import { useAdminAvatarMap } from "../lib/adminAvatarContext";
+import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../lib/adminAvatarContext";
 
 export default function AdminAvatar(props: {
   admin: AdminId;
@@ -13,25 +13,31 @@ export default function AdminAvatar(props: {
 }) {
   const { admin, size = "sm", avatarUrl: urlProp } = props;
   const avatarMap = useAdminAvatarMap();
-  const avatarUrl = urlProp !== undefined ? urlProp : (avatarMap[admin] ?? null);
+  const [broken, setBroken] = useState(false);
+  const avatarUrl =
+    urlProp !== undefined ? urlProp : resolveAdminAvatarUrl(avatarMap, admin);
 
   const meta = adminAvatarMetaFor(admin);
   const dim = size === "md" ? 32 : 20;
   const cls = [
     "inline-flex items-center justify-center rounded-full overflow-hidden shrink-0",
     size === "md" ? "h-8 w-8" : "h-5 w-5",
-    !avatarUrl ? [meta.avatarBg, meta.avatarText].join(" ") : "",
+    !avatarUrl || broken ? [meta.avatarBg, meta.avatarText].join(" ") : "",
   ].join(" ");
 
-  if (avatarUrl) {
+  if (avatarUrl && !broken) {
     return (
       <span className={cls} aria-hidden="true" title={admin}>
-        <Image
+        {/* img natif : évite les échecs du proxy Next.js sur Storage Supabase */}
+        <img
           src={avatarUrl}
           alt={admin}
           width={dim}
           height={dim}
           className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => setBroken(true)}
         />
       </span>
     );

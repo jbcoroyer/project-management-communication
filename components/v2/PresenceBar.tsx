@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import { UserCircle2 } from "lucide-react";
 import type { PresenceMember } from "../../lib/v2/usePresence";
 
@@ -11,6 +11,32 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function PresenceAvatar({ member }: { member: PresenceMember }) {
+  const [broken, setBroken] = useState(false);
+  const showPhoto = Boolean(member.avatarUrl) && !broken;
+  return (
+    <span
+      className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-[var(--surface)] bg-[var(--surface-soft)] text-[9px] font-bold text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]"
+      title={member.name}
+    >
+      {showPhoto ? (
+        <img
+          src={member.avatarUrl!}
+          alt={member.name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => setBroken(true)}
+        />
+      ) : initials(member.name) ? (
+        initials(member.name)
+      ) : (
+        <UserCircle2 className="h-4 w-4" />
+      )}
+    </span>
+  );
 }
 
 export default function PresenceBar({ members }: { members: PresenceMember[] }) {
@@ -30,19 +56,7 @@ export default function PresenceBar({ members }: { members: PresenceMember[] }) 
       </span>
       <div className="flex -space-x-2">
         {shown.map((member) => (
-          <span
-            key={member.key}
-            className="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-[var(--surface)] bg-[var(--surface-soft)] text-[9px] font-bold text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]"
-            title={member.name}
-          >
-            {member.avatarUrl ? (
-              <Image src={member.avatarUrl} alt={member.name} fill sizes="24px" className="object-cover" />
-            ) : initials(member.name) ? (
-              initials(member.name)
-            ) : (
-              <UserCircle2 className="h-4 w-4" />
-            )}
-          </span>
+          <PresenceAvatar key={member.key} member={member} />
         ))}
       </div>
       {extra > 0 ? (

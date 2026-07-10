@@ -18,7 +18,6 @@ import {
 import { toastError } from "../../lib/toast";
 import AppShell from "../AppShell";
 import KanbanBoardView from "../KanbanBoardView";
-import { AdminAvatarContext } from "../../lib/adminAvatarContext";
 import type { CommandAction } from "../CommandBar";
 import {
   type ColumnId,
@@ -123,11 +122,6 @@ export default function DashboardHomePage() {
 
   const columns = useMemo(() => columnRecords.map((item) => item.name), [columnRecords]);
   const companies = useMemo(() => companyRecords.map((item) => item.name), [companyRecords]);
-
-  const adminAvatarMap = useMemo<Record<string, string | null>>(
-    () => Object.fromEntries(adminRecords.map((r) => [r.name, r.avatarUrl ?? null])),
-    [adminRecords],
-  );
 
   const effectiveUser = useMemo(
     () => teamAdminNameForUser(admins, currentUser),
@@ -396,8 +390,7 @@ export default function DashboardHomePage() {
   }, [handleOpenForm, navigateToTab, tasks]);
 
   return (
-    <AdminAvatarContext.Provider value={adminAvatarMap}>
-      <AppShell
+    <AppShell
         currentUserName={effectiveUser ?? currentUser?.teamMemberName ?? currentUser?.displayName ?? undefined}
         currentUserEmail={currentUser?.email}
         currentUserAvatarUrl={currentUser?.avatarUrl ?? null}
@@ -627,6 +620,5 @@ export default function DashboardHomePage() {
           actions={commandActions}
         />
       </AppShell>
-    </AdminAvatarContext.Provider>
   );
 }

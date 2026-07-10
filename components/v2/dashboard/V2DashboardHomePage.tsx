@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { V2ShellSlotSetter } from "../../../lib/v2/shellSlotsContext";
-import { AdminAvatarContext } from "../../../lib/adminAvatarContext";
 import {
   priorities,
   type ColumnId,
@@ -199,11 +198,6 @@ export default function V2DashboardHomePage() {
 
   const columns = useMemo(() => columnRecords.map((item) => item.name), [columnRecords]);
   const companies = useMemo(() => companyRecords.map((item) => item.name), [companyRecords]);
-
-  const adminAvatarMap = useMemo<Record<string, string | null>>(
-    () => Object.fromEntries(adminRecords.map((r) => [r.name, r.avatarUrl ?? null])),
-    [adminRecords],
-  );
 
   const effectiveUser = useMemo(
     () => teamAdminNameForUser(admins, currentUser),
@@ -970,7 +964,7 @@ export default function V2DashboardHomePage() {
   ]);
 
   return (
-    <AdminAvatarContext.Provider value={adminAvatarMap}>
+    <>
       <V2ShellSlotSetter
         searchSlot={
           <button
@@ -1267,6 +1261,6 @@ export default function V2DashboardHomePage() {
           }}
           onConfirm={(mapped) => void handleConfirmMappedTask(mapped)}
         />
-    </AdminAvatarContext.Provider>
+    </>
   );
 }
