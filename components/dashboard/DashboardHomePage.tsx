@@ -37,6 +37,7 @@ import { useTaskManager } from "../../lib/useTaskManager";
 import { celebrateTaskManually } from "../../lib/celebrateTaskDone";
 import { DONE_COLUMN_NAME } from "../../lib/workflowConstants";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
+import { buildAdminFilterList } from "../../lib/buildAdminFilterList";
 import { getAdminColorPaletteSize } from "../../lib/kanbanStyles";
 import DashboardNotificationBell from "../DashboardNotificationBell";
 
@@ -111,36 +112,14 @@ export default function DashboardHomePage() {
 
   const admins = useMemo(() => adminRecords.map((item) => item.name), [adminRecords]);
 
-  const adminNamesForPalette = useMemo(() => {
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    for (const r of adminRecords) {
-      const t = r.name.trim();
-      if (t && !seen.has(t)) {
-        seen.add(t);
-        ordered.push(t);
-      }
-    }
-    const extras: string[] = [];
-    for (const t of tasks) {
-      for (const a of t.admins) {
-        const x = a?.trim();
-        if (x && !seen.has(x)) extras.push(x);
-      }
-    }
-    extras.sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-    for (const x of extras) {
-      if (!seen.has(x)) {
-        seen.add(x);
-        ordered.push(x);
-      }
-    }
-    return ordered;
-  }, [adminRecords, tasks]);
+  const filterAdmins = useMemo(
+    () => buildAdminFilterList(adminRecords, tasks),
+    [adminRecords, tasks],
+  );
 
   useLayoutEffect(() => {
-    syncAdminColorAssignments(adminNamesForPalette, getAdminColorPaletteSize());
-  }, [adminNamesForPalette]);
+    syncAdminColorAssignments(filterAdmins, getAdminColorPaletteSize());
+  }, [filterAdmins]);
 
   const columns = useMemo(() => columnRecords.map((item) => item.name), [columnRecords]);
   const companies = useMemo(() => companyRecords.map((item) => item.name), [companyRecords]);
@@ -540,7 +519,7 @@ export default function DashboardHomePage() {
             <ToDoListView
               tasks={activeTasks}
               now={now}
-              admins={admins}
+              admins={filterAdmins}
               currentUserName={effectiveUser}
               onTaskClick={(task) => setSelectedTaskId(task.id)}
             />
@@ -550,7 +529,7 @@ export default function DashboardHomePage() {
             <KanbanBoardView
               tasks={filteredActiveTasks}
               columns={columns}
-              admins={admins}
+              admins={filterAdmins}
               companies={companies}
               companyRecords={companyRecords}
               now={now}
@@ -569,7 +548,7 @@ export default function DashboardHomePage() {
           {activeTab === "calendar" && (
             <CalendarView
               tasks={filteredActiveTasks}
-              admins={admins}
+              admins={filterAdmins}
               currentUserName={currentUser?.teamMemberName ?? null}
               salonEvents={salonEvents}
               onSelectTask={(taskId) => {
@@ -588,7 +567,7 @@ export default function DashboardHomePage() {
           {activeTab === "archives" && (
             <ArchivesView
               tasks={tasks}
-              admins={admins}
+              admins={filterAdmins}
               onRestore={(taskId) => void handleRestoreTask(taskId)}
               onDelete={(taskId) => void handlePermanentDelete(taskId)}
             />
@@ -604,7 +583,7 @@ export default function DashboardHomePage() {
                 companyRecords={companyRecords}
                 domainRecords={domainRecords}
                 columnRecords={columnRecords}
-                admins={admins}
+                admins={filterAdmins}
                 columns={columns}
                 now={now}
                 currentUser={currentUser}

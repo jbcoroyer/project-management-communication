@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   CalendarDays,
@@ -166,7 +166,26 @@ export default function ToDoListView(props: {
   currentUserName?: string | null;
   onTaskClick?: (task: Task) => void;
 }) {
-  const [manualSelectedAdmin, setManualSelectedAdmin] = useState<AdminId>("");
+  const filterTouchedRef = useRef(false);
+  const preferredAdmin = useMemo(
+    () =>
+      ((props.currentUserName && props.admins.includes(props.currentUserName)
+        ? props.currentUserName
+        : null) ?? props.admins[0] ?? "") as AdminId,
+    [props.admins, props.currentUserName],
+  );
+  const [selectedAdmin, setSelectedAdminState] = useState<AdminId>(() => preferredAdmin);
+
+  useEffect(() => {
+    if (filterTouchedRef.current) return;
+    if (preferredAdmin) setSelectedAdminState(preferredAdmin);
+  }, [preferredAdmin]);
+
+  const setSelectedAdmin = (admin: AdminId) => {
+    filterTouchedRef.current = true;
+    setSelectedAdminState(admin);
+  };
+
   const [collapsedEventIds, setCollapsedEventIds] = useState<Set<string>>(() => loadCollapsedEventGroupIds());
 
   const toggleEventGroupCollapse = (eventId: string) => {
@@ -176,20 +195,6 @@ export default function ToDoListView(props: {
       return next;
     });
   };
-
-  const isAutoDetected = Boolean(props.currentUserName);
-  const preferredAdmin = useMemo(
-    () =>
-      ((props.currentUserName && props.admins.includes(props.currentUserName)
-        ? props.currentUserName
-        : null) ?? props.admins[0] ?? "") as AdminId,
-    [props.admins, props.currentUserName],
-  );
-  const selectedAdmin = useMemo<AdminId>(() => {
-    if (isAutoDetected) return preferredAdmin;
-    if (manualSelectedAdmin && props.admins.includes(manualSelectedAdmin)) return manualSelectedAdmin;
-    return preferredAdmin;
-  }, [isAutoDetected, manualSelectedAdmin, preferredAdmin, props.admins]);
 
   const visibleTasks = useMemo(() => {
     return props.tasks.filter(
@@ -237,39 +242,35 @@ export default function ToDoListView(props: {
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
         <div className="flex items-center gap-2">
           <UserCircle2 className="h-5 w-5 text-[color:var(--foreground)]/50" />
-          {isAutoDetected ? (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/55">
-                Connecté en tant que
-              </p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{selectedAdmin}</p>
-            </div>
-          ) : (
-            <p className="whitespace-nowrap text-sm font-semibold text-[color:var(--foreground)]/70">
-              Quel collaborateur êtes-vous ?
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/55">
+              {props.currentUserName ? "Collaborateur" : "Quel collaborateur ?"}
             </p>
-          )}
+            {props.currentUserName ? (
+              <p className="text-[11px] text-[color:var(--foreground)]/45">
+                Connecté en tant que {props.currentUserName.split(" ")[0]}
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        {!isAutoDetected && (
-          <div className="flex flex-wrap gap-2">
-            {props.admins.map((admin) => (
-              <button
-                key={admin}
-                type="button"
-                onClick={() => setManualSelectedAdmin(admin)}
-                className={[
-                  "ui-transition inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition",
-                  selectedAdmin === admin
-                    ? adminBadgeClassFor(admin)
-                    : "border-[var(--line)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
-                ].join(" ")}
-              >
-                {admin}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {props.admins.map((admin) => (
+            <button
+              key={admin}
+              type="button"
+              onClick={() => setSelectedAdmin(admin)}
+              className={[
+                "ui-transition inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition",
+                selectedAdmin === admin
+                  ? adminBadgeClassFor(admin)
+                  : "border-[var(--line)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
+              ].join(" ")}
+            >
+              {admin}
+            </button>
+          ))}
+        </div>
 
         <span className="ml-auto rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--foreground)]/55">
           {visibleTasks.length} tâche{visibleTasks.length !== 1 ? "s" : ""}

@@ -379,7 +379,7 @@ export default function KanbanBoardView(props: {
           {props.admins.map((admin) => {
             const isActive = filterAdmin === admin;
             const color = adminSolidColorFor(admin);
-            const pillClass = adminFilterPillClassFor(admin);
+            const pillClass = adminFilterPillClassFor(admin, isActive);
             return (
               <button
                 key={admin}
@@ -389,7 +389,7 @@ export default function KanbanBoardView(props: {
                 className={[
                   "ui-transition inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all",
                   pillClass,
-                  isActive ? "ring-2" : "opacity-80 hover:opacity-100",
+                  isActive ? "shadow-sm" : "opacity-90 hover:opacity-100",
                 ].join(" ")}
               >
                 <AdminAvatar admin={admin as AdminId} size="sm" />

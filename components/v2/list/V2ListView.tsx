@@ -513,41 +513,32 @@ export default function V2ListView(props: V2ListViewProps) {
   } = props;
 
   const filterTouchedRef = useRef(false);
-  const [selectedAdmins, setSelectedAdmins] = useState<Set<AdminId>>(() => {
+  const defaultFilterAdmin = useMemo((): AdminId | "Tous" => {
     if (currentUserName && admins.includes(currentUserName)) {
-      return new Set([currentUserName]);
+      return currentUserName as AdminId;
     }
-    return new Set();
-  });
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    return "Tous";
+  }, [currentUserName, admins]);
+
+  const [filterAdmin, setFilterAdminState] = useState<AdminId | "Tous">(() => defaultFilterAdmin);
 
   useEffect(() => {
     if (filterTouchedRef.current) return;
-    if (currentUserName && admins.includes(currentUserName)) {
-      setSelectedAdmins(new Set([currentUserName]));
-    }
-  }, [currentUserName, admins]);
+    setFilterAdminState(defaultFilterAdmin);
+  }, [defaultFilterAdmin]);
 
-  const toggleAdminFilter = (admin: AdminId) => {
+  const setFilterAdmin = (value: AdminId | "Tous") => {
     filterTouchedRef.current = true;
-    setSelectedAdmins((prev) => {
-      const next = new Set(prev);
-      if (next.has(admin)) next.delete(admin);
-      else next.add(admin);
-      return next;
-    });
+    setFilterAdminState(value);
   };
 
-  const clearAdminFilter = () => {
-    filterTouchedRef.current = true;
-    setSelectedAdmins(new Set());
-  };
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filteredTasks = useMemo(() => {
-    if (selectedAdmins.size === 0) return tasks;
-    return tasks.filter((task) => task.admins.some((a) => selectedAdmins.has(a)));
-  }, [tasks, selectedAdmins]);
+    if (filterAdmin === "Tous") return tasks;
+    return tasks.filter((task) => task.admins.includes(filterAdmin));
+  }, [tasks, filterAdmin]);
 
   const adminCounts = useMemo(
     () =>
@@ -596,10 +587,10 @@ export default function V2ListView(props: V2ListViewProps) {
 
           <button
             type="button"
-            onClick={clearAdminFilter}
+            onClick={() => setFilterAdmin("Tous")}
             className={[
               "ui-transition inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all",
-              selectedAdmins.size === 0
+              filterAdmin === "Tous"
                 ? "border-[var(--line-strong)] bg-[var(--foreground)] text-[var(--background)] shadow-sm"
                 : "border-[var(--line)] bg-[var(--surface-soft)] text-[color:var(--foreground)]/65 hover:bg-[var(--surface)]",
             ].join(" ")}
@@ -611,19 +602,19 @@ export default function V2ListView(props: V2ListViewProps) {
           </button>
 
           {admins.map((admin) => {
-            const isActive = selectedAdmins.has(admin);
+            const isActive = filterAdmin === admin;
             const color = adminSolidColorFor(admin);
-            const pillClass = adminFilterPillClassFor(admin);
+            const pillClass = adminFilterPillClassFor(admin, isActive);
             return (
               <button
                 key={admin}
                 type="button"
-                onClick={() => toggleAdminFilter(admin)}
+                onClick={() => setFilterAdmin(isActive ? "Tous" : (admin as AdminId))}
                 style={isActive ? { borderColor: color, boxShadow: `0 0 0 2px ${color}33` } : {}}
                 className={[
                   "ui-transition inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all",
                   pillClass,
-                  isActive ? "ring-2" : "opacity-80 hover:opacity-100",
+                  isActive ? "shadow-sm" : "opacity-90 hover:opacity-100",
                 ].join(" ")}
               >
                 <AdminAvatar admin={admin} size="sm" />
@@ -639,10 +630,9 @@ export default function V2ListView(props: V2ListViewProps) {
           })}
         </div>
 
-        {selectedAdmins.size > 0 ? (
+        {filterAdmin !== "Tous" ? (
           <p className="text-[11px] text-[color:var(--foreground)]/50">
-            {filteredTasks.length} tâche{filteredTasks.length !== 1 ? "s" : ""} pour{" "}
-            {Array.from(selectedAdmins).join(", ")}
+            {filteredTasks.length} tâche{filteredTasks.length !== 1 ? "s" : ""} pour {filterAdmin}
           </p>
         ) : null}
       </div>

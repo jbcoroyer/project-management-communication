@@ -293,9 +293,18 @@ export function adminSolidColorFor(name: string): string {
   return SOLID_COLORS[adminColorIdx(name)] ?? SOLID_COLORS[0];
 }
 
-export function adminFilterPillClassFor(name: string): string {
-  if (!name.trim()) return "bg-[var(--surface-soft)] text-[color:var(--foreground)]/60 border-[var(--line)]";
-  return FILTER_PILL_VARIANTS[adminColorIdx(name)] ?? FILTER_PILL_VARIANTS[0];
+const FILTER_PILL_INACTIVE_VARIANTS = FILTER_PILL_VARIANTS.map((variant) =>
+  variant.replace(/\s+ring-2\s+ring-[^\s]+/g, ""),
+);
+
+export function adminFilterPillClassFor(name: string, active = true): string {
+  if (!name.trim()) {
+    return active
+      ? "border-[var(--line-strong)] bg-[var(--foreground)] text-[var(--background)]"
+      : "bg-[var(--surface-soft)] text-[color:var(--foreground)]/60 border-[var(--line)]";
+  }
+  const variants = active ? FILTER_PILL_VARIANTS : FILTER_PILL_INACTIVE_VARIANTS;
+  return variants[adminColorIdx(name)] ?? variants[0];
 }
 
 export function adminAvatarMetaFor(name: string): AdminAvatarMetaResolved {

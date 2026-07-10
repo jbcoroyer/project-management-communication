@@ -42,6 +42,7 @@ import { useTaskManager } from "../../../lib/useTaskManager";
 import { celebrateTaskManually } from "../../../lib/celebrateTaskDone";
 import { DONE_COLUMN_NAME } from "../../../lib/workflowConstants";
 import { syncAdminColorAssignments } from "../../../lib/adminColorAssignments";
+import { buildAdminFilterList } from "../../../lib/buildAdminFilterList";
 import { getAdminColorPaletteSize } from "../../../lib/kanbanStyles";
 import { mapTaskRow } from "../../../lib/taskMappers";
 import { completedAtIsoForNewTaskInColumn } from "../../../lib/completedAt";
@@ -187,36 +188,14 @@ export default function V2DashboardHomePage() {
 
   const admins = useMemo(() => adminRecords.map((item) => item.name), [adminRecords]);
 
-  const adminNamesForPalette = useMemo(() => {
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    for (const r of adminRecords) {
-      const t = r.name.trim();
-      if (t && !seen.has(t)) {
-        seen.add(t);
-        ordered.push(t);
-      }
-    }
-    const extras: string[] = [];
-    for (const t of tasks) {
-      for (const a of t.admins) {
-        const x = a?.trim();
-        if (x && !seen.has(x)) extras.push(x);
-      }
-    }
-    extras.sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-    for (const x of extras) {
-      if (!seen.has(x)) {
-        seen.add(x);
-        ordered.push(x);
-      }
-    }
-    return ordered;
-  }, [adminRecords, tasks]);
+  const filterAdmins = useMemo(
+    () => buildAdminFilterList(adminRecords, tasks),
+    [adminRecords, tasks],
+  );
 
   useLayoutEffect(() => {
-    syncAdminColorAssignments(adminNamesForPalette, getAdminColorPaletteSize());
-  }, [adminNamesForPalette]);
+    syncAdminColorAssignments(filterAdmins, getAdminColorPaletteSize());
+  }, [filterAdmins]);
 
   const columns = useMemo(() => columnRecords.map((item) => item.name), [columnRecords]);
   const companies = useMemo(() => companyRecords.map((item) => item.name), [companyRecords]);
@@ -1136,7 +1115,7 @@ export default function V2DashboardHomePage() {
             <ToDoListView
               tasks={activeTasks}
               now={now}
-              admins={admins}
+              admins={filterAdmins}
               currentUserName={effectiveUser}
               onTaskClick={(task) => setSelectedTaskId(task.id)}
             />
@@ -1164,7 +1143,7 @@ export default function V2DashboardHomePage() {
               <KanbanBoardView
                 tasks={filteredActiveTasks}
                 columns={columns}
-                admins={admins}
+                admins={filterAdmins}
                 companies={companies}
                 companyRecords={companyRecords}
                 now={now}
@@ -1185,7 +1164,7 @@ export default function V2DashboardHomePage() {
             <V2ListView
               tasks={filteredActiveTasks}
               columns={columns}
-              admins={admins}
+              admins={filterAdmins}
               companies={companies}
               domains={domainNames}
               companyRecords={companyRecords}
@@ -1202,8 +1181,8 @@ export default function V2DashboardHomePage() {
           {activeTab === "calendar" && (
             <CalendarView
               tasks={filteredActiveTasks}
-              admins={admins}
-              currentUserName={currentUser?.teamMemberName ?? null}
+              admins={filterAdmins}
+              currentUserName={effectiveUser}
               salonEvents={salonEvents}
               onSelectTask={(taskId) => {
                 lastFocusedTaskIdRef.current = null;
@@ -1221,7 +1200,7 @@ export default function V2DashboardHomePage() {
           {activeTab === "archives" && (
             <ArchivesView
               tasks={tasks}
-              admins={admins}
+              admins={filterAdmins}
               onRestore={(taskId) => void handleRestoreTask(taskId)}
               onDelete={(taskId) => void handlePermanentDelete(taskId)}
             />
