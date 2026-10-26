@@ -9,6 +9,9 @@ type StockVisualPreviewProps = {
   className?: string;
 };
 
+/** Format page A4 portrait (210 × 297 mm). */
+const A4_ASPECT = "aspect-[210/297]";
+
 function PdfEmbed({
   url,
   name,
@@ -21,15 +24,20 @@ function PdfEmbed({
   badge?: boolean;
 }) {
   return (
-    <div className={["relative overflow-hidden bg-slate-100", className].filter(Boolean).join(" ")}>
+    <div className={["relative overflow-hidden bg-white", className].filter(Boolean).join(" ")}>
+      {/*
+        Chrome ignore #scrollbar=0 : on agrandit l’iframe et on clippe
+        pour masquer les barres de défilement internes du viewer PDF.
+      */}
       <iframe
         src={pdfEmbedSrc(url)}
         title={name}
-        className="pointer-events-none absolute inset-0 h-full w-full border-0 bg-white"
+        className="pointer-events-none absolute left-0 top-0 border-0 bg-white"
+        style={{ width: "calc(100% + 22px)", height: "calc(100% + 22px)" }}
         tabIndex={-1}
       />
       {badge ? (
-        <span className="absolute bottom-1.5 right-1.5 rounded border border-rose-200/90 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 shadow-sm backdrop-blur-sm">
+        <span className="absolute bottom-1.5 right-1.5 z-[1] rounded border border-rose-200/90 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 shadow-sm backdrop-blur-sm">
           PDF
         </span>
       ) : null}
@@ -44,24 +52,48 @@ export default function StockVisualPreview({
   className = "",
 }: StockVisualPreviewProps) {
   if (isPdfUrl(url)) {
-    if (mode === "thumb") {
-      return <PdfEmbed url={url} name={name} className={["h-full w-full", className].join(" ")} badge />;
+    if (mode === "full") {
+      return (
+        <div className={["mx-auto w-full max-w-[min(100%,28rem)]", A4_ASPECT, className].filter(Boolean).join(" ")}>
+          <PdfEmbed url={url} name={name} className="h-full w-full rounded-lg border border-[var(--line)] shadow-sm" />
+        </div>
+      );
     }
 
-    const heightClass =
-      mode === "full" ? "h-[80vh] min-h-[20rem]" : "h-full min-h-[14rem] rounded-lg border border-[var(--line)]";
-    return <PdfEmbed url={url} name={name} className={[heightClass, className].join(" ")} />;
+    return (
+      <PdfEmbed
+        url={url}
+        name={name}
+        badge={mode === "thumb"}
+        className={[A4_ASPECT, "w-full", mode === "detail" ? "rounded-lg border border-[var(--line)]" : "", className]
+          .filter(Boolean)
+          .join(" ")}
+      />
+    );
   }
 
-  const objectClass =
-    mode === "thumb"
-      ? "h-full w-full object-cover"
-      : mode === "full"
-        ? "h-full max-h-[80vh] w-full object-contain"
-        : "h-52 w-full rounded-lg border border-[var(--line)] bg-white object-contain";
+  if (mode === "full") {
+    return (
+      <div className={["mx-auto flex w-full max-w-[min(100%,28rem)] items-center justify-center", A4_ASPECT, className].filter(Boolean).join(" ")}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={name} className="max-h-full max-w-full object-contain" />
+      </div>
+    );
+  }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={name} className={[objectClass, className].filter(Boolean).join(" ")} />
+    <div
+      className={[
+        A4_ASPECT,
+        "w-full overflow-hidden bg-white",
+        mode === "detail" ? "rounded-lg border border-[var(--line)]" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt={name} className="h-full w-full object-contain object-center" />
+    </div>
   );
 }

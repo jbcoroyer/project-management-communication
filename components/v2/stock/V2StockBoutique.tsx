@@ -443,7 +443,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
     const hasVisual = Boolean(item.visualUrl);
     const isPdf = hasVisual && isPdfUrl(item.visualUrl!);
     return (
-      <div className={`relative w-full ${isPdf ? "h-72" : "h-56"}`}>
+      <div className="relative mx-auto w-full max-w-[18rem] aspect-[210/297]">
         <input
           ref={photoInputRef}
           type="file"
@@ -487,7 +487,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             <Icon className="h-12 w-12 text-[color:var(--foreground)]/25" />
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)]/90 px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/70 shadow-sm">
               <Upload className="h-3.5 w-3.5" />
-              Image ou PDF
+              Image ou PDF A4
             </span>
           </button>
         )}
@@ -500,9 +500,12 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
     );
   };
 
-  const renderVisual = (item: InventoryItem, height: string) => {
+  const renderVisual = (item: InventoryItem, compact = false) => {
     const meta = CATEGORY_META[item.category];
     const Icon = meta.icon;
+    const frame = compact
+      ? "relative aspect-[210/297] w-full overflow-hidden bg-white"
+      : "group/vis relative aspect-[210/297] w-full overflow-hidden bg-white";
     if (item.visualUrl) {
       return (
         <button
@@ -511,7 +514,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
             e.stopPropagation();
             setLightbox({ url: item.visualUrl!, name: item.name });
           }}
-          className={`group/vis relative ${height} w-full overflow-hidden bg-white`}
+          className={frame}
           title={isPdfUrl(item.visualUrl) ? "Ouvrir le PDF" : "Agrandir le visuel"}
         >
           <StockVisualPreview url={item.visualUrl} name={item.name} mode="thumb" />
@@ -519,9 +522,9 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
       );
     }
     return (
-      <div className={`relative ${height} w-full bg-gradient-to-br ${meta.gradient}`}>
+      <div className={`${frame} bg-gradient-to-br ${meta.gradient}`}>
         <div className="absolute inset-0 flex items-center justify-center">
-          <Icon className="h-12 w-12 text-[color:var(--foreground)]/25" />
+          <Icon className={compact ? "h-5 w-5 text-[color:var(--foreground)]/25" : "h-12 w-12 text-[color:var(--foreground)]/25"} />
         </div>
       </div>
     );
@@ -584,7 +587,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         className="group ui-transition flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-lg"
       >
         <div className="relative">
-          {renderVisual(item, "h-40")}
+          {renderVisual(item)}
           <span
             className={`absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}
           >
@@ -603,9 +606,13 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
           ) : null}
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
-          <div className="min-h-[2.5rem]">
-            <h3 className="line-clamp-1 font-semibold text-[var(--foreground)]">{item.name}</h3>
-            <p className="line-clamp-1 text-xs text-[color:var(--foreground)]/55">{itemSubtitle(item)}</p>
+          <div className="min-h-[2.75rem] text-center">
+            <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-[var(--foreground)]">
+              {item.name}
+            </h3>
+            <p className="mt-1 line-clamp-2 text-xs leading-snug text-[color:var(--foreground)]/55">
+              {itemSubtitle(item)}
+            </p>
           </div>
 
           <div className="flex items-end justify-between">
@@ -643,8 +650,8 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         onClick={() => setDetailItem(item)}
         className="group ui-transition flex cursor-pointer items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 hover:border-[var(--line-strong)] hover:shadow-sm"
       >
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[var(--line)]">
-          {renderVisual(item, "h-16")}
+        <div className="w-11 shrink-0 overflow-hidden rounded-lg border border-[var(--line)]">
+          {renderVisual(item, true)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

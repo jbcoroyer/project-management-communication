@@ -10,9 +10,7 @@ import {
   CalendarDays,
   ClipboardList,
   Command as CommandIcon,
-  Inbox,
   KanbanSquare,
-  LayoutTemplate,
   ListFilter,
   PartyPopper,
   Plus,
@@ -46,19 +44,16 @@ import { buildAdminFilterList } from "../../../lib/buildAdminFilterList";
 import { getAdminColorPaletteSize } from "../../../lib/kanbanStyles";
 import { mapTaskRow } from "../../../lib/taskMappers";
 import { completedAtIsoForNewTaskInColumn } from "../../../lib/completedAt";
-import { markTaskMutatedLocally, markTasksMutatedLocally } from "../../../lib/taskMutatedLocally";
+import { markTaskMutatedLocally } from "../../../lib/taskMutatedLocally";
 import { normalizeProjectName } from "../../../lib/normalize";
 import { useAppShortcuts } from "../../../lib/v2/useAppShortcuts";
 import { useInAppNotifications } from "../../../lib/inAppNotificationsContext";
 import { usePresence } from "../../../lib/v2/usePresence";
 import { useAutomationRules, useAutomationRunner, type AutomationRule } from "../../../lib/v2/automations";
 import { useIntakeRequests, type IntakeRequest } from "../../../lib/v2/intake";
-import { getTemplateById, TASK_TEMPLATES } from "../../../lib/v2/taskTemplates";
 import DashboardNotificationBell from "../../DashboardNotificationBell";
 import PresenceBar from "../PresenceBar";
 import V2CommandPalette, { type PaletteAction } from "./V2CommandPalette";
-import V2QuickAddTask from "./V2QuickAddTask";
-import V2Inbox from "./V2Inbox";
 import V2TriagePanel from "./V2TriagePanel";
 import IntakeTaskMappingModal from "./IntakeTaskMappingModal";
 import { buildTaskDraftFromRequest, type IntakeTaskDraft } from "../../../lib/v2/intakeMapping";
@@ -79,7 +74,6 @@ const KanbanBoardView = dynamic(() => import("../../KanbanBoardView"), {
 });
 
 type MainTab =
-  | "inbox"
   | "kanban"
   | "list"
   | "todo"
@@ -89,7 +83,6 @@ type MainTab =
   | "workload"
   | "triage";
 const MAIN_TAB_SET = new Set<MainTab>([
-  "inbox",
   "kanban",
   "list",
   "todo",
@@ -107,7 +100,6 @@ const MAIN_TABS: {
   group: "work" | "pilot";
   icon: typeof KanbanSquare;
 }[] = [
-  { id: "inbox", label: "Inbox", short: "Inbox", group: "work", icon: Inbox },
   { id: "todo", label: "Ma To-Do List", short: "To-do", group: "work", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", short: "Kanban", group: "work", icon: KanbanSquare },
   { id: "list", label: "Vue liste", short: "Liste", group: "work", icon: Table2 },
@@ -170,7 +162,6 @@ export default function V2DashboardHomePage() {
   const [deliverableTask, setDeliverableTask] = useState<Task | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const quickAddRef = useRef<HTMLInputElement | null>(null);
 
   const appVersion = detectVersionFromPath(pathname);
   const routePrefix = pathVersionPrefix(pathname) || "/v2";
@@ -183,6 +174,7 @@ export default function V2DashboardHomePage() {
   const activeTab = useMemo<MainTab>(() => {
     const match = pathname.match(/^\/v[23]\/dashboard\/([^/?#]+)/);
     const candidate = match?.[1];
+    if (candidate === "inbox") return "kanban";
     if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
       if (isLightUi && candidate === "triage") return "kanban";
       return candidate as MainTab;
@@ -669,67 +661,6 @@ export default function V2DashboardHomePage() {
     [updateIntakeRequest],
   );
 
-  const handleApplyTemplate = useCallback(
-    async (templateId: string) => {
-      const tpl = getTemplateById(templateId);
-      if (!tpl) return;
-      const column = (columns[0] as ColumnId) ?? "À faire";
-      const firstCompany = companyRecords[0]?.name ?? initialFormState.company;
-      const domain = domainNames.includes(tpl.domain)
-        ? tpl.domain
-        : (domainRecords[0]?.name ?? initialFormState.domain);
-      const admins0 = defaultAdminName ? [defaultAdminName] : [];
-      const parent = await insertTaskRow({
-        project_name: tpl.name,
-        company: firstCompany,
-        domain,
-        admin: admins0.join(","),
-        is_client_request: false,
-        client_name: "",
-        deadline: null,
-        budget: "",
-        description: tpl.description,
-        priority: tpl.priority,
-        projected_work: [],
-        estimated_hours: 0,
-        estimated_days: 0,
-        column_id: column,
-        lane: admins0[0] ?? null,
-        elapsed_ms: 0,
-        is_running: false,
-        last_start_time_ms: null,
-        is_archived: false,
-        completed_at: completedAtIsoForNewTaskInColumn(column),
-      });
-      if (!parent) return;
-      const subRows = tpl.subtasks.map((name) => ({
-        project_name: name,
-        company: firstCompany,
-        domain,
-        admin: admins0.join(","),
-        lane: admins0[0] ?? null,
-        deadline: null,
-        column_id: column,
-        priority: "Moyenne" as const,
-        is_archived: false,
-        is_client_request: false,
-        parent_task_id: parent.id,
-        estimated_hours: 0,
-        estimated_days: 0,
-        elapsed_ms: 0,
-        is_running: false,
-      }));
-      const { data: subData, error: subError } = await supabase.from("tasks").insert(subRows).select();
-      if (!subError && subData) {
-        const rows = subData as { id: string }[];
-        markTasksMutatedLocally(rows.map((r) => r.id).filter(Boolean));
-        setTasks((prev) => [...prev, ...subData.map(mapTaskRow)]);
-      }
-      toastSuccess(`Modèle « ${tpl.name} » appliqué`);
-    },
-    [columns, companyRecords, defaultAdminName, domainNames, domainRecords, insertTaskRow, setTasks, supabase],
-  );
-
   const pendingTriageCount = useMemo(
     () => intakeRequests.filter((r) => r.status === "triage").length,
     [intakeRequests],
@@ -804,17 +735,8 @@ export default function V2DashboardHomePage() {
   }, [closeTaskDetailPanel, selectedTaskId, tasks]);
 
   const focusQuickAdd = useCallback(() => {
-    if (activeTab !== "kanban") {
-      navigateToTab("kanban");
-      window.setTimeout(() => quickAddRef.current?.focus(), 200);
-      return;
-    }
-    if (quickAddRef.current) {
-      quickAddRef.current.focus();
-    } else {
-      handleOpenForm();
-    }
-  }, [activeTab, handleOpenForm, navigateToTab]);
+    handleOpenForm();
+  }, [handleOpenForm]);
 
   const cycleActiveTaskStatus = useCallback(() => {
     const id = selectedTaskId ?? lastFocusedTaskIdRef.current;
@@ -865,7 +787,6 @@ export default function V2DashboardHomePage() {
       event.preventDefault();
       cycleActiveTaskPriority();
     },
-    "g i": () => navigateToTab("inbox"),
     "g k": () => navigateToTab("kanban"),
     "g l": () => navigateToTab("list"),
     "g t": () => navigateToTab("todo"),
@@ -914,7 +835,6 @@ export default function V2DashboardHomePage() {
         keywords: ["fun", "célébrer"],
         perform: () => celebrateTaskManually(),
       },
-      { id: "nav-inbox", group: "Navigation", label: "Inbox", hint: "G I", perform: () => navigateToTab("inbox") },
       { id: "nav-kanban", group: "Navigation", label: "Tableau Kanban", hint: "G K", perform: () => navigateToTab("kanban") },
       { id: "nav-list", group: "Navigation", label: "Vue liste", hint: "G L", perform: () => navigateToTab("list") },
       { id: "nav-todo", group: "Navigation", label: "Ma To-Do List", hint: "G T", perform: () => navigateToTab("todo") },
@@ -947,13 +867,6 @@ export default function V2DashboardHomePage() {
         keywords: ["règles", "automation"],
         perform: () => router.push(`${routePrefix}/settings`),
       },
-      ...TASK_TEMPLATES.map((tpl) => ({
-        id: `template-${tpl.id}`,
-        group: "Modèles",
-        label: `Créer depuis un modèle : ${tpl.name}`,
-        keywords: ["template", "bundle", tpl.domain],
-        perform: () => void handleApplyTemplate(tpl.id),
-      })),
     ];
 
     const activeId = selectedTaskId ?? lastFocusedTaskIdRef.current;
@@ -1012,7 +925,6 @@ export default function V2DashboardHomePage() {
   }, [
     columns,
     focusQuickAdd,
-    handleApplyTemplate,
     handleArchiveTask,
     handleInlineSave,
     handleMoveTask,
@@ -1153,8 +1065,9 @@ export default function V2DashboardHomePage() {
             </header>
           )}
 
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <V2Segmented
+              size="lg"
               className="min-w-0 sm:flex-1"
               ariaLabel="Vues de travail"
               value={activeTab}
@@ -1164,6 +1077,7 @@ export default function V2DashboardHomePage() {
                 .map((tab) => ({ id: tab.id, label: tab.short, icon: tab.icon }))}
             />
             <V2Segmented
+              size="sm"
               ariaLabel="Pilotage"
               value={activeTab}
               onChange={navigateToTab}
@@ -1192,15 +1106,6 @@ export default function V2DashboardHomePage() {
               transition={{ duration: 0.16, ease: "easeOut" }}
               className="space-y-5"
             >
-          {activeTab === "inbox" && (
-            <V2Inbox
-              tasks={tasks}
-              currentUserName={effectiveUser}
-              now={now}
-              onOpenTask={(taskId) => setSelectedTaskId(taskId)}
-            />
-          )}
-
           {activeTab === "triage" && (
             <V2TriagePanel
               requests={intakeRequests}
@@ -1225,42 +1130,23 @@ export default function V2DashboardHomePage() {
           )}
 
           {activeTab === "kanban" && (
-            <>
-              <V2QuickAddTask inputRef={quickAddRef} onQuickAdd={handleQuickCreate} />
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--foreground)]/50">
-                  <LayoutTemplate className="h-3.5 w-3.5" /> Modèles :
-                </span>
-                {TASK_TEMPLATES.map((tpl) => (
-                  <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => void handleApplyTemplate(tpl.id)}
-                    title={tpl.description}
-                    className="ui-transition rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[color:var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                  >
-                    {tpl.name}
-                  </button>
-                ))}
-              </div>
-              <KanbanBoardView
-                tasks={filteredActiveTasks}
-                columns={columns}
-                admins={filterAdmins}
-                companies={companies}
-                companyRecords={companyRecords}
-                now={now}
-                currentUserName={effectiveUser}
-                onMoveTask={handleMoveTask}
-                onOpenTask={setSelectedTaskId}
-                onArchiveTask={handleArchiveTask}
-                onDeleteTask={(taskId) => void handleDeleteTask(taskId)}
-                onEditTask={openEditForTask}
-                onAddTaskForColumn={handleOpenFormForColumn}
-                taskCardRefs={taskCardRefs}
-                lastFocusedTaskIdRef={lastFocusedTaskIdRef}
-              />
-            </>
+            <KanbanBoardView
+              tasks={filteredActiveTasks}
+              columns={columns}
+              admins={filterAdmins}
+              companies={companies}
+              companyRecords={companyRecords}
+              now={now}
+              currentUserName={effectiveUser}
+              onMoveTask={handleMoveTask}
+              onOpenTask={setSelectedTaskId}
+              onArchiveTask={handleArchiveTask}
+              onDeleteTask={(taskId) => void handleDeleteTask(taskId)}
+              onEditTask={openEditForTask}
+              onAddTaskForColumn={handleOpenFormForColumn}
+              taskCardRefs={taskCardRefs}
+              lastFocusedTaskIdRef={lastFocusedTaskIdRef}
+            />
           )}
 
           {activeTab === "list" && (

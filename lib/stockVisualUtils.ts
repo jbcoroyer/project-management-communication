@@ -18,8 +18,8 @@ export function stockVisualFileError(file: File): string | null {
   return "Format non pris en charge. Utilisez une image (JPG, PNG…) ou un PDF.";
 }
 
-/** Paramètres d'affichage intégré (1re page, sans barre d'outils). */
+/** Paramètres d'affichage intégré (1re page A4, chrome viewer masqué autant que possible). */
 export function pdfEmbedSrc(url: string): string {
   const base = url.split("#")[0] ?? url;
-  return `${base}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`;
+  return `${base}#page=1&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit`;
 }

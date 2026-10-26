@@ -13,6 +13,8 @@ type V2SegmentedProps<T extends string> = {
   onChange: (id: T) => void;
   ariaLabel: string;
   className?: string;
+  /** `lg` = vues principales ; `sm` = pilotage (Charge, Stats, Archives). */
+  size?: "sm" | "lg";
 };
 
 export default function V2Segmented<T extends string>({
@@ -21,13 +23,16 @@ export default function V2Segmented<T extends string>({
   onChange,
   ariaLabel,
   className,
+  size = "sm",
 }: V2SegmentedProps<T>) {
+  const large = size === "lg";
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
       className={[
-        "flex items-center gap-0.5 overflow-x-auto rounded-xl bg-[var(--surface-soft)]/80 p-0.5",
+        "flex items-center gap-0.5 overflow-x-auto rounded-xl bg-[var(--surface-soft)]/80",
+        large ? "gap-1 p-1" : "p-0.5",
         className ?? "",
       ].join(" ")}
     >
@@ -43,18 +48,30 @@ export default function V2Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(item.id)}
             className={[
-              "ui-transition inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium",
+              "ui-transition inline-flex shrink-0 items-center font-medium",
+              large
+                ? "gap-2 rounded-lg px-3.5 py-2 text-[14px] sm:text-[15px]"
+                : "gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px]",
               active
                 ? "bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-[var(--line)]"
                 : "text-[color:var(--foreground)]/50 hover:text-[color:var(--foreground)]/80",
             ].join(" ")}
           >
-            {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden /> : null}
+            {Icon ? (
+              <Icon
+                className={[
+                  "shrink-0 opacity-80",
+                  large ? "h-4 w-4" : "h-3.5 w-3.5",
+                ].join(" ")}
+                aria-hidden
+              />
+            ) : null}
             <span>{item.label}</span>
             {showBadge ? (
               <span
                 className={[
-                  "rounded-full px-1.5 py-px text-[10px] font-medium tabular-nums",
+                  "rounded-full px-1.5 py-px font-medium tabular-nums",
+                  large ? "text-[11px]" : "text-[10px]",
                   active
                     ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                     : "bg-[color:var(--foreground)]/8 text-[color:var(--foreground)]/55",

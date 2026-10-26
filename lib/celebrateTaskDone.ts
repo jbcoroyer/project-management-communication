@@ -95,6 +95,20 @@ function getCelebrateAudioContext(): AudioContext | null {
   return celebrateAudioCtx;
 }
 
+function createNoiseBuffer(ctx: AudioContext, durationSec: number): AudioBuffer {
+  const sampleRate = ctx.sampleRate;
+  const length = Math.max(1, Math.floor(sampleRate * durationSec));
+  const buffer = ctx.createBuffer(1, length, sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) {
+    // Bruit blanc un peu atténué vers la fin pour un souffle de canon
+    const fall = 1 - i / length;
+    data[i] = (Math.random() * 2 - 1) * fall;
+  }
+  return buffer;
+}
+
+/** Boom de canon (bruit + thump basse) + léger chime. */
 function playCelebrateSound(intensity = 1): void {
   if (prefersReducedMotion()) return;
   const ctx = getCelebrateAudioContext();
@@ -103,36 +117,79 @@ function playCelebrateSound(intensity = 1): void {
   void ctx.resume().catch(() => {});
 
   const now = ctx.currentTime;
-  const vol = clamp(0.18 * intensity, 0.1, 0.32);
+  const cannon = intensity >= 1;
+  const master = ctx.createGain();
+  master.gain.value = clamp(cannon ? 0.55 * intensity : 0.22 * intensity, 0.12, 0.7);
+  master.connect(ctx.destination);
 
-  const out = ctx.createGain();
-  out.gain.value = vol;
-  out.connect(ctx.destination);
+  const fireCannon = (t0: number, power: number) => {
+    // 1) Détonation : bruit filtré bas
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(ctx, 0.45);
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "lowpass";
+    noiseFilter.frequency.setValueAtTime(900 * power, t0);
+    noiseFilter.frequency.exponentialRampToValueAtTime(120, t0 + 0.28);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.001, t0);
+    noiseGain.gain.exponentialRampToValueAtTime(1.1 * power, t0 + 0.012);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(master);
+    noise.start(t0);
+    noise.stop(t0 + 0.45);
 
-  const pop = ctx.createOscillator();
-  const popGain = ctx.createGain();
-  pop.type = "sine";
-  pop.frequency.setValueAtTime(380, now);
-  pop.frequency.exponentialRampToValueAtTime(90, now + 0.12);
-  popGain.gain.setValueAtTime(0.45, now);
-  popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-  pop.connect(popGain);
-  popGain.connect(out);
-  pop.start(now);
-  pop.stop(now + 0.16);
+    // 2) Thump grave (bouche du canon)
+    const thump = ctx.createOscillator();
+    const thumpGain = ctx.createGain();
+    thump.type = "sine";
+    thump.frequency.setValueAtTime(95 * power, t0);
+    thump.frequency.exponentialRampToValueAtTime(38, t0 + 0.32);
+    thumpGain.gain.setValueAtTime(0.001, t0);
+    thumpGain.gain.exponentialRampToValueAtTime(1.35 * power, t0 + 0.018);
+    thumpGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.42);
+    thump.connect(thumpGain);
+    thumpGain.connect(master);
+    thump.start(t0);
+    thump.stop(t0 + 0.45);
 
+    // 3) Attaque sèche (claquement)
+    const crack = ctx.createOscillator();
+    const crackGain = ctx.createGain();
+    crack.type = "triangle";
+    crack.frequency.setValueAtTime(220, t0);
+    crack.frequency.exponentialRampToValueAtTime(70, t0 + 0.08);
+    crackGain.gain.setValueAtTime(0.001, t0);
+    crackGain.gain.exponentialRampToValueAtTime(0.55 * power, t0 + 0.005);
+    crackGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.1);
+    crack.connect(crackGain);
+    crackGain.connect(master);
+    crack.start(t0);
+    crack.stop(t0 + 0.12);
+  };
+
+  if (cannon) {
+    // Deux canons : gauche puis droite
+    fireCannon(now, 1);
+    fireCannon(now + 0.09, 0.88);
+  } else {
+    fireCannon(now, 0.55);
+  }
+
+  // Petit chime après le boom (fête)
   const chimeNotes = [523.25, 659.25, 783.99];
   chimeNotes.forEach((freq, i) => {
-    const t = now + 0.05 + i * 0.055;
+    const t = now + (cannon ? 0.14 : 0.05) + i * 0.055;
     const osc = ctx.createOscillator();
     const chimeGain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.value = freq;
     chimeGain.gain.setValueAtTime(0, t);
-    chimeGain.gain.linearRampToValueAtTime(0.16, t + 0.01);
+    chimeGain.gain.linearRampToValueAtTime(cannon ? 0.1 : 0.14, t + 0.01);
     chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
     osc.connect(chimeGain);
-    chimeGain.connect(out);
+    chimeGain.connect(master);
     osc.start(t);
     osc.stop(t + 0.3);
   });
