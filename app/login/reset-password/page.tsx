@@ -6,6 +6,7 @@ import { ArrowLeft, Eye, EyeOff, KeyRound } from "lucide-react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { ServiceCommunicationIdenaHeading } from "../../../components/IdenaBrand";
+import { TuesdayLoader } from "@/components/brand";
 
 function translateResetError(message: string): string {
   if (message.includes("Password should be at least")) {
@@ -93,7 +94,7 @@ export default function ResetPasswordPage() {
 
         <div className="ui-surface rounded-2xl p-6">
           {!ready ? (
-            <p className="text-sm text-[color:var(--foreground)]/60">Chargement…</p>
+            <TuesdayLoader size={24} label="Chargement…" showLabel />
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div>

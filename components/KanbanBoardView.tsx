@@ -163,6 +163,7 @@ function DraggableCard(props: {
         setNodeRef(el);
         props.cardRef?.(el);
       }}
+      data-task-id={props.task.id}
       {...listeners}
       {...attributes}
       onClick={props.onOpen}

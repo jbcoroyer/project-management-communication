@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { priorities, type Priority } from "../../../lib/types";
 import type { IntakeTaskDraft } from "../../../lib/v2/intakeMapping";
 
@@ -195,7 +196,14 @@ export default function IntakeTaskMappingModal({
             onClick={() => onConfirm(form)}
             className="ui-transition rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:bg-[var(--accent-strong)] disabled:opacity-50"
           >
-            {busy ? "Création…" : "Créer la tâche"}
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <TuesdayLoader size={16} tone="white" label="Création…" />
+                Création…
+              </span>
+            ) : (
+              "Créer la tâche"
+            )}
           </button>
         </div>
       </div>

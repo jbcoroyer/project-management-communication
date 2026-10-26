@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
-import { Inter, Schibsted_Grotesk } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Inter_Tight, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
+import "@/components/brand/tuesday-brand.css";
 import AppProviders from "../components/AppProviders";
 import SonnerToaster from "../components/SonnerToaster";
 
@@ -18,6 +19,13 @@ const schibsted = Schibsted_Grotesk({
   display: "swap",
 });
 
+const tueDisplay = Inter_Tight({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-tue-display",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Tuesday",
@@ -28,13 +36,17 @@ export const metadata: Metadata = {
   applicationName: "Tuesday",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#F6F1EA",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" className={tueDisplay.variable}>
       <body className={`${inter.variable} ${schibsted.variable} antialiased`}>
         <AppProviders>
           <SonnerToaster />

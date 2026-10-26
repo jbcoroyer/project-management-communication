@@ -9,12 +9,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
+import { usePathname } from "next/navigation";
 import { useReferenceData } from "../../../lib/useReferenceData";
 import { useStockIdeas } from "../../../lib/useStockIdeas";
 import type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "../../../lib/stockIdeasTypes";
 import { useIdeaVotes } from "../../../lib/v2/ideaVotes";
 import { createQuickTask } from "../../../lib/v2/createTask";
 import { toastError, toastSuccess } from "../../../lib/toast";
+import V2PageHeader from "../V2PageHeader";
 
 const CATEGORY_LABELS: Record<StockIdeaCategory, string> = {
   materiel: "Matériel",
@@ -38,6 +40,8 @@ const NEXT_STATUS: Record<StockIdeaStatus, StockIdeaStatus | null> = {
 };
 
 export default function V2IdeasPage() {
+  const pathname = usePathname();
+  const isModernUi = pathname.startsWith("/v2") || pathname.startsWith("/v3");
   const { user } = useCurrentUser();
   const { admins, companies, domains } = useReferenceData();
   const { ideas, canManage, addIdea, updateIdea } = useStockIdeas();
@@ -103,15 +107,24 @@ export default function V2IdeasPage() {
 
   return (
       <div className="space-y-5">
+        {isModernUi ? (
+          <V2PageHeader
+            kicker="Contenu"
+            icon={Lightbulb}
+            title="Idées"
+            description="Votez, faites avancer une idée, puis convertissez-la en tâche."
+          />
+        ) : (
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
             <Lightbulb className="h-3.5 w-3.5" /> Boîte à idées · V2
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Pipeline d'innovation</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Pipeline d&apos;innovation</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
             Votez, faites avancer les idées par statut et convertissez-les en tâches en un clic.
           </p>
         </header>
+        )}
 
         <section className="ui-surface rounded-2xl p-5">
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">

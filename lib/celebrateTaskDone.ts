@@ -1,4 +1,16 @@
-const COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#ea580c", "#eab308", "#d946ef", "#06b6d4"];
+/** Palette douce (moins arcade). */
+const COLORS = ["#5b8def", "#7eb8f7", "#f0a05a", "#e8c56b", "#6bc4a6", "#c4a5e8", "#8ecae6"];
+
+const THROTTLE_MS = 750;
+/** Sans nouvelle célébration, le tas disparaît. */
+const IDLE_CLEAR_MS = 10_000;
+const FLOOR_PAD = 3;
+const PILE_COL_W = 5;
+/** Contribution verticale d’une pièce au tas (compression visuelle). */
+const PILE_GROW = 0.42;
+const PILE_MAX_H = 120;
+
+type CelebrateMode = "local" | "fullscreen";
 
 type Piece = {
   x: number;
@@ -9,37 +21,55 @@ type Piece = {
   h: number;
   rot: number;
   spin: number;
-  wobble: number;
-  wobbleSpeed: number;
+  /** Phase pour le flutter 3D (échelle X). */
+  flutter: number;
+  flutterSpeed: number;
+  windPhase: number;
+  windAmp: number;
   color: string;
-  shape: "rect" | "streamer";
+  shape: "rect" | "streamer" | "dot";
+  bornAt: number;
+  /** Opacité 0–1. */
+  alpha: number;
+  lifeMs: number;
+  /** Posée au sol / sur le tas. */
   settled: boolean;
+  /** Peut s’empiler (plein écran uniquement). */
+  canPile: boolean;
 };
 
 type Engine = {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   pieces: Piece[];
-  activePieces: Piece[];
+  /** Hauteur du tas par colonne (px depuis le bas). */
+  pile: Float32Array;
+  pileCols: number;
   width: number;
   height: number;
   dpr: number;
   rafId: number | null;
   running: boolean;
-  floorHeights: number[];
-  settledCanvas: HTMLCanvasElement;
-  settledCtx: CanvasRenderingContext2D;
-  settledDirty: boolean;
-  cleanupTimer: ReturnType<typeof setTimeout> | null;
+  startedAt: number;
+  mode: CelebrateMode;
+  /** Zone de clip pour mode local (null = plein écran). */
+  clip: { x: number; y: number; w: number; h: number } | null;
+  rainUntil: number;
+  /** Dernière activité (lancement confettis). */
+  lastActivityAt: number;
+  /** Début du fade d’inactivité (0 = pas encore). */
+  idleFadeAt: number;
+};
+
+export type CelebrateOrigin = { x: number; y: number };
+
+export type CelebrateOptions = {
+  taskId?: string;
+  origin?: CelebrateOrigin;
 };
 
 let lastCelebrateAt = 0;
 let celebrateAudioCtx: AudioContext | null = null;
-const THROTTLE_MS = 750;
-const MAX_PIECES = 9000;
-const FLOOR_BUCKET = 8;
-const INACTIVITY_CLEAR_MS = 10_000;
-
 let engine: Engine | null = null;
 
 function prefersReducedMotion(): boolean {
@@ -65,7 +95,6 @@ function getCelebrateAudioContext(): AudioContext | null {
   return celebrateAudioCtx;
 }
 
-/** Petit « pop » festif synchronisé avec l’explosion de confettis (Web Audio, sans asset). */
 function playCelebrateSound(intensity = 1): void {
   if (prefersReducedMotion()) return;
   const ctx = getCelebrateAudioContext();
@@ -74,7 +103,7 @@ function playCelebrateSound(intensity = 1): void {
   void ctx.resume().catch(() => {});
 
   const now = ctx.currentTime;
-  const vol = clamp(0.22 * intensity, 0.12, 0.38);
+  const vol = clamp(0.18 * intensity, 0.1, 0.32);
 
   const out = ctx.createGain();
   out.gain.value = vol;
@@ -83,55 +112,72 @@ function playCelebrateSound(intensity = 1): void {
   const pop = ctx.createOscillator();
   const popGain = ctx.createGain();
   pop.type = "sine";
-  pop.frequency.setValueAtTime(340, now);
-  pop.frequency.exponentialRampToValueAtTime(72, now + 0.14);
-  popGain.gain.setValueAtTime(0.55, now);
-  popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+  pop.frequency.setValueAtTime(380, now);
+  pop.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+  popGain.gain.setValueAtTime(0.45, now);
+  popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
   pop.connect(popGain);
   popGain.connect(out);
   pop.start(now);
-  pop.stop(now + 0.18);
-
-  const tickCount = intensity >= 1.15 ? 7 : 5;
-  for (let i = 0; i < tickCount; i += 1) {
-    const t = now + 0.02 + i * 0.042;
-    const len = Math.max(1, Math.floor(ctx.sampleRate * 0.035));
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let j = 0; j < len; j += 1) {
-      data[j] = (Math.random() * 2 - 1) * (1 - j / len);
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = 1100 + i * 380;
-    filter.Q.value = 1.1;
-    const tickGain = ctx.createGain();
-    tickGain.gain.setValueAtTime(0.32, t);
-    tickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.038);
-    src.connect(filter);
-    filter.connect(tickGain);
-    tickGain.connect(out);
-    src.start(t);
-    src.stop(t + 0.045);
-  }
+  pop.stop(now + 0.16);
 
   const chimeNotes = [523.25, 659.25, 783.99];
   chimeNotes.forEach((freq, i) => {
-    const t = now + 0.07 + i * 0.065;
+    const t = now + 0.05 + i * 0.055;
     const osc = ctx.createOscillator();
     const chimeGain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.value = freq;
     chimeGain.gain.setValueAtTime(0, t);
-    chimeGain.gain.linearRampToValueAtTime(0.2, t + 0.012);
-    chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+    chimeGain.gain.linearRampToValueAtTime(0.16, t + 0.01);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
     osc.connect(chimeGain);
     chimeGain.connect(out);
     osc.start(t);
-    osc.stop(t + 0.36);
+    osc.stop(t + 0.3);
   });
+}
+
+function ensurePile(e: Engine, width: number) {
+  const cols = Math.max(1, Math.ceil(width / PILE_COL_W));
+  if (e.pileCols === cols && e.pile.length === cols) return;
+  const next = new Float32Array(cols);
+  if (e.pile.length > 0) {
+    const scale = e.pileCols / cols;
+    for (let i = 0; i < cols; i += 1) {
+      const src = Math.min(e.pileCols - 1, Math.floor(i * scale));
+      next[i] = e.pile[src] ?? 0;
+    }
+  }
+  e.pile = next;
+  e.pileCols = cols;
+}
+
+function pileIndex(e: Engine, x: number): number {
+  return clamp(Math.floor(x / PILE_COL_W), 0, e.pileCols - 1);
+}
+
+function pileHeightAt(e: Engine, x: number): number {
+  const i = pileIndex(e, x);
+  const a = e.pile[i] ?? 0;
+  const b = e.pile[clamp(i - 1, 0, e.pileCols - 1)] ?? 0;
+  const c = e.pile[clamp(i + 1, 0, e.pileCols - 1)] ?? 0;
+  return Math.max(a, (a + b + c) / 3);
+}
+
+function growPile(e: Engine, x: number, amount: number) {
+  const i = pileIndex(e, x);
+  const add = Math.min(amount, 4.5);
+  e.pile[i] = Math.min(PILE_MAX_H, (e.pile[i] ?? 0) + add);
+  const soft = add * 0.45;
+  const iL = clamp(i - 1, 0, e.pileCols - 1);
+  const iR = clamp(i + 1, 0, e.pileCols - 1);
+  e.pile[iL] = Math.min(PILE_MAX_H, (e.pile[iL] ?? 0) + soft);
+  e.pile[iR] = Math.min(PILE_MAX_H, (e.pile[iR] ?? 0) + soft);
+}
+
+function clearPile(e: Engine) {
+  e.pile.fill(0);
 }
 
 function ensureEngine(): Engine | null {
@@ -150,25 +196,24 @@ function ensureEngine(): Engine | null {
 
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return null;
-  const settledCanvas = document.createElement("canvas");
-  const settledCtx = settledCanvas.getContext("2d", { alpha: true });
-  if (!settledCtx) return null;
 
   engine = {
     canvas,
     ctx,
     pieces: [],
-    activePieces: [],
+    pile: new Float32Array(0),
+    pileCols: 0,
     width: 0,
     height: 0,
     dpr: 1,
     rafId: null,
     running: false,
-    floorHeights: [],
-    settledCanvas,
-    settledCtx,
-    settledDirty: true,
-    cleanupTimer: null,
+    startedAt: 0,
+    mode: "fullscreen",
+    clip: null,
+    rainUntil: 0,
+    lastActivityAt: 0,
+    idleFadeAt: 0,
   };
 
   resizeEngine();
@@ -188,79 +233,262 @@ function resizeEngine() {
   engine.canvas.width = Math.floor(w * dpr);
   engine.canvas.height = Math.floor(h * dpr);
   engine.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  engine.settledCanvas.width = Math.floor(w * dpr);
-  engine.settledCanvas.height = Math.floor(h * dpr);
-  engine.settledCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  engine.settledCtx.clearRect(0, 0, w, h);
-  engine.settledDirty = true;
+  ensurePile(engine, w);
+}
 
-  const bucketCount = Math.ceil(w / FLOOR_BUCKET) + 1;
-  const old = engine.floorHeights;
-  engine.floorHeights = new Array(bucketCount).fill(0);
-  if (old.length > 0) {
-    for (let i = 0; i < engine.floorHeights.length; i += 1) {
-      const oldIdx = Math.floor((i / engine.floorHeights.length) * old.length);
-      engine.floorHeights[i] = old[oldIdx] ?? 0;
+function resolveOrigin(options?: CelebrateOptions): CelebrateOrigin | null {
+  if (options?.origin) return options.origin;
+  if (options?.taskId && typeof document !== "undefined") {
+    const safeId = options.taskId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const el = document.querySelector<HTMLElement>(`[data-task-id="${safeId}"]`);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      }
+    }
+  }
+  return null;
+}
+
+function pickColor(): string {
+  return COLORS[(Math.random() * COLORS.length) | 0];
+}
+
+function makePiece(
+  partial: Omit<
+    Piece,
+    "alpha" | "flutter" | "flutterSpeed" | "windPhase" | "windAmp" | "bornAt" | "lifeMs" | "settled" | "canPile"
+  > &
+    Partial<Piece>,
+): Piece {
+  const now = performance.now();
+  return {
+    flutter: Math.random() * Math.PI * 2,
+    flutterSpeed: 0.04 + Math.random() * 0.08,
+    windPhase: Math.random() * Math.PI * 2,
+    windAmp: 0.15 + Math.random() * 0.45,
+    bornAt: now,
+    alpha: 1,
+    lifeMs: 2200 + Math.random() * 1800,
+    settled: false,
+    canPile: true,
+    ...partial,
+  };
+}
+
+/** Flash initial : jets locaux ou canons centre → extérieur. */
+function spawnFlashBurst(e: Engine, origin: CelebrateOrigin | null, mode: CelebrateMode) {
+  const now = performance.now();
+
+  if (mode === "local" && origin) {
+    const count = 48;
+    for (let i = 0; i < count; i += 1) {
+      const angle = -Math.PI * 0.15 - Math.random() * Math.PI * 0.7;
+      const speed = 2.2 + Math.random() * 4.5;
+      const isDot = Math.random() < 0.35;
+      e.pieces.push(
+        makePiece({
+          x: origin.x + (Math.random() - 0.5) * 28,
+          y: origin.y + (Math.random() - 0.5) * 18,
+          vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? 1 : -1) * (0.4 + Math.random()),
+          vy: Math.sin(angle) * speed - 1.5,
+          w: isDot ? 2.5 + Math.random() * 2 : 3 + Math.random() * 4,
+          h: isDot ? 2.5 + Math.random() * 2 : 5 + Math.random() * 8,
+          rot: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.22,
+          color: pickColor(),
+          shape: isDot ? "dot" : Math.random() < 0.4 ? "streamer" : "rect",
+          bornAt: now,
+          lifeMs: 1400 + Math.random() * 900,
+          canPile: false,
+        }),
+      );
+    }
+    return;
+  }
+
+  // Canons milieu-bas, tir vers le haut + extérieur
+  const cy = e.height * 0.92;
+  const cannons = [
+    { x: e.width * 0.5, y: cy, dir: -1 as const },
+    { x: e.width * 0.5, y: cy, dir: 1 as const },
+  ];
+  for (const cannon of cannons) {
+    const count = 58;
+    for (let i = 0; i < count; i += 1) {
+      // Vers le haut + extérieur depuis le bas
+      const base = cannon.dir > 0 ? -Math.PI * 0.32 : -Math.PI * 0.68;
+      const angle = base + (Math.random() - 0.5) * 0.48;
+      const speed = 10 + Math.random() * 12;
+      const isStreamer = Math.random() < 0.32;
+      e.pieces.push(
+        makePiece({
+          x: cannon.x + cannon.dir * (4 + Math.random() * 10) + (Math.random() - 0.5) * 8,
+          y: cannon.y + (Math.random() - 0.5) * 14,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          w: isStreamer ? 2.5 + Math.random() * 2 : 4 + Math.random() * 5,
+          h: isStreamer ? 12 + Math.random() * 16 : 3.5 + Math.random() * 5,
+          rot: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.28,
+          color: pickColor(),
+          shape: isStreamer ? "streamer" : Math.random() < 0.2 ? "dot" : "rect",
+          bornAt: now,
+          lifeMs: 12_000,
+          canPile: true,
+        }),
+      );
     }
   }
 }
 
-function scheduleCleanup() {
-  if (!engine) return;
-  if (engine.cleanupTimer) {
-    clearTimeout(engine.cleanupTimer);
+/** Pluie douce continue (pièces fines qui flottent). */
+function spawnRainDrop(e: Engine, origin: CelebrateOrigin | null, mode: CelebrateMode) {
+  const now = performance.now();
+  const isLocal = mode === "local" && origin;
+
+  let x: number;
+  let y: number;
+  if (isLocal && origin) {
+    x = origin.x + (Math.random() - 0.5) * 120;
+    y = origin.y - 40 - Math.random() * 80;
+  } else {
+    x = Math.random() * e.width;
+    y = -10 - Math.random() * 40;
   }
-  engine.cleanupTimer = setTimeout(() => {
-    if (!engine) return;
-    engine.pieces = [];
-    engine.activePieces = [];
-    engine.floorHeights.fill(0);
-    engine.settledCtx.clearRect(0, 0, engine.width, engine.height);
-    engine.settledDirty = false;
-    engine.ctx.clearRect(0, 0, engine.width, engine.height);
-  }, INACTIVITY_CLEAR_MS);
+
+  const isStreamer = Math.random() < 0.45;
+  e.pieces.push(
+    makePiece({
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: 0.6 + Math.random() * 1.4,
+      w: isStreamer ? 2 + Math.random() * 1.5 : 3 + Math.random() * 3.5,
+      h: isStreamer ? 10 + Math.random() * 14 : 3 + Math.random() * 4,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.12,
+      color: pickColor(),
+      shape: isStreamer ? "streamer" : Math.random() < 0.25 ? "dot" : "rect",
+      bornAt: now,
+      lifeMs: isLocal ? 1600 + Math.random() * 1000 : 12_000,
+      flutterSpeed: 0.05 + Math.random() * 0.1,
+      windAmp: 0.25 + Math.random() * 0.55,
+      canPile: !isLocal,
+    }),
+  );
 }
 
-function spawnBurst(power: number) {
+let shakeRafId: number | null = null;
+let shakePrev: {
+  overflow: string;
+  bodyOverflow: string;
+  transition: string;
+  transformOrigin: string;
+} | null = null;
+
+function endShake(root: HTMLElement, body: HTMLElement) {
+  root.style.transform = "";
+  if (shakePrev) {
+    root.style.overflow = shakePrev.overflow;
+    root.style.transition = shakePrev.transition;
+    root.style.transformOrigin = shakePrev.transformOrigin;
+    body.style.overflow = shakePrev.bodyOverflow;
+    shakePrev = null;
+  } else {
+    root.style.overflow = "";
+    root.style.transition = "";
+    root.style.transformOrigin = "";
+    body.style.overflow = "";
+  }
+  shakeRafId = null;
+}
+
+/** Recul du canon : pulse en zoom (pas de translate → pas de scrollbars). */
+function shakeViewport(intensity = 1): void {
+  if (typeof document === "undefined" || prefersReducedMotion()) return;
+
+  try {
+    navigator.vibrate?.([28, 35, 22]);
+  } catch {
+    /* ignore */
+  }
+
+  const root = document.documentElement;
+  const body = document.body;
+  if (shakeRafId != null) {
+    window.cancelAnimationFrame(shakeRafId);
+    endShake(root, body);
+  }
+
+  shakePrev = {
+    overflow: root.style.overflow,
+    bodyOverflow: body.style.overflow,
+    transition: root.style.transition,
+    transformOrigin: root.style.transformOrigin,
+  };
+
+  // Coupe le débordement pendant le scale (>1)
+  root.style.overflow = "hidden";
+  body.style.overflow = "hidden";
+  root.style.transition = "none";
+  root.style.transformOrigin = "50% 50%";
+
+  const start = performance.now();
+  const duration = intensity >= 1 ? 400 : 260;
+  const peak = 0.012 + 0.006 * intensity; // ~1.2–2% max, jamais un débordement latéral visible
+
+  const tick = (t: number) => {
+    const p = clamp((t - start) / duration, 0, 1);
+    if (p >= 1) {
+      endShake(root, body);
+      return;
+    }
+    // Impulse nette puis décroissance (zoom in/out rapide)
+    const envelope = Math.sin(p * Math.PI);
+    const jitter = (Math.random() - 0.5) * peak * 0.35 * (1 - p);
+    const kick = Math.sin(p * Math.PI * 7) * peak * 0.45 * Math.pow(1 - p, 1.2);
+    const scale = 1 + envelope * peak + kick + jitter;
+    root.style.transform = `scale(${scale.toFixed(4)})`;
+    shakeRafId = window.requestAnimationFrame(tick);
+  };
+
+  shakeRafId = window.requestAnimationFrame(tick);
+}
+
+function startCelebration(mode: CelebrateMode, origin: CelebrateOrigin | null) {
   const e = ensureEngine();
   if (!e) return;
-  playCelebrateSound(power);
-  scheduleCleanup();
 
-  const centerX = e.width * 0.5;
-  const spawnY = e.height * 0.22;
-  const count = Math.floor(220 * power);
+  playCelebrateSound(mode === "fullscreen" ? 1.15 : 0.85);
+  shakeViewport(mode === "fullscreen" ? 1.15 : 0.55);
 
-  for (let i = 0; i < count; i += 1) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 3 + Math.random() * 8 * power;
-    const isStreamer = Math.random() < 0.28;
-    const w = isStreamer ? 3 + Math.random() * 2 : 5 + Math.random() * 6;
-    const h = isStreamer ? 14 + Math.random() * 18 : 4 + Math.random() * 6;
-    e.pieces.push({
-      x: centerX + (Math.random() - 0.5) * e.width * 0.22,
-      y: spawnY + (Math.random() - 0.5) * 60,
-      vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 6,
-      vy: -8 - Math.random() * 7,
-      w,
-      h,
-      rot: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.34,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 0.05 + Math.random() * 0.12,
-      color: COLORS[(Math.random() * COLORS.length) | 0],
-      shape: isStreamer ? "streamer" : "rect",
-      settled: false,
-    });
+  const now = performance.now();
+  e.mode = mode;
+  e.startedAt = now;
+  e.lastActivityAt = now;
+  e.idleFadeAt = 0;
+  // Ne pas vider le tas : on accumule entre les lancements (F5 = reset mémoire).
+  for (const p of e.pieces) {
+    if (p.settled || p.canPile) p.alpha = 1;
   }
 
-  if (e.pieces.length > MAX_PIECES) {
-    e.pieces.splice(0, e.pieces.length - MAX_PIECES);
-    e.activePieces = e.pieces.filter((p) => !p.settled);
-    e.settledDirty = true;
+  if (mode === "local" && origin) {
+    const pad = 160;
+    e.clip = {
+      x: origin.x - pad,
+      y: origin.y - pad,
+      w: pad * 2,
+      h: pad * 2.2,
+    };
+    e.rainUntil = now + 1400;
+  } else {
+    e.clip = null;
+    e.rainUntil = now + 2800;
   }
 
-  e.activePieces = e.pieces.filter((p) => !p.settled);
+  spawnFlashBurst(e, origin, mode);
   startLoop();
 }
 
@@ -268,16 +496,21 @@ function startLoop() {
   if (!engine || engine.running) return;
   engine.running = true;
 
-  const step = () => {
+  const step = (t: number) => {
     if (!engine) return;
-    updateAndDraw(engine);
+    updateAndDraw(engine, t);
 
-    if (engine.activePieces.length > 0) {
+    const hasPieces = engine.pieces.length > 0;
+    const raining = t < engine.rainUntil;
+    const fading = engine.idleFadeAt > 0 && t < engine.idleFadeAt + 900;
+
+    if (hasPieces || raining || fading) {
       engine.rafId = window.requestAnimationFrame(step);
       return;
     }
 
     engine.running = false;
+    engine.ctx.clearRect(0, 0, engine.width, engine.height);
     if (engine.rafId) {
       window.cancelAnimationFrame(engine.rafId);
       engine.rafId = null;
@@ -287,104 +520,206 @@ function startLoop() {
   engine.rafId = window.requestAnimationFrame(step);
 }
 
-function updateAndDraw(e: Engine) {
+function updateAndDraw(e: Engine, now: number) {
   const { ctx, width, height } = e;
-  const gravity = 0.22;
-  const friction = 0.988;
+  const elapsed = now - e.startedAt;
+  const airDrag = 0.992;
 
-  const nextActive: Piece[] = [];
-  let settledThisFrame = false;
+  // Inactivité 10s → fade du tas
+  if (e.idleFadeAt === 0 && now - e.lastActivityAt >= IDLE_CLEAR_MS) {
+    e.idleFadeAt = now;
+  }
+  const idleFade =
+    e.idleFadeAt > 0 ? clamp((now - e.idleFadeAt) / 850, 0, 1) : 0;
 
-  for (const p of e.activePieces) {
-    p.vy += gravity;
-    p.vx *= friction;
-    p.x += p.vx;
-    p.y += p.vy;
-    p.rot += p.spin;
-    p.wobble += p.wobbleSpeed;
+  // Phase pluie (selon le dernier mode lancé)
+  if (elapsed > 280 && now < e.rainUntil) {
+    const rate = e.mode === "local" ? 2 : 5;
+    const origin =
+      e.mode === "local" && e.clip
+        ? { x: e.clip.x + e.clip.w / 2, y: e.clip.y + e.clip.h * 0.45 }
+        : null;
+    for (let i = 0; i < rate; i += 1) {
+      if (Math.random() < 0.85) spawnRainDrop(e, origin, e.mode);
+    }
+  }
 
-    p.x = clamp(p.x, -40, width + 40);
+  const next: Piece[] = [];
+  for (const p of e.pieces) {
+    if (idleFade > 0) {
+      p.alpha = clamp(p.alpha * (1 - idleFade * 0.35) - idleFade * 0.04, 0, 1);
+      if (p.alpha < 0.03) continue;
+    }
 
-    const col = clamp(Math.floor(p.x / FLOOR_BUCKET), 0, e.floorHeights.length - 1);
-    const floorY = height - e.floorHeights[col];
-    const footprint = Math.max(2, Math.min(p.w, p.h) * 0.7);
-
-    if (p.y >= floorY - footprint) {
-      p.y = floorY - footprint;
-      p.vx = 0;
-      p.vy = 0;
-      p.spin = 0;
-      p.wobbleSpeed = 0;
-      p.settled = true;
-      e.floorHeights[col] = Math.min(height * 0.97, e.floorHeights[col] + footprint * 0.75);
-      settledThisFrame = true;
+    if (p.settled) {
+      p.flutter += p.flutterSpeed * 0.35;
+      next.push(p);
       continue;
     }
-    nextActive.push(p);
-  }
 
-  e.activePieces = nextActive;
+    const age = now - p.bornAt;
+    if (!p.canPile && age > p.lifeMs) continue;
 
-  if (settledThisFrame) {
-    e.settledDirty = true;
-  }
-  if (e.settledDirty) {
-    e.settledCtx.clearRect(0, 0, width, height);
-    for (const p of e.pieces) {
-      if (p.settled) drawConfettiPiece(e.settledCtx, p, true);
+    const gravity = p.canPile ? 0.11 : 0.085;
+    p.windPhase += 0.03;
+    p.flutter += p.flutterSpeed;
+    p.vx += Math.sin(p.windPhase) * p.windAmp * 0.04;
+    p.vy += gravity;
+    p.vx *= airDrag;
+    p.vy *= airDrag;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.rot += p.spin * (0.55 + Math.abs(Math.sin(p.flutter)) * 0.45);
+
+    if (p.canPile) {
+      const floorY = height - FLOOR_PAD - pileHeightAt(e, p.x);
+      if (p.y >= floorY && p.vy >= 0) {
+        p.y = floorY;
+        p.vy *= -0.18;
+        p.vx *= 0.55;
+        p.spin *= 0.4;
+        if (Math.abs(p.vy) < 0.55 && Math.abs(p.vx) < 0.9) {
+          p.settled = true;
+          p.vx = 0;
+          p.vy = 0;
+          p.spin = 0;
+          p.y = height - FLOOR_PAD - pileHeightAt(e, p.x);
+          growPile(e, p.x, Math.max(p.w, p.h) * PILE_GROW * (0.55 + Math.random() * 0.5));
+          p.alpha = 1;
+        }
+        next.push(p);
+        continue;
+      }
+      if (p.x < -20) {
+        p.x = 2;
+        p.vx = Math.abs(p.vx) * 0.3;
+      } else if (p.x > width + 20) {
+        p.x = width - 2;
+        p.vx = -Math.abs(p.vx) * 0.3;
+      }
+      next.push(p);
+      continue;
     }
-    e.settledDirty = false;
+
+    const lifeFade = 1 - age / p.lifeMs;
+    p.alpha = clamp(lifeFade, 0, 1);
+    if (p.alpha < 0.02) continue;
+    if (p.y > height + 40 || p.x < -60 || p.x > width + 60) continue;
+    next.push(p);
+  }
+
+  if (idleFade >= 1) {
+    e.pieces = [];
+    clearPile(e);
+    e.idleFadeAt = 0;
+  } else {
+    e.pieces = next;
   }
 
   ctx.clearRect(0, 0, width, height);
-  ctx.drawImage(e.settledCanvas, 0, 0, width, height);
-  for (const p of e.activePieces) {
-    drawConfettiPiece(ctx, p, false);
+
+  const localFlying: Piece[] = [];
+  const pileFlying: Piece[] = [];
+  const settled: Piece[] = [];
+  for (const p of e.pieces) {
+    if (p.settled) settled.push(p);
+    else if (p.canPile) pileFlying.push(p);
+    else localFlying.push(p);
+  }
+
+  for (const p of settled) drawConfettiPiece(ctx, p);
+  for (const p of pileFlying) drawConfettiPiece(ctx, p);
+
+  if (localFlying.length > 0 && e.clip && e.mode === "local") {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(
+      e.clip.x + e.clip.w / 2,
+      e.clip.y + e.clip.h / 2,
+      e.clip.w * 0.55,
+      e.clip.h * 0.55,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.clip();
+    for (const p of localFlying) drawConfettiPiece(ctx, p);
+    ctx.restore();
+  } else {
+    for (const p of localFlying) drawConfettiPiece(ctx, p);
   }
 }
 
-function drawConfettiPiece(ctx: CanvasRenderingContext2D, p: Piece, settled: boolean) {
-  const flutter = settled ? 1 : 0.68 + Math.abs(Math.sin(p.wobble)) * 0.55;
-  const w = p.w * flutter;
-  const h = p.h;
+function drawConfettiPiece(ctx: CanvasRenderingContext2D, p: Piece) {
+  const scaleX = p.settled ? 0.55 + Math.abs(Math.sin(p.flutter)) * 0.45 : 0.18 + Math.abs(Math.sin(p.flutter)) * 0.82;
+  const scaleY = 0.85 + Math.abs(Math.cos(p.flutter * 0.7)) * 0.15;
 
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(p.rot);
+  ctx.scale(scaleX, scaleY);
+  ctx.globalAlpha = p.alpha;
   ctx.fillStyle = p.color;
 
-  if (p.shape === "streamer") {
+  if (p.shape === "dot") {
     ctx.beginPath();
-    ctx.moveTo(-w * 0.5, -h * 0.5);
-    ctx.quadraticCurveTo(0, -h * 0.15, -w * 0.35, h * 0.5);
-    ctx.lineTo(w * 0.35, h * 0.5);
-    ctx.quadraticCurveTo(0, h * 0.12, w * 0.5, -h * 0.5);
+    ctx.arc(0, 0, Math.max(p.w, p.h) * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.shape === "streamer") {
+    ctx.beginPath();
+    ctx.moveTo(-p.w * 0.5, -p.h * 0.5);
+    ctx.quadraticCurveTo(p.w * 0.2, -p.h * 0.1, -p.w * 0.25, p.h * 0.5);
+    ctx.lineTo(p.w * 0.25, p.h * 0.5);
+    ctx.quadraticCurveTo(-p.w * 0.1, p.h * 0.1, p.w * 0.5, -p.h * 0.5);
     ctx.closePath();
     ctx.fill();
   } else {
-    ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
+    const r = Math.min(1.5, p.w * 0.2);
+    const w = p.w;
+    const h = p.h;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.5 + r, -h * 0.5);
+    ctx.lineTo(w * 0.5 - r, -h * 0.5);
+    ctx.quadraticCurveTo(w * 0.5, -h * 0.5, w * 0.5, -h * 0.5 + r);
+    ctx.lineTo(w * 0.5, h * 0.5 - r);
+    ctx.quadraticCurveTo(w * 0.5, h * 0.5, w * 0.5 - r, h * 0.5);
+    ctx.lineTo(-w * 0.5 + r, h * 0.5);
+    ctx.quadraticCurveTo(-w * 0.5, h * 0.5, -w * 0.5, h * 0.5 - r);
+    ctx.lineTo(-w * 0.5, -h * 0.5 + r);
+    ctx.quadraticCurveTo(-w * 0.5, -h * 0.5, -w * 0.5 + r, -h * 0.5);
+    ctx.closePath();
+    ctx.fill();
   }
 
   ctx.restore();
 }
 
 /**
- * Confettis + effet « fête » quand une tâche passe en « Terminé ».
- * Limité dans le temps pour les glisser-déposer groupés vers Terminé.
+ * Micro-célébration autour de la carte (usage quotidien « Terminé »).
  */
-export function celebrateTaskDone(): void {
+export function celebrateTaskDone(options?: CelebrateOptions): void {
   if (prefersReducedMotion()) return;
   const now = Date.now();
   if (now - lastCelebrateAt < THROTTLE_MS) return;
   lastCelebrateAt = now;
-  spawnBurst(1);
+
+  const run = () => {
+    const origin = resolveOrigin(options);
+    startCelebration(origin ? "local" : "fullscreen", origin);
+  };
+
+  if (options?.taskId && !options.origin) {
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    return;
+  }
+  run();
 }
 
 /**
- * Lance la même animation à la demande (bouton), sans délai anti-spam.
+ * Fête plein écran : canons centre → extérieur + pluie + empilement.
  */
 export function celebrateTaskManually(): void {
   if (prefersReducedMotion()) return;
   lastCelebrateAt = Date.now();
-  spawnBurst(1.2);
+  startCelebration("fullscreen", null);
 }

@@ -92,9 +92,9 @@ body {
 
 .tuesday-wordmark {
   font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
 .ui-kicker {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getSupabaseBrowser } from "../supabaseBrowser";
 
 export type RetexInputs = {
   highlights: string;
@@ -48,34 +49,87 @@ function writeStore(store: Store) {
   }
 }
 
-/** Persistance locale des saisies RETEX par événement. */
+/** Persistance RETEX par événement (Supabase + repli local). */
 export function useRetexInputs(eventId: string | null) {
+  const supabase = getSupabaseBrowser();
   const [inputs, setInputs] = useState<RetexInputs>(EMPTY_RETEX);
+  const [backend, setBackend] = useState<"supabase" | "local">("local");
 
   useEffect(() => {
     if (!eventId) {
       setInputs(EMPTY_RETEX);
       return;
     }
-    setInputs(readStore()[eventId] ?? EMPTY_RETEX);
-  }, [eventId]);
+
+    let cancelled = false;
+    const load = async () => {
+      const { error: probe } = await supabase.from("event_retex").select("event_id").limit(1);
+      if (probe) {
+        if (!cancelled) {
+          setBackend("local");
+          setInputs(readStore()[eventId] ?? EMPTY_RETEX);
+        }
+        return;
+      }
+      if (!cancelled) setBackend("supabase");
+      const { data } = await supabase
+        .from("event_retex")
+        .select("highlights, improvements, follow_ups")
+        .eq("event_id", eventId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setInputs(
+          normalizeInputs({
+            highlights: data.highlights,
+            improvements: data.improvements,
+            followUps: data.follow_ups,
+          }),
+        );
+      } else {
+        setInputs(EMPTY_RETEX);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, supabase]);
 
   const update = useCallback(
     (patch: Partial<RetexInputs>) => {
       setInputs((prev) => {
         const next = { ...prev, ...patch };
-        if (eventId) {
+        if (!eventId) return next;
+
+        if (backend === "local") {
           const store = readStore();
           store[eventId] = next;
           writeStore(store);
+          return next;
         }
+
+        void (async () => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          await supabase.from("event_retex").upsert({
+            event_id: eventId,
+            highlights: next.highlights,
+            improvements: next.improvements,
+            follow_ups: next.followUps,
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id ?? null,
+          });
+        })();
+
         return next;
       });
     },
-    [eventId],
+    [backend, eventId, supabase],
   );
 
-  return { inputs, update };
+  return { inputs, update, backend };
 }
 
 export function buildRetexDraft(input: {

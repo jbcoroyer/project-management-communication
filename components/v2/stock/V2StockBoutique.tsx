@@ -13,7 +13,6 @@ import {
   Gift,
   Image as ImageIcon,
   LayoutGrid,
-  Loader2,
   Minus,
   Package,
   Pencil,
@@ -27,6 +26,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import InventoryGoodiesModal from "../../InventoryGoodiesModal";
 import InventoryPlvModal from "../../InventoryPlvModal";
 import InventoryPrintModal from "../../InventoryPrintModal";
@@ -493,7 +493,7 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
         )}
         {photoUploading ? (
           <span className="absolute inset-0 flex items-center justify-center bg-[var(--surface)]/80">
-            <Loader2 className="h-8 w-8 animate-spin text-[color:var(--foreground)]/50" />
+            <TuesdayLoader size={28} label="Envoi de la photo…" />
           </span>
         ) : null}
       </div>
@@ -1019,13 +1019,8 @@ export default function V2StockBoutique({ basePath = "/v2/stock" }: { basePath?:
 
       {/* Contenu */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-72 animate-pulse rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)]"
-            />
-          ))}
+        <div className="flex items-center justify-center py-20">
+          <TuesdayLoader size={28} label="Chargement du stock…" showLabel />
         </div>
       ) : visibleItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-6 py-20 text-center">

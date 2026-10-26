@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive,
   BarChart3,
@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { toastError, toastSuccess } from "../../../lib/toast";
+import { detectVersionFromPath, pathVersionPrefix } from "../../../lib/appVersion";
 import { V2ShellSlotSetter } from "../../../lib/v2/shellSlotsContext";
 import {
   priorities,
@@ -52,7 +53,6 @@ import { useInAppNotifications } from "../../../lib/inAppNotificationsContext";
 import { usePresence } from "../../../lib/v2/usePresence";
 import { useAutomationRules, useAutomationRunner, type AutomationRule } from "../../../lib/v2/automations";
 import { useIntakeRequests, type IntakeRequest } from "../../../lib/v2/intake";
-import { useAutoArchiveHours } from "../../../lib/v2/v2Preferences";
 import { getTemplateById, TASK_TEMPLATES } from "../../../lib/v2/taskTemplates";
 import DashboardNotificationBell from "../../DashboardNotificationBell";
 import PresenceBar from "../PresenceBar";
@@ -62,6 +62,9 @@ import V2Inbox from "./V2Inbox";
 import V2TriagePanel from "./V2TriagePanel";
 import IntakeTaskMappingModal from "./IntakeTaskMappingModal";
 import { buildTaskDraftFromRequest, type IntakeTaskDraft } from "../../../lib/v2/intakeMapping";
+import DeliverableFormModal from "../../deliverables/DeliverableFormModal";
+import { createDeliverable, type CreateDeliverableInput } from "../../../lib/deliverables";
+import V2Segmented from "../V2Segmented";
 
 const V2ListView = dynamic(() => import("../list/V2ListView"));
 
@@ -97,16 +100,22 @@ const MAIN_TAB_SET = new Set<MainTab>([
   "triage",
 ]);
 
-const MAIN_TABS: { id: MainTab; label: string; icon: typeof KanbanSquare }[] = [
-  { id: "inbox", label: "Inbox", icon: Inbox },
-  { id: "todo", label: "Ma To-Do List", icon: ClipboardList },
-  { id: "kanban", label: "Tableau Kanban", icon: KanbanSquare },
-  { id: "list", label: "Vue liste", icon: Table2 },
-  { id: "calendar", label: "Calendrier", icon: CalendarDays },
-  { id: "workload", label: "Charge équipe", icon: Users },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "archives", label: "Archives", icon: Archive },
-  { id: "triage", label: "Triage", icon: ListFilter },
+const MAIN_TABS: {
+  id: MainTab;
+  label: string;
+  short: string;
+  group: "work" | "pilot";
+  icon: typeof KanbanSquare;
+}[] = [
+  { id: "inbox", label: "Inbox", short: "Inbox", group: "work", icon: Inbox },
+  { id: "todo", label: "Ma To-Do List", short: "To-do", group: "work", icon: ClipboardList },
+  { id: "kanban", label: "Tableau Kanban", short: "Kanban", group: "work", icon: KanbanSquare },
+  { id: "list", label: "Vue liste", short: "Liste", group: "work", icon: Table2 },
+  { id: "calendar", label: "Calendrier", short: "Calendrier", group: "work", icon: CalendarDays },
+  { id: "workload", label: "Charge équipe", short: "Charge", group: "pilot", icon: Users },
+  { id: "analytics", label: "Analytics", short: "Stats", group: "pilot", icon: BarChart3 },
+  { id: "archives", label: "Archives", short: "Archives", group: "pilot", icon: Archive },
+  { id: "triage", label: "Triage", short: "Triage", group: "pilot", icon: ListFilter },
 ];
 
 const ToDoListView = dynamic(() => import("../../ToDoListView"));
@@ -140,8 +149,6 @@ export default function V2DashboardHomePage() {
     loading: intakeLoading,
     updateRequest: updateIntakeRequest,
   } = useIntakeRequests();
-  const [autoArchiveHours] = useAutoArchiveHours();
-
   const presenceMembers = usePresence("v2-dashboard", {
     id: currentUser?.id ?? null,
     name: currentUser?.teamMemberName ?? currentUser?.displayName ?? currentUser?.email ?? null,
@@ -160,26 +167,39 @@ export default function V2DashboardHomePage() {
   const [mappingRequest, setMappingRequest] = useState<IntakeRequest | null>(null);
   const [mappingDraft, setMappingDraft] = useState<IntakeTaskDraft | null>(null);
   const [mappingBusy, setMappingBusy] = useState(false);
+  const [deliverableTask, setDeliverableTask] = useState<Task | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const quickAddRef = useRef<HTMLInputElement | null>(null);
 
+  const appVersion = detectVersionFromPath(pathname);
+  const routePrefix = pathVersionPrefix(pathname) || "/v2";
+  const isLightUi = appVersion === "v3";
+  const visibleTabs = useMemo(
+    () => (isLightUi ? MAIN_TABS.filter((tab) => tab.id !== "triage") : MAIN_TABS),
+    [isLightUi],
+  );
+
   const activeTab = useMemo<MainTab>(() => {
-    const match = pathname.match(/^\/v2\/dashboard\/([^/?#]+)/);
+    const match = pathname.match(/^\/v[23]\/dashboard\/([^/?#]+)/);
     const candidate = match?.[1];
     if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
+      if (isLightUi && candidate === "triage") return "kanban";
       return candidate as MainTab;
     }
     return "kanban";
-  }, [pathname]);
+  }, [pathname, isLightUi]);
 
   const navigateToTab = useCallback(
     (tab: MainTab) => {
+      const targetTab = isLightUi && tab === "triage" ? "kanban" : tab;
       const q = searchQuery.trim();
-      const next = q ? `/v2/dashboard/${tab}?q=${encodeURIComponent(q)}` : `/v2/dashboard/${tab}`;
+      const next = q
+        ? `${routePrefix}/dashboard/${targetTab}?q=${encodeURIComponent(q)}`
+        : `${routePrefix}/dashboard/${targetTab}`;
       router.push(next);
     },
-    [router, searchQuery],
+    [router, searchQuery, routePrefix, isLightUi],
   );
 
   const taskCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -235,12 +255,13 @@ export default function V2DashboardHomePage() {
     const next = new URLSearchParams();
     const q = searchParams.get("q");
     if (q) next.set("q", q);
+    const kanbanPath = `${routePrefix}/dashboard/kanban`;
     const target =
-      next.toString().length > 0 ? `/v2/dashboard/kanban?${next.toString()}` : "/v2/dashboard/kanban";
-    if (pathname !== "/v2/dashboard/kanban" || searchParams.has("task")) {
+      next.toString().length > 0 ? `${kanbanPath}?${next.toString()}` : kanbanPath;
+    if (pathname !== kanbanPath || searchParams.has("task")) {
       router.replace(target, { scroll: false });
     }
-  }, [tasks, searchParams, pathname, router]);
+  }, [tasks, searchParams, pathname, router, routePrefix]);
 
   const defaultAdminName = useMemo(
     () => teamAdminNameForUser(admins, currentUser) ?? "",
@@ -312,6 +333,14 @@ export default function V2DashboardHomePage() {
     setIsFormOpen(true);
   }, []);
 
+  const onMovedToDone = useCallback(
+    (task: Task) => {
+      if (detectVersionFromPath(pathname) !== "v3") return;
+      setDeliverableTask(task);
+    },
+    [pathname],
+  );
+
   const {
     handleCreateTask,
     handleArchiveTask,
@@ -329,7 +358,21 @@ export default function V2DashboardHomePage() {
     newTaskColumn,
     editingTaskId,
     onTaskFormDone: handleCloseForm,
+    onMovedToDone,
   });
+
+  const saveDeliverable = useCallback(
+    async (input: CreateDeliverableInput) => {
+      const result = await createDeliverable(supabase, input);
+      if ("error" in result) {
+        toastError(result.error);
+        return false;
+      }
+      toastSuccess("Livrable enregistré");
+      return true;
+    },
+    [supabase],
+  );
 
   /** Création rapide « <3 s » : titre seul, valeurs par défaut, ajout optimiste + rollback. */
   const handleQuickCreate = useCallback(
@@ -519,7 +562,7 @@ export default function V2DashboardHomePage() {
           pushNotification({
             title: rule.name,
             body: rule.actionParams.message || `Automatisation appliquée à « ${task.projectName} »`,
-            href: `/v2/dashboard/kanban?task=${task.id}`,
+            href: `${routePrefix}/dashboard/kanban?task=${task.id}`,
           });
           break;
         }
@@ -527,25 +570,20 @@ export default function V2DashboardHomePage() {
           break;
       }
     },
-    [handleMoveTask, optimisticUpdate, pushNotification],
+    [handleMoveTask, optimisticUpdate, pushNotification, routePrefix],
   );
 
-  useAutomationRunner({ rules: automationRules, tasks, now, runAction: runAutomationAction });
+  // V3 : automations côté serveur (/api/cron/automations) — pas d'exécution dans l'onglet ouvert.
+  useAutomationRunner({
+    rules: automationRules,
+    tasks,
+    now,
+    runAction: runAutomationAction,
+    enabled: detectVersionFromPath(pathname) !== "v3",
+  });
 
-  useEffect(() => {
-    const cutoff = Date.now() - autoArchiveHours * 60 * 60 * 1000;
-    const toArchive = tasks.filter(
-      (t) =>
-        t.column === DONE_COLUMN_NAME &&
-        !t.isArchived &&
-        !t.parentTaskId &&
-        t.completedAt &&
-        new Date(t.completedAt).getTime() < cutoff,
-    );
-    for (const t of toArchive) {
-      void optimisticUpdate(t.id, { ...t, isArchived: true }, { is_archived: true }).catch(() => {});
-    }
-  }, [tasks, autoArchiveHours, optimisticUpdate]);
+  // Auto-archivage « Terminé » > 2 jours : géré globalement dans TasksProvider
+  // (tableau + événementiel).
 
   const insertTaskRow = useCallback(
     async (payload: Record<string, unknown>): Promise<Task | null> => {
@@ -884,9 +922,31 @@ export default function V2DashboardHomePage() {
       { id: "nav-workload", group: "Navigation", label: "Charge équipe", hint: "G W", perform: () => navigateToTab("workload") },
       { id: "nav-analytics", group: "Navigation", label: "Analytics", hint: "G A", perform: () => navigateToTab("analytics") },
       { id: "nav-archives", group: "Navigation", label: "Archives", hint: "G R", perform: () => navigateToTab("archives") },
-      { id: "nav-triage", group: "Navigation", label: "Triage des demandes", hint: "G D", perform: () => navigateToTab("triage") },
-      { id: "open-asks", group: "Navigation", label: "Faire une demande", keywords: ["asks", "intake", "demande"], perform: () => router.push("/v2/asks") },
-      { id: "open-automations", group: "Navigation", label: "Automatisations (paramètres)", keywords: ["règles", "automation"], perform: () => router.push("/v2/settings") },
+      ...(isLightUi
+        ? []
+        : ([
+            {
+              id: "nav-triage",
+              group: "Navigation",
+              label: "Triage des demandes",
+              hint: "G D",
+              perform: () => navigateToTab("triage"),
+            },
+            {
+              id: "open-asks",
+              group: "Navigation",
+              label: "Faire une demande",
+              keywords: ["asks", "intake", "demande"],
+              perform: () => router.push(`${routePrefix}/asks`),
+            },
+          ] as PaletteAction[])),
+      {
+        id: "open-automations",
+        group: "Navigation",
+        label: "Automatisations (paramètres)",
+        keywords: ["règles", "automation"],
+        perform: () => router.push(`${routePrefix}/settings`),
+      },
       ...TASK_TEMPLATES.map((tpl) => ({
         id: `template-${tpl.id}`,
         group: "Modèles",
@@ -957,7 +1017,9 @@ export default function V2DashboardHomePage() {
     handleInlineSave,
     handleMoveTask,
     handleOpenForm,
+    isLightUi,
     navigateToTab,
+    routePrefix,
     router,
     selectedTaskId,
     tasks,
@@ -970,119 +1032,166 @@ export default function V2DashboardHomePage() {
           <button
             type="button"
             onClick={() => setIsCommandOpen(true)}
-            className="flex w-full max-w-md items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-left shadow-[var(--shadow-1)] ui-transition hover:border-[var(--line-strong)]"
+            className={[
+              "ui-transition flex h-9 w-full items-center gap-2 border border-[var(--line)] bg-[var(--surface)]/80 text-left hover:border-[color:var(--foreground)]/20",
+              isLightUi ? "max-w-md rounded-lg px-3" : "max-w-md rounded-xl px-3 shadow-sm",
+            ].join(" ")}
           >
-            <Search className="h-4 w-4 text-[color:var(--foreground)]/45" aria-hidden />
-            <span className="flex-1 text-sm text-[color:var(--foreground)]/45">Rechercher ou lancer une commande…</span>
-            <kbd className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[10px] text-[color:var(--foreground)]/55">
-              <CommandIcon className="h-3 w-3" /> K
+            <Search className="h-3.5 w-3.5 text-[color:var(--foreground)]/40" aria-hidden />
+            <span className="flex-1 truncate text-sm text-[color:var(--foreground)]/40">
+              Rechercher…
+            </span>
+            <kbd className="hidden items-center gap-0.5 text-[10px] text-[color:var(--foreground)]/35 sm:inline-flex">
+              <CommandIcon className="h-3 w-3" />K
             </kbd>
           </button>
         }
         toolbarRight={
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex h-9 shrink-0 items-center gap-1.5">
             <PresenceBar members={presenceMembers} />
             <button
               type="button"
               onClick={() => celebrateTaskManually()}
               title="Lancer les confettis"
               aria-label="Lancer l’animation de confettis"
-              className="ui-transition flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 shadow-sm hover:border-[var(--line-strong)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+              className="ui-transition inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--foreground)]/45 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
             >
-              <PartyPopper className="h-5 w-5" strokeWidth={2} aria-hidden />
+              <PartyPopper className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </button>
             <DashboardNotificationBell />
             <button
               type="button"
               onClick={handleOpenForm}
               title="Nouvelle tâche (N)"
-              className="ui-transition inline-flex items-center gap-2 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[var(--accent-contrast)] shadow-[var(--shadow-1)] hover:-translate-y-0.5 hover:bg-[var(--accent-strong)]"
+              className="ui-transition inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 text-[13px] font-medium text-[var(--accent-contrast)] hover:bg-[var(--accent-strong)]"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/25 text-white">
-                <Plus className="h-3.5 w-3.5" />
-              </span>
-              <span>Nouvelle tâche</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nouvelle tâche</span>
             </button>
           </div>
         }
       />
-        <div className="space-y-5">
-          <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                  Service Communication <span className="font-bold">IDENA</span> · V2
-                </p>
-                {effectiveUser ? (
-                  <h1 className="ui-heading mt-1 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-                    Bonjour, {effectiveUser.split(" ")[0]} 👋
-                  </h1>
-                ) : (
-                  <h1 className="ui-heading mt-1 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-                    Tableau de bord
-                  </h1>
-                )}
-                <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-                  Palette <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">⌘K</kbd>
-                  {" · "}Créer <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">C</kbd>
-                  {" · "}Statut <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">S</kbd>
-                  {" · "}Priorité <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">P</kbd>
-                  {" · "}Naviguer <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">G</kbd>
+        <div className="space-y-4">
+          {isLightUi ? (
+            <header className="flex flex-wrap items-end justify-between gap-2 px-0.5">
+              <div className="min-w-0">
+                <h1 className="ui-heading text-[1.35rem] font-semibold tracking-tight text-[var(--foreground)] sm:text-2xl">
+                  {effectiveUser ? `Bonjour, ${effectiveUser.split(" ")[0]}` : "Tableau de bord"}
+                </h1>
+                <p className="mt-1 text-[13px] text-[color:var(--foreground)]/45">
+                  {activeTasks.length} active{activeTasks.length !== 1 ? "s" : ""}
+                  {archivedTasks.length > 0 ? (
+                    <>
+                      {" · "}
+                      <button
+                        type="button"
+                        onClick={() => navigateToTab("archives")}
+                        className="ui-transition hover:text-[color:var(--foreground)]/70"
+                      >
+                        {archivedTasks.length} archivée{archivedTasks.length !== 1 ? "s" : ""}
+                      </button>
+                    </>
+                  ) : null}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/55">
-                  {activeTasks.length} tâche{activeTasks.length !== 1 ? "s" : ""} active{activeTasks.length !== 1 ? "s" : ""}
-                </span>
-                {archivedTasks.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => navigateToTab("archives")}
-                    className="ui-transition rounded-full border border-dashed border-[var(--line-strong)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
-                  >
-                    {archivedTasks.length} archivée{archivedTasks.length !== 1 ? "s" : ""}
-                  </button>
-                )}
+            </header>
+          ) : (
+            <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                    Service Communication <span className="font-bold">IDENA</span> · V2
+                  </p>
+                  {effectiveUser ? (
+                    <h1 className="ui-heading mt-1 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+                      Bonjour, {effectiveUser.split(" ")[0]} 👋
+                    </h1>
+                  ) : (
+                    <h1 className="ui-heading mt-1 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
+                      Tableau de bord
+                    </h1>
+                  )}
+                  <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
+                    Palette{" "}
+                    <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">
+                      ⌘K
+                    </kbd>
+                    {" · "}Créer{" "}
+                    <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">
+                      C
+                    </kbd>
+                    {" · "}Statut{" "}
+                    <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">
+                      S
+                    </kbd>
+                    {" · "}Priorité{" "}
+                    <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">
+                      P
+                    </kbd>
+                    {" · "}Naviguer{" "}
+                    <kbd className="rounded border border-[var(--line)] bg-[var(--surface-soft)] px-1 text-[10px]">
+                      G
+                    </kbd>
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/55">
+                    {activeTasks.length} tâche{activeTasks.length !== 1 ? "s" : ""} active
+                    {activeTasks.length !== 1 ? "s" : ""}
+                  </span>
+                  {archivedTasks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => navigateToTab("archives")}
+                      className="ui-transition rounded-full border border-dashed border-[var(--line-strong)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
+                    >
+                      {archivedTasks.length} archivée{archivedTasks.length !== 1 ? "s" : ""}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </header>
+            </header>
+          )}
 
-          <nav
-            className="flex items-center gap-1 overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1"
-            aria-label="Onglets principaux"
-          >
-            {MAIN_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => navigateToTab(tab.id)}
-                  className={[
-                    "ui-transition inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                    isActive
-                      ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-1)]"
-                      : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
-                  ].join(" ")}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                  {tab.id === "archives" && archivedTasks.length > 0 && (
-                    <span className="rounded-full bg-[color:var(--foreground)]/12 px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/80">
-                      {archivedTasks.length}
-                    </span>
-                  )}
-                  {tab.id === "triage" && pendingTriageCount > 0 && (
-                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-contrast)]">
-                      {pendingTriageCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <V2Segmented
+              className="min-w-0 sm:flex-1"
+              ariaLabel="Vues de travail"
+              value={activeTab}
+              onChange={navigateToTab}
+              items={visibleTabs
+                .filter((tab) => tab.group === "work")
+                .map((tab) => ({ id: tab.id, label: tab.short, icon: tab.icon }))}
+            />
+            <V2Segmented
+              ariaLabel="Pilotage"
+              value={activeTab}
+              onChange={navigateToTab}
+              items={visibleTabs
+                .filter((tab) => tab.group === "pilot")
+                .map((tab) => ({
+                  id: tab.id,
+                  label: tab.short,
+                  icon: tab.icon,
+                  badge:
+                    tab.id === "archives"
+                      ? archivedTasks.length
+                      : tab.id === "triage"
+                        ? pendingTriageCount
+                        : undefined,
+                }))}
+            />
+          </div>
 
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              className="space-y-5"
+            >
           {activeTab === "inbox" && (
             <V2Inbox
               tasks={tasks}
@@ -1199,6 +1308,8 @@ export default function V2DashboardHomePage() {
               onDelete={(taskId) => void handlePermanentDelete(taskId)}
             />
           )}
+            </motion.div>
+          </AnimatePresence>
 
           <AnimatePresence>
             {selectedTask && !selectedTask.isArchived && (
@@ -1260,6 +1371,16 @@ export default function V2DashboardHomePage() {
             setMappingDraft(null);
           }}
           onConfirm={(mapped) => void handleConfirmMappedTask(mapped)}
+        />
+
+        <DeliverableFormModal
+          open={deliverableTask !== null}
+          mode="completion"
+          task={deliverableTask}
+          companies={companyRecords}
+          createdBy={currentUser?.id}
+          onSave={saveDeliverable}
+          onClose={() => setDeliverableTask(null)}
         />
     </>
   );

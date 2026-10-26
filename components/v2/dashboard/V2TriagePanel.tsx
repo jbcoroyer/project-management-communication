@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, Database, HardDrive, Inbox, Sparkles, UserCheck, X } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import type { IntakeBackend, IntakeRequest } from "../../../lib/v2/intake";
 import type { Task } from "../../../lib/types";
 import { findDuplicateTasks, suggestAssignee } from "../../../lib/v2/triage";
@@ -56,7 +57,7 @@ export default function V2TriagePanel({
         </div>
 
         {loading ? (
-          <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+          <TuesdayLoader size={24} label="Chargement des demandes…" showLabel />
         ) : pending.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-10 text-center">
             <Check className="mx-auto h-8 w-8 text-[var(--success)]" />

@@ -15,6 +15,7 @@ import {
   Upload,
   Warehouse,
 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import EventBudgetSection from "./EventBudgetSection";
 import EventDetailKanban from "./EventDetailKanban";
 import EventMaterialNeeds from "./EventMaterialNeeds";
@@ -530,7 +531,7 @@ export default function EventDetailWorkspace({
         </Link>
 
         {loadingEvent ? (
-          <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+          <TuesdayLoader size={24} label="Chargement…" showLabel />
         ) : !event ? (
           <p className="text-sm text-rose-700">Événement introuvable.</p>
         ) : (
@@ -656,7 +657,7 @@ export default function EventDetailWorkspace({
                   </div>
                   <div className="mt-4">
                     {tasksLoading ? (
-                      <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+                      <TuesdayLoader size={24} label="Chargement…" showLabel />
                     ) : (
                       <EventDetailKanban
                         tasks={filteredTasks}
@@ -765,7 +766,7 @@ export default function EventDetailWorkspace({
                   </div>
                 </div>
                 {loadingDocuments ? (
-                  <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+                  <TuesdayLoader size={24} label="Chargement…" showLabel />
                 ) : documents.length === 0 ? (
                   <p className="mt-4 text-sm text-[color:var(--foreground)]/55">
                     Aucun document pour cet événement.

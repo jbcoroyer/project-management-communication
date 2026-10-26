@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Megaphone, PencilLine, Recycle, Sparkles, ThumbsUp, TrendingUp, XCircle } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import SocialPreview from "./SocialPreview";
 import RepurposePanel from "./RepurposePanel";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
@@ -10,6 +11,8 @@ import { getSupabaseErrorMessage, useSocialPosts } from "../../../lib/useSocialP
 import type { SocialPost, SocialPostMutation } from "../../../lib/socialTypes";
 import { toastError, toastSuccess } from "../../../lib/toast";
 import { bestDays, bestHours, bestTimeRecommendation, engagementScore, topPerformingPosts } from "../../../lib/v2/socialInsights";
+import V2PageHeader from "../V2PageHeader";
+import V2Segmented from "../V2Segmented";
 
 type Tab = "validation" | "studio" | "insights" | "recyclage";
 
@@ -108,20 +111,16 @@ export default function V2SocialPage() {
 
   return (
       <div className="space-y-5">
-        <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-                <Megaphone className="h-3.5 w-3.5" /> Réseaux sociaux · V2
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Studio &amp; validations</h1>
-              <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-                Aperçu « comme en vrai », circuit d'approbation et repurposing IA.
-              </p>
-            </div>
+        <V2PageHeader
+          kicker="Contenu"
+          icon={Megaphone}
+          title="Réseaux"
+          description="Aperçu, validation et recyclage des publications."
+          aside={
             <select
               value={entityId}
               onChange={(e) => setEntityId(e.target.value)}
+              aria-label="Filtrer par entité"
               className="ui-focus-ring rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)]"
             >
               <option value="ALL">Toutes les entités</option>
@@ -131,41 +130,20 @@ export default function V2SocialPage() {
                 </option>
               ))}
             </select>
-          </div>
-        </header>
+          }
+        />
 
-        <nav className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
-          {[
-            { id: "validation" as const, label: "Validation visuelle", icon: ThumbsUp },
-            { id: "studio" as const, label: "Studio IA", icon: Sparkles },
-            { id: "insights" as const, label: "Meilleur moment", icon: Clock },
-            { id: "recyclage" as const, label: "Recyclage", icon: Recycle },
-          ].map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={[
-                  "ui-transition inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                  active
-                    ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-                    : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
-                ].join(" ")}
-              >
-                <Icon className="h-4 w-4" />
-                {t.label}
-                {t.id === "validation" && toValidate.length > 0 ? (
-                  <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-contrast)]">
-                    {toValidate.length}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
+        <V2Segmented
+          ariaLabel="Réseaux sociaux"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { id: "validation", label: "Validation", icon: ThumbsUp, badge: toValidate.length },
+            { id: "studio", label: "Studio", icon: Sparkles },
+            { id: "insights", label: "Créneaux", icon: Clock },
+            { id: "recyclage", label: "Recyclage", icon: Recycle },
+          ]}
+        />
 
         {schemaError ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -180,7 +158,7 @@ export default function V2SocialPage() {
                 À valider &amp; en rédaction
               </h2>
               {loading ? (
-                <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+                <TuesdayLoader size={24} label="Chargement des posts…" showLabel />
               ) : toValidate.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-10 text-center">
                   <CheckCircle2 className="mx-auto h-8 w-8 text-[var(--success)]" />

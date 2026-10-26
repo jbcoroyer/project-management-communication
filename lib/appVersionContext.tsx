@@ -14,8 +14,7 @@ import {
   APP_VERSION_STORAGE_KEY,
   detectVersionFromPath,
   type AppVersion,
-  toV1Path,
-  toV2Path,
+  toVersionPath,
 } from "./appVersion";
 
 type AppVersionContextValue = {
@@ -55,7 +54,7 @@ export function AppVersionProvider({ children }: { children: ReactNode }) {
     (target: AppVersion) => {
       if (target === version) return;
 
-      const nextPath = target === "v2" ? toV2Path(pathname) : toV1Path(pathname);
+      const nextPath = toVersionPath(pathname, target);
       setVersion(target);
       setIsSwitching(true);
 

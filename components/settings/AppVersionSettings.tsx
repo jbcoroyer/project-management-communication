@@ -1,11 +1,29 @@
 "use client";
 
 import { Layers } from "lucide-react";
+import type { AppVersion } from "../../lib/appVersion";
 import { useAppVersion } from "../../lib/appVersionContext";
+
+const OPTIONS: { id: AppVersion; title: string; description: string }[] = [
+  {
+    id: "v3",
+    title: "V3 — Light",
+    description: "Interface épurée : tâches, événements, médias, stock et idées.",
+  },
+  {
+    id: "v2",
+    title: "V2 — Complète",
+    description: "Toutes les fonctions avancées (planning, demandes, OKR, réseaux…).",
+  },
+  {
+    id: "v1",
+    title: "V1 — Classique",
+    description: "Interface historique, plus dense.",
+  },
+];
 
 export default function AppVersionSettings() {
   const { version, switchVersion, isSwitching } = useAppVersion();
-  const onV2 = version === "v2";
 
   return (
     <div className="ui-surface overflow-hidden rounded-2xl">
@@ -14,38 +32,41 @@ export default function AppVersionSettings() {
           <Layers className="h-5 w-5 text-[color:var(--foreground)]/45" />
         </div>
         <div className="flex-1">
-          <h2 className="font-semibold text-[var(--foreground)]">Interface V1</h2>
+          <h2 className="font-semibold text-[var(--foreground)]">Version de l&apos;interface</h2>
           <p className="text-xs text-[color:var(--foreground)]/60">
-            Tuesday utilise la V2 par défaut. Activez la V1 pour l&apos;interface classique.
+            V3 est l&apos;interface par défaut. Vous pouvez basculer vers V2 ou V1 à tout moment.
           </p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!onV2}
-          disabled={isSwitching}
-          onClick={() => switchVersion(onV2 ? "v1" : "v2")}
-          className={[
-            "ui-transition relative h-7 w-12 shrink-0 rounded-full border disabled:opacity-50",
-            !onV2
-              ? "border-[var(--accent)] bg-[var(--accent)]"
-              : "border-[var(--line)] bg-[var(--surface-soft)]",
-          ].join(" ")}
-        >
-          <span
-            className={[
-              "ui-transition absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm",
-              !onV2 ? "left-[calc(100%-1.375rem)]" : "left-0.5",
-            ].join(" ")}
-          />
-        </button>
       </div>
-      <div className="px-5 py-3">
-        <p className="text-xs text-[color:var(--foreground)]/50">
-          {onV2
-            ? "Vous êtes sur l'interface V2 (recommandée). Utilisez le sélecteur en haut ou ce bouton pour passer en V1."
-            : "Vous utilisez l'interface V1 classique. Réactivez la V2 pour retrouver l'expérience par défaut."}
-        </p>
+      <div className="grid gap-2 p-4 sm:grid-cols-3">
+        {OPTIONS.map((option) => {
+          const active = version === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={isSwitching}
+              onClick={() => switchVersion(option.id)}
+              className={[
+                "ui-transition rounded-2xl border px-4 py-3 text-left disabled:opacity-50",
+                active
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-sm"
+                  : "border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-soft)]",
+              ].join(" ")}
+              aria-pressed={active}
+            >
+              <p className="text-sm font-semibold">{option.title}</p>
+              <p
+                className={[
+                  "mt-1 text-[11px] leading-snug",
+                  active ? "text-[var(--accent-contrast)]/75" : "text-[color:var(--foreground)]/55",
+                ].join(" ")}
+              >
+                {option.description}
+              </p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

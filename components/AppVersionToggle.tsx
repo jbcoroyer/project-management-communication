@@ -1,11 +1,12 @@
 "use client";
 
 import { useAppVersion } from "../lib/appVersionContext";
+import type { AppVersion } from "../lib/appVersion";
 
 export default function AppVersionToggle() {
   const { version, switchVersion, isSwitching } = useAppVersion();
 
-  const pill = (target: "v1" | "v2", label: string) => {
+  const pill = (target: AppVersion, label: string) => {
     const active = version === target;
     return (
       <button
@@ -31,6 +32,7 @@ export default function AppVersionToggle() {
       role="group"
       aria-label="Version de l'interface"
     >
+      {pill("v3", "V3")}
       {pill("v2", "V2")}
       {pill("v1", "V1")}
     </div>

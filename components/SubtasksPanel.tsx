@@ -170,6 +170,7 @@ function SubtaskRow(props: {
 
   return (
     <div
+      data-task-id={subtask.id}
       className={[
         "flex items-center gap-2.5 rounded-xl border px-3 py-2.5",
         isDone
@@ -293,7 +294,7 @@ export default function SubtasksPanel(props: {
     props.onSubtaskUpdated(subtask.id, patch, dbPatch);
     markTaskMutatedLocally(subtask.id);
     const { error } = await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
-    if (!error) celebrateTaskDone();
+    if (!error) celebrateTaskDone({ taskId: subtask.id });
   };
 
   const handleColumnChange = async (subtask: Task, col: ColumnId) => {
@@ -307,7 +308,7 @@ export default function SubtasksPanel(props: {
     markTaskMutatedLocally(subtask.id);
     const movingToDone = col === DONE_COLUMN_NAME && subtask.column !== DONE_COLUMN_NAME;
     const { error } = await supabase.from("tasks").update(dbPatch).eq("id", subtask.id);
-    if (!error && movingToDone) celebrateTaskDone();
+    if (!error && movingToDone) celebrateTaskDone({ taskId: subtask.id });
   };
 
   const handleDelete = async (subtaskId: string) => {

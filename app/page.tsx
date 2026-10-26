@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PublicProductDemo from "../components/PublicProductDemo";
+import { DEFAULT_HOME_PATH } from "../lib/appVersion";
 import { useCurrentUser } from "../lib/useCurrentUser";
 
 export default function Home() {
@@ -11,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/v2/dashboard/kanban");
+      router.replace(DEFAULT_HOME_PATH);
     }
   }, [loading, user, router]);
 

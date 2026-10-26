@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { getInventoryErrorMessage } from "../../lib/useInventory";
@@ -133,7 +134,7 @@ export default function EventRunOfShow(props: Props) {
       </div>
 
       {loading ? (
-        <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+        <TuesdayLoader size={24} label="Chargement…" showLabel />
       ) : slots.length === 0 ? (
         <p className="mt-4 text-sm text-[color:var(--foreground)]/55">
           Aucun créneau. Ajoutez montage, ouverture, permanence, démontage…

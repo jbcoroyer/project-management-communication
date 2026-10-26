@@ -15,6 +15,7 @@ import { getSupabaseBrowser } from "./supabaseBrowser";
 import { markTaskMutatedLocally } from "./taskMutatedLocally";
 import { mapTaskRow } from "./taskMappers";
 import { TASK_SELECT_WITH_EVENT } from "./taskQueries";
+import { AUTO_ARCHIVE_DELAY_MS, DONE_COLUMN_NAME } from "./workflowConstants";
 import type { Task } from "./types";
 
 type TasksContextValue = {
@@ -35,7 +36,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(false);
+  /** true jusqu’au premier cycle de chargement (splash + états vides). */
+  const [loading, setLoading] = useState(true);
   const mutationSeq = useRef(0);
   const tasksRef = useRef<Task[]>([]);
 
@@ -66,9 +68,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setTasks([]);
+      setLoading(false);
       return;
     }
-    void loadTasks().catch(() => setTasks([]));
+    void loadTasks().catch(() => {
+      setTasks([]);
+      setLoading(false);
+    });
   }, [loadTasks, user]);
 
   useEffect(() => {
@@ -127,6 +133,22 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     },
     [supabase],
   );
+
+  // Tâches « Terminé » depuis +2 jours → archives (kanban + événementiel).
+  useEffect(() => {
+    if (!user || loading) return;
+    const toArchive = tasks.filter((t) => {
+      if (t.column !== DONE_COLUMN_NAME || t.isArchived || t.parentTaskId) return false;
+      const doneMs = t.completedAt ? new Date(t.completedAt).getTime() : 0;
+      return doneMs > 0 && Date.now() - doneMs > AUTO_ARCHIVE_DELAY_MS;
+    });
+    if (toArchive.length === 0) return;
+    for (const task of toArchive) {
+      void optimisticUpdate(task.id, { ...task, isArchived: true }, { is_archived: true }).catch(
+        () => {},
+      );
+    }
+  }, [user, loading, tasks, optimisticUpdate]);
 
   const value = useMemo(
     () => ({

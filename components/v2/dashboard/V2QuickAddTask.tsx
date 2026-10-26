@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { CornerDownLeft, Loader2, Plus } from "lucide-react";
+import { CornerDownLeft, Plus } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 
 export default function V2QuickAddTask({
   inputRef,
@@ -33,10 +34,10 @@ export default function V2QuickAddTask({
         event.preventDefault();
         void submit();
       }}
-      className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--ring)]"
+      className="flex h-10 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 px-3 focus-within:border-[color:var(--foreground)]/25 focus-within:bg-[var(--surface)]"
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[color:var(--foreground)]/40">
+        {busy ? <TuesdayLoader size={16} label="Enregistrement…" /> : <Plus className="h-3.5 w-3.5" />}
       </span>
       <input
         ref={inputRef}
@@ -44,12 +45,12 @@ export default function V2QuickAddTask({
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         disabled={disabled || busy}
-        placeholder="Ajouter une tâche en 3 secondes…"
+        placeholder="Ajouter une tâche…"
         aria-label="Création rapide de tâche"
-        className="w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/45 focus:outline-none disabled:opacity-60"
+        className="w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/40 focus:outline-none disabled:opacity-60"
       />
-      <kbd className="hidden shrink-0 items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[10px] text-[color:var(--foreground)]/55 sm:inline-flex">
-        <CornerDownLeft className="h-3 w-3" /> Entrée
+      <kbd className="hidden shrink-0 items-center gap-1 text-[10px] text-[color:var(--foreground)]/35 sm:inline-flex">
+        <CornerDownLeft className="h-3 w-3" />
       </kbd>
     </form>
   );

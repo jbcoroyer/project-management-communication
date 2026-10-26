@@ -3,13 +3,24 @@
 import AutomationsManager from "./AutomationsManager";
 import AdminSettingsPanel from "../../settings/AdminSettingsPanel";
 import { useReferenceData } from "../../../lib/useReferenceData";
+import { usePathname } from "next/navigation";
+import V2PageHeader from "../V2PageHeader";
 
 export default function V2SettingsPage() {
   const { admins, columns, domains } = useReferenceData();
+  const pathname = usePathname();
+  const isModernUi = pathname.startsWith("/v2") || pathname.startsWith("/v3");
 
   return (
       <div className="space-y-8">
         <section className="space-y-5">
+          {isModernUi ? (
+            <V2PageHeader
+              kicker="Outils"
+              title="Réglages"
+              description="Règles « si… alors… » et auto-archivage."
+            />
+          ) : (
           <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Paramètres · V2</p>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Automatisations &amp; règles</h1>
@@ -17,6 +28,7 @@ export default function V2SettingsPage() {
               Configurez les règles « si… alors… » et l&apos;auto-archivage.
             </p>
           </header>
+          )}
 
           <AutomationsManager
             columns={columns.map((c) => c.name)}

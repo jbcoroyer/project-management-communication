@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Database, HardDrive, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Check, Copy, Database, HardDrive, Sparkles, Wand2 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { repurposeContent, type AiBackend } from "../../../lib/v2/aiClient";
 import { toastError, toastSuccess } from "../../../lib/toast";
 
@@ -105,7 +106,7 @@ export default function RepurposePanel({
           disabled={busy || !source.trim() || selected.length === 0}
           className="ui-transition ml-auto inline-flex items-center gap-2 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] hover:bg-[var(--accent-strong)] disabled:opacity-50"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {busy ? <TuesdayLoader size={16} tone="white" label="Génération…" /> : <Sparkles className="h-4 w-4" />}
           Générer
         </button>
       </div>

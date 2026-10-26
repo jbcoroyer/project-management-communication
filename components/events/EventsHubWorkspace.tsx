@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarRange, Plus, RefreshCcw, TrendingUp, Wallet } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import CreateEventModal from "./CreateEventModal";
 import EventTasksKanban from "./EventTasksKanban";
 import EventTimeline from "./EventTimeline";
@@ -192,8 +193,8 @@ export default function EventsHubWorkspace({
           </Link>
         </div>
         {eventsLoading ? (
-          <div className="rounded-2xl border border-dashed border-[var(--line)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">
-            Chargement des événements…
+          <div className="flex justify-center rounded-2xl border border-dashed border-[var(--line)] px-4 py-12">
+            <TuesdayLoader size={28} label="Chargement des événements…" showLabel />
           </div>
         ) : (
           <EventTimeline

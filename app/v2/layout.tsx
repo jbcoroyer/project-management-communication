@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
-import V2AccessGuard from "../../components/v2/V2AccessGuard";
-import V2AppLayout from "../../components/v2/V2AppLayout";
+import { redirect } from "next/navigation";
 
-export default function V2Layout({ children }: { children: ReactNode }) {
-  return (
-    <V2AccessGuard>
-      <V2AppLayout>{children}</V2AppLayout>
-    </V2AccessGuard>
-  );
+/** V3 est l'unique interface — les routes /v2 basculent vers V3. */
+export default function V2Layout({ children: _children }: { children: ReactNode }) {
+  redirect("/v3/dashboard/kanban");
 }

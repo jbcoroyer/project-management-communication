@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck2, CalendarX2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { CalendarCheck2, CalendarX2, ExternalLink, RefreshCw } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { requestOutlookSyncAll } from "../lib/outlookClientSync";
 import { getPublicAppOrigin } from "../lib/publicAppUrl";
 import { toastError, toastSuccess } from "../lib/toast";
@@ -105,8 +106,7 @@ export default function OutlookConnectionCard() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/60">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Chargement de l&apos;état de connexion…
+        <TuesdayLoader size={24} label="Chargement de l'état de connexion…" showLabel />
       </div>
     );
   }
@@ -161,7 +161,7 @@ export default function OutlookConnectionCard() {
             disabled={busy}
             className="ui-transition flex items-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {busy ? <TuesdayLoader size={16} label="Synchronisation…" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Synchroniser
           </button>
           <button
@@ -177,7 +177,7 @@ export default function OutlookConnectionCard() {
             disabled={busy}
             className="ui-transition flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarX2 className="h-3.5 w-3.5" />}
+            {busy ? <TuesdayLoader size={16} label="Déconnexion…" /> : <CalendarX2 className="h-3.5 w-3.5" />}
             Déconnecter
           </button>
         </div>

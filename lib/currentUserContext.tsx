@@ -85,11 +85,11 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       }
 
       const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-      if (sessionError && isInvalidRefreshTokenError(sessionError)) {
+      if (authError && isInvalidRefreshTokenError(authError)) {
         const redirected = await clearInvalidSupabaseSession(supabase);
         if (!redirected) {
           setUser(null);
@@ -98,28 +98,20 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const sessionUser = session?.user;
-      if (!sessionUser) {
+      if (!authUser) {
         setUser(null);
         setLoading(false);
         return;
       }
 
       try {
-        const nextUser = await fetchProfile(supabase, sessionUser);
+        const nextUser = await fetchProfile(supabase, authUser);
         setUser(nextUser);
       } catch {
         if (!userRef.current) setUser(null);
       } finally {
         setLoading(false);
       }
-
-      // Validation serveur en arrière-plan (sans bloquer l'UI).
-      void supabase.auth.getUser().then(({ error: authError }: { error: Error | null }) => {
-        if (authError && isInvalidRefreshTokenError(authError)) {
-          void clearInvalidSupabaseSession(supabase);
-        }
-      });
     },
     [supabase],
   );

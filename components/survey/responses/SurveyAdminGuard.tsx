@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ShieldAlert } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import V2AppShell from "../../v2/AppShell";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 
@@ -18,7 +19,7 @@ export default function SurveyAdminGuard({ children }: { children: ReactNode }) 
       currentUserJobTitle={user?.jobTitle}
     >
       {loading ? (
-        <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+        <TuesdayLoader size={28} label="Chargement…" showLabel />
       ) : isAdmin ? (
         children
       ) : (
@@ -32,7 +33,7 @@ export default function SurveyAdminGuard({ children }: { children: ReactNode }) 
           <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
             La gestion des questionnaires est réservée à l&apos;administrateur.
           </p>
-          <Link href="/v2/dashboard/kanban" className="ui-btn ui-btn-secondary mt-6 inline-flex">
+          <Link href="/v3/dashboard/kanban" className="ui-btn ui-btn-secondary mt-6 inline-flex">
             Retour au tableau de bord
           </Link>
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Package } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { getInventoryErrorMessage, useInventory } from "../../lib/useInventory";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { formatInventorySelectOptionLabel } from "../../lib/stockUtils";
@@ -70,7 +71,7 @@ export default function EventStockReserve(props: EventStockReserveProps) {
         Chaque sortie est enregistrée dans l&apos;historique stock et valorisée pour le budget événement (prix unitaire au moment du mouvement).
       </p>
       {loading ? (
-        <p className="text-sm text-[color:var(--foreground)]/55">Chargement du stock…</p>
+        <TuesdayLoader size={24} label="Chargement du stock…" showLabel />
       ) : (
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">

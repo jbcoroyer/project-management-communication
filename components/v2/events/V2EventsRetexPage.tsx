@@ -1,15 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarRange, Copy, Loader2, Sparkles } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { CalendarRange, Copy, Sparkles } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import EventsSectionNav from "../../events/EventsSectionNav";
 import { useEvents } from "../../../lib/useEvents";
 import type { EventRow } from "../../../lib/eventTypes";
 import { buildRetexDraft, useRetexInputs } from "../../../lib/v2/retex";
 import { summarize } from "../../../lib/v2/aiClient";
 import { toastError, toastSuccess } from "../../../lib/toast";
+import V2PageHeader from "../V2PageHeader";
 
-export default function V2EventsRetexPage() {
+export default function V2EventsRetexPage({
+  eventsBasePath = "/v2/events",
+}: {
+  eventsBasePath?: string;
+}) {
+  const pathname = usePathname();
+  const isModernUi = pathname.startsWith("/v2") || pathname.startsWith("/v3");
   const { events, loading } = useEvents();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -72,23 +81,32 @@ export default function V2EventsRetexPage() {
 
   return (
       <div className="space-y-5">
+        {isModernUi ? (
+          <V2PageHeader
+            kicker="Événements"
+            icon={CalendarRange}
+            title="RETEX"
+            description="Points forts, axes d'amélioration et actions de suivi après chaque salon."
+          />
+        ) : (
         <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-            <CalendarRange className="h-3.5 w-3.5" /> Événements · V2
+            <CalendarRange className="h-3.5 w-3.5" /> Événements
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">RETEX événement</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
             Points forts, axes d&apos;amélioration et actions de suivi après chaque salon.
           </p>
         </header>
+        )}
 
-        <EventsSectionNav basePath="/v2/events" showRetex />
+        <EventsSectionNav basePath={eventsBasePath} showRetex />
 
         <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
           <aside className="ui-surface rounded-2xl p-4">
             <h2 className="mb-3 text-sm font-semibold text-[var(--foreground)]">Événements</h2>
             {loading ? (
-              <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+              <TuesdayLoader size={24} label="Chargement des événements…" showLabel />
             ) : events.length === 0 ? (
               <p className="text-sm text-[color:var(--foreground)]/55">Aucun événement.</p>
             ) : (
@@ -183,7 +201,7 @@ export default function V2EventsRetexPage() {
                       onClick={() => void enrichWithAi()}
                       className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] disabled:opacity-50"
                     >
-                      {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {aiBusy ? <TuesdayLoader size={16} label="Enrichissement…" /> : <Sparkles className="h-3.5 w-3.5" />}
                       Enrichir avec l&apos;IA
                     </button>
                     <button

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Archive, Bolt, Database, HardDrive, Plus, Power, Trash2 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { priorities } from "../../../lib/types";
 import {
   ACTION_LABELS,
@@ -252,7 +253,7 @@ export default function AutomationsManager({
 
         <div className="mt-4 space-y-2">
           {loading ? (
-            <p className="text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+            <TuesdayLoader size={24} label="Chargement des automatisations…" showLabel />
           ) : rules.length === 0 ? (
             <p className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-6 text-center text-sm text-[color:var(--foreground)]/55">
               Aucune automatisation. Créez votre première règle ci-dessus.
@@ -311,12 +312,12 @@ export default function AutomationsManager({
           <input
             type="number"
             min={1}
-            max={24}
+            max={48}
             value={autoArchiveHours}
             onChange={(e) => setAutoArchiveHours(Number(e.target.value))}
             className="ui-focus-ring w-20 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
           />
-          heures (max 24)
+          heures (défaut 48 = 2 jours, max 48)
         </label>
       </div>
     </div>

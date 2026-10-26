@@ -18,7 +18,13 @@ import {
 } from "lucide-react";
 import { getPublicAppOrigin } from "../../lib/publicAppUrl";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
+import {
+  allowedEmailDomains,
+  isSignupDisabled,
+  validateSignupEmail,
+} from "../../lib/authAllowlist";
 import { ServiceCommunicationIdenaHeading } from "../../components/IdenaBrand";
+import { TuesdayLoader } from "@/components/brand";
 import LoginInlineDemo from "../../components/LoginInlineDemo";
 
 type AuthMode = "signin" | "signup";
@@ -162,11 +168,19 @@ export default function LoginPage() {
     }
   };
 
+  const signupBlocked = isSignupDisabled();
+  const signupDomains = allowedEmailDomains();
+
   /* ── Inscription ── */
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupEmail.trim() || !signupPassword) {
       setError("Veuillez remplir tous les champs.");
+      return;
+    }
+    const allowErr = validateSignupEmail(signupEmail.trim());
+    if (allowErr) {
+      setError(allowErr);
       return;
     }
     setError(null);
@@ -259,7 +273,8 @@ export default function LoginPage() {
             )}
             {/* Tabs */}
             <div className="mb-6 flex overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
-              {(["signin", "signup"] as AuthMode[]).map((m) => (
+              {(signupBlocked ? (["signin"] as AuthMode[]) : (["signin", "signup"] as AuthMode[])).map(
+                (m) => (
                 <button
                   key={m}
                   type="button"
@@ -273,8 +288,14 @@ export default function LoginPage() {
                 >
                   {m === "signin" ? "Connexion" : "Inscription"}
                 </button>
-              ))}
+              ),
+              )}
             </div>
+            {mode === "signup" && signupDomains.length > 0 ? (
+              <p className="mb-4 text-xs text-[color:var(--foreground)]/55">
+                Inscription réservée aux adresses @{signupDomains.join(", @")}.
+              </p>
+            ) : null}
 
           {/* ── CONNEXION ── */}
           {mode === "signin" && (
@@ -588,7 +609,13 @@ function SubmitBtn(props: { loading: boolean; label: string }) {
       disabled={props.loading}
       className="ui-transition w-full rounded-xl bg-[var(--foreground)] py-2.5 text-sm font-semibold text-[var(--accent-contrast)] shadow-[0_14px_30px_rgba(20,17,13,0.18)] hover:-translate-y-0.5 hover:opacity-90 disabled:opacity-60"
     >
-      {props.loading ? "Chargement…" : props.label}
+      {props.loading ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <TuesdayLoader size={16} tone="white" label="Chargement…" />
+        </span>
+      ) : (
+        props.label
+      )}
     </button>
   );
 }

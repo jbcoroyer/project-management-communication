@@ -34,6 +34,7 @@ function DraggableCard(props: { task: Task; onPlanning?: (task: Task) => void })
     <div
       ref={setNodeRef}
       style={style}
+      data-task-id={props.task.id}
       {...listeners}
       {...attributes}
       className={[
@@ -112,7 +113,7 @@ export default function EventDetailKanban(props: Props) {
     if (!task || task.column === col) return;
     const wasDone = task.column === "Terminé";
     onMoveTask(activeId, col as ColumnId);
-    if (col === "Terminé" && !wasDone) celebrateTaskDone();
+    if (col === "Terminé" && !wasDone) celebrateTaskDone({ taskId: activeId });
   };
 
   if (tasks.length === 0) {

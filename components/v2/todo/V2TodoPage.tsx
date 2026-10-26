@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarCheck, Clock, Coffee, Loader2, Sparkles, Sun } from "lucide-react";
+import { CalendarCheck, Clock, Coffee, Sparkles, Sun } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import V2Inbox from "../dashboard/V2Inbox";
+import V2PageHeader from "../V2PageHeader";
+import V2Segmented from "../V2Segmented";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useTasks } from "../../../lib/useTasks";
 import { buildDayPlan, type PlanBlock } from "../../../lib/v2/planner";
@@ -66,41 +69,23 @@ export default function V2TodoPage() {
 
   return (
       <div className="space-y-5">
-        <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
-          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-            <CalendarCheck className="h-3.5 w-3.5" /> Mon espace · V2
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
-            {userName ? `Bonjour ${userName.split(" ")[0]}` : "Mon agenda"}
-          </h1>
-          <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-            Agenda du jour généré automatiquement et boîte de réception personnelle.
-          </p>
-        </header>
+        <V2PageHeader
+          kicker="Travail"
+          icon={CalendarCheck}
+          title={userName ? `Bonjour ${userName.split(" ")[0]}` : "Mon espace"}
+          description="Agenda du jour et boîte de réception personnelle."
+        />
 
-        <nav className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
-          {[
-            { id: "agenda" as const, label: "Agenda du jour", icon: CalendarCheck },
-            { id: "inbox" as const, label: "Inbox", icon: Clock },
-          ].map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={[
-                  "ui-transition inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                  active ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
-                ].join(" ")}
-              >
-                <Icon className="h-4 w-4" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
+        <V2Segmented
+          ariaLabel="Mon espace"
+          value={tab}
+          onChange={setTab}
+          className="w-fit max-w-full"
+          items={[
+            { id: "agenda", label: "Agenda", icon: CalendarCheck },
+            { id: "inbox", label: "Inbox", icon: Clock },
+          ]}
+        />
 
         {tab === "agenda" ? (
           <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
@@ -172,7 +157,7 @@ export default function V2TodoPage() {
                   disabled={aiBusy || plan.length === 0}
                   className="ui-transition inline-flex items-center gap-1.5 rounded-lg border border-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
                 >
-                  {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {aiBusy ? <TuesdayLoader size={16} label="Optimisation…" /> : <Sparkles className="h-3.5 w-3.5" />}
                   Optimiser
                 </button>
               </div>

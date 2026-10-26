@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { ArrowDown, ArrowUp, ClipboardList, FolderKanban, UserRound } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import StockSectionNav from "../StockSectionNav";
 import type { StockMovement } from "../../lib/stockTypes";
 import { formatCurrency, formatNumber } from "../../lib/stockUtils";
@@ -72,8 +73,8 @@ export default function StockHistoryWorkspace({
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">
-            Chargement de l&apos;historique...
+          <div className="flex justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12">
+            <TuesdayLoader size={28} label="Chargement de l'historique…" showLabel />
           </div>
         ) : filteredMovements.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">

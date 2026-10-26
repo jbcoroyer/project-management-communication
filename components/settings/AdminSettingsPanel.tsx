@@ -26,11 +26,11 @@ import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { toastError, toastSuccess } from "../../lib/toast";
 import { useIdenaMark } from "../../lib/idenaMarkContext";
 import { IdenaMark } from "../IdenaBrand";
+import { TuesdayLoader } from "@/components/brand";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { adminSolidColorFor, getAdminColorPaletteSize } from "../../lib/kanbanStyles";
 import type { AdminId } from "../../lib/types";
-import AppVersionSettings from "./AppVersionSettings";
 
 /** Couleur unique des badges domaine (bleu IDENA, non personnalisable). */
 const DOMAIN_BADGE_COLOR = "#009cdf";
@@ -340,9 +340,11 @@ export default function AdminSettingsPanel() {
               Paramètres
             </h1>
             <p className="mt-1.5 text-sm text-[color:var(--foreground)]/65">
-              {loading
-                ? "Chargement..."
-                : `${stats.admins} collaborateurs · ${stats.companies} sociétés · ${stats.domains} domaines · ${stats.columns} colonnes`}
+              {loading ? (
+                <TuesdayLoader size={16} label="Chargement…" showLabel />
+              ) : (
+                `${stats.admins} collaborateurs · ${stats.companies} sociétés · ${stats.domains} domaines · ${stats.columns} colonnes`
+              )}
             </p>
           </div>
           <button
@@ -351,7 +353,7 @@ export default function AdminSettingsPanel() {
             disabled={loading}
             className="ui-transition flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-40"
           >
-            <RefreshCw className={["h-4 w-4", loading ? "animate-spin" : ""].join(" ")} />
+            {loading ? <TuesdayLoader size={16} label="Rafraîchissement…" /> : <RefreshCw className="h-4 w-4" />}
             Rafraîchir
           </button>
         </div>
@@ -1041,7 +1043,6 @@ export default function AdminSettingsPanel() {
           </div>
         </Section>
 
-        <AppVersionSettings />
       </section>
     </>
   );

@@ -21,12 +21,12 @@ import {
   Target,
   UserCircle2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../../lib/adminAvatarContext";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
-import AppVersionToggle from "../AppVersionToggle";
 
 type V2AppShellProps = {
   children: ReactNode;
@@ -38,20 +38,71 @@ type V2AppShellProps = {
   currentUserJobTitle?: string | null;
 };
 
-const navItems = [
-  { href: "/v2/dashboard/kanban", label: "Tableau de bord", icon: LayoutGrid },
-  { href: "/v2/asks", label: "Faire une demande", icon: Send },
-  { href: "/v2/todo", label: "Mon espace", icon: ListTodo },
-  { href: "/v2/planning", label: "Planning", icon: CalendarDays },
-  { href: "/v2/dashboard/triage", label: "Demandes (triage)", icon: Inbox },
-  { href: "/v2/events/dashboard", label: "Événements", icon: CalendarRange },
-  { href: "/v2/social", label: "Réseaux sociaux", icon: Megaphone },
-  { href: "/v2/dam", label: "Bibliothèque (DAM)", icon: FolderOpen },
-  { href: "/v2/stock", label: "Stock", icon: Package },
-  { href: "/v2/ideas", label: "Boîte à idées", icon: Lightbulb },
-  { href: "/v2/okr", label: "Objectifs (OKR)", icon: Target },
-  { href: "/v2/settings", label: "Paramètres", icon: Settings2 },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+};
+
+type NavSection = {
+  id: string;
+  label: string;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    id: "travail",
+    label: "Travail",
+    items: [
+      { href: "/v2/dashboard/kanban", label: "Tableau", hint: "Kanban & vues", icon: LayoutGrid },
+      { href: "/v2/todo", label: "Espace", hint: "Agenda du jour", icon: ListTodo },
+      { href: "/v2/planning", label: "Planning", hint: "Semaine & charge", icon: CalendarDays },
+      { href: "/v2/okr", label: "Objectifs", hint: "OKR", icon: Target },
+    ],
+  },
+  {
+    id: "demandes",
+    label: "Demandes",
+    items: [
+      { href: "/v2/asks", label: "Nouvelle", hint: "Formulaire", icon: Send },
+      { href: "/v2/dashboard/triage", label: "Triage", hint: "À qualifier", icon: Inbox },
+    ],
+  },
+  {
+    id: "contenu",
+    label: "Contenu",
+    items: [
+      { href: "/v2/events/dashboard", label: "Événements", hint: "Salons & retex", icon: CalendarRange },
+      { href: "/v2/social", label: "Social", hint: "Studio", icon: Megaphone },
+      { href: "/v2/dam", label: "Médias", hint: "Bibliothèque", icon: FolderOpen },
+      { href: "/v2/ideas", label: "Idées", hint: "Votes", icon: Lightbulb },
+    ],
+  },
+  {
+    id: "outils",
+    label: "Outils",
+    items: [
+      { href: "/v2/stock", label: "Stock", hint: "Inventaire", icon: Package },
+      { href: "/v2/settings", label: "Réglages", hint: "Règles", icon: Settings2 },
+    ],
+  },
+];
+
+const SURVEY_ITEM: NavItem = {
+  href: "/questionnaire/reponses",
+  label: "Enquêtes",
+  hint: "Réponses",
+  icon: ClipboardList,
+};
+
+function sectionsFor(isAdmin: boolean): NavSection[] {
+  if (!isAdmin) return NAV_SECTIONS;
+  return NAV_SECTIONS.map((section) =>
+    section.id === "outils" ? { ...section, items: [...section.items, SURVEY_ITEM] } : section,
+  );
+}
 
 function isNavActive(href: string, pathname: string): boolean {
   if (href === "/v2/events/dashboard") return pathname.startsWith("/v2/events");
@@ -84,9 +135,9 @@ function UserCard({
   if (!name && !email) return null;
   const showPhoto = Boolean(avatarUrl) && !broken;
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
       <div className="flex items-center gap-3">
-        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--line)]">
+        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl ring-1 ring-[var(--line)]">
           {showPhoto ? (
             <img
               src={avatarUrl!}
@@ -109,6 +160,17 @@ function UserCard({
           ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Identity() {
+  return (
+    <div className="space-y-3">
+      <ServiceCommunicationIdenaHeading />
+      <p className="w-fit rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--foreground)]/45">
+        Interface V2
+      </p>
     </div>
   );
 }
@@ -136,17 +198,7 @@ export default function V2AppShell({
     (displayName ? resolveAdminAvatarUrl(avatarMap, displayName) : null);
   const isAdmin = Boolean(user?.isAdmin);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  const items = isAdmin
-    ? [
-        ...navItems,
-        {
-          href: "/questionnaire/reponses",
-          label: "Questionnaire",
-          icon: ClipboardList,
-        } as const,
-      ]
-    : navItems;
+  const sections = sectionsFor(isAdmin);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -175,37 +227,63 @@ export default function V2AppShell({
     window.location.href = "/login";
   };
 
-  const navLinkClass = (active: boolean) =>
-    [
-      "ui-transition flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium",
-      active
-        ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
-        : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
-    ].join(" ");
-
-  const sidebarContent = (onNavClick?: () => void) => (
+  const navBlock = (onNavClick?: () => void) => (
     <>
-      <ServiceCommunicationIdenaHeading />
-      <nav className="mt-6 flex-1 space-y-0.5">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = isNavActive(item.href, pathname);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavClick}
-              className={navLinkClass(active)}
-            >
-              <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav
+        className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]"
+        aria-label="Navigation V2"
+      >
+        {sections.map((section) => (
+          <div key={section.id}>
+            <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--foreground)]/40">
+              {section.label}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active = isNavActive(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavClick}
+                    aria-current={active ? "page" : undefined}
+                    className={[
+                      "ui-transition flex items-center gap-2.5 rounded-xl px-2 py-1.5",
+                      active
+                        ? "bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-[var(--shadow-1)]"
+                        : "text-[color:var(--foreground)]/75 hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        active ? "bg-[var(--accent-contrast)]/15" : "bg-[var(--surface-soft)]",
+                      ].join(" ")}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold leading-tight">{item.label}</span>
+                      <span
+                        className={[
+                          "mt-0.5 block truncate text-[10px]",
+                          active ? "text-[var(--accent-contrast)]/70" : "text-[color:var(--foreground)]/45",
+                        ].join(" ")}
+                      >
+                        {item.hint}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
-      <div className="mt-4 space-y-2 border-t border-[var(--line)] pt-4">
+      <div className="mt-3 shrink-0 space-y-2 border-t border-[var(--line)] pt-3">
         {userLoading ? (
-          <div className="h-[52px] animate-pulse rounded-xl bg-[var(--surface-soft)]" aria-hidden />
+          <div className="h-[52px] animate-pulse rounded-2xl bg-[var(--surface-soft)]" aria-hidden />
         ) : isGuest ? (
           <Link href="/login" className="ui-btn ui-btn-primary w-full text-xs" onClick={onNavClick}>
             Se connecter
@@ -233,13 +311,24 @@ export default function V2AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-[1680px] px-4 py-5 lg:px-8">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 45% at 12% -10%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 60%), radial-gradient(ellipse 55% 40% at 92% 8%, color-mix(in oklab, var(--foreground) 5%, transparent), transparent 55%)",
+        }}
+      />
+      <div className="relative mx-auto w-full max-w-[1680px] px-4 py-5 lg:px-8">
         <aside
-          className="fixed bottom-5 left-4 top-5 hidden w-[15.5rem] flex-col border-r border-[var(--line)] bg-[var(--background)] pr-4 lg:flex"
+          className="fixed bottom-5 left-4 top-5 hidden w-[18rem] min-h-0 flex-col overflow-hidden lg:flex"
           style={{ zIndex: "var(--z-sidebar)" }}
         >
-          {sidebarContent()}
+          <div className="shrink-0">
+            <Identity />
+          </div>
+          {navBlock()}
         </aside>
 
         {mobileNavOpen ? (
@@ -255,11 +344,11 @@ export default function V2AppShell({
               role="dialog"
               aria-modal="true"
               aria-label="Navigation principale"
-              className="ui-surface fixed inset-y-0 left-0 flex w-72 max-w-[88vw] flex-col p-5 lg:hidden"
+              className="ui-surface fixed inset-y-0 left-0 flex w-[20rem] max-w-[90vw] flex-col p-5 lg:hidden"
               style={{ zIndex: "calc(var(--z-overlay) + 1)" }}
             >
-              <div className="mb-4 flex items-start justify-between gap-2">
-                <ServiceCommunicationIdenaHeading />
+              <div className="mb-2 flex shrink-0 items-start justify-between gap-2">
+                <Identity />
                 <button
                   type="button"
                   onClick={() => setMobileNavOpen(false)}
@@ -269,17 +358,17 @@ export default function V2AppShell({
                   <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
-              <div className="flex min-h-0 flex-1 flex-col">{sidebarContent(() => setMobileNavOpen(false))}</div>
+              <div className="flex min-h-0 flex-1 flex-col">{navBlock(() => setMobileNavOpen(false))}</div>
             </aside>
           </>
         ) : null}
 
-        <div className="min-w-0 lg:pl-[17rem]">
-          <header className="mb-8 flex flex-wrap items-center gap-3 border-b border-[var(--line)] pb-5 pr-24">
+        <div className="min-w-0 lg:pl-[19.25rem]">
+          <header className="mb-8 flex flex-wrap items-center gap-3 border-b border-[var(--line)]/80 pb-5 pr-24">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="ui-btn ui-btn-secondary h-10 w-10 p-0 lg:hidden"
+              className="ui-btn ui-btn-secondary h-11 w-11 rounded-2xl p-0 lg:hidden"
               aria-label="Ouvrir le menu"
               aria-expanded={mobileNavOpen}
             >
@@ -288,7 +377,7 @@ export default function V2AppShell({
 
             <div className="min-w-[180px] flex-1">
               {searchSlot ?? (
-                <div className="flex max-w-md items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
+                <div className="flex max-w-lg items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/90 px-4 py-2.5 shadow-[var(--shadow-1)] backdrop-blur-sm">
                   <span className="text-sm text-[color:var(--foreground)]/40" aria-hidden>
                     ⌕
                   </span>
@@ -301,10 +390,7 @@ export default function V2AppShell({
                 </div>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <AppVersionToggle />
-              {toolbarRight}
-            </div>
+            <div className="flex shrink-0 items-center gap-2">{toolbarRight}</div>
           </header>
 
           <main className="pb-10">{children}</main>

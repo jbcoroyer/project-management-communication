@@ -19,6 +19,7 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import InventoryGoodiesModal from "../InventoryGoodiesModal";
 import InventoryPlvModal from "../InventoryPlvModal";
 import InventoryPrintModal from "../InventoryPrintModal";
@@ -684,8 +685,8 @@ export default function StockInventoryWorkspace({ basePath = "/stock" }: { baseP
 
     const body =
       loading ? (
-        <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">
-          Chargement du stock...
+        <div className="flex justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12">
+          <TuesdayLoader size={28} label="Chargement du stock…" showLabel />
         </div>
       ) : sectionItems.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-12 text-center text-sm text-[color:var(--foreground)]/55">

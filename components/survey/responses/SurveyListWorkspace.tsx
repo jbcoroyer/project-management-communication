@@ -22,6 +22,7 @@ import {
   type SurveyAudience,
   type SurveyListItem,
 } from "../../../app/actions/survey";
+import { TuesdayLoader } from "@/components/brand";
 import { toastError, toastSuccess } from "../../../lib/toast";
 
 function formatDate(iso: string): string {
@@ -286,7 +287,7 @@ export default function SurveyListWorkspace() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-[color:var(--foreground)]/55">Chargement des questionnaires…</p>
+        <TuesdayLoader size={24} label="Chargement des questionnaires…" showLabel />
       ) : surveys.length === 0 ? (
         <div className="ui-surface rounded-2xl p-8 text-center text-sm text-[color:var(--foreground)]/55">
           Aucun questionnaire pour le moment. Créez-en un avec le bouton ci-dessus.

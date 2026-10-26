@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Package, RotateCcw } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { eventStockKits, resolveKitToInventoryIds } from "../../lib/eventStockKits";
 import { useInventory, getInventoryErrorMessage } from "../../lib/useInventory";
@@ -258,7 +259,7 @@ export default function EventMaterialNeeds(props: Props) {
         </div>
 
         {loading ? (
-          <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Chargement…</p>
+          <TuesdayLoader size={24} label="Chargement…" showLabel />
         ) : needs.length === 0 ? (
           <p className="mt-4 text-sm text-[color:var(--foreground)]/55">Aucun besoin déclaré.</p>
         ) : (

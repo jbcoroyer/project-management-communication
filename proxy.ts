@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { toV3Path } from "./lib/appVersion";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,6 +10,26 @@ export async function proxy(request: NextRequest) {
   if (pkceCode && (pathname === "/" || pathname === "/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
+  // Interface unique V3 — rediriger les anciennes URLs V1/V2 (sauf /ideas public).
+  const isLegacyVersioned =
+    pathname === "/v2" ||
+    pathname.startsWith("/v2/") ||
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/events" ||
+    pathname.startsWith("/events/") ||
+    pathname === "/social" ||
+    pathname.startsWith("/social/") ||
+    pathname === "/stock" ||
+    pathname.startsWith("/stock/") ||
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/");
+  if (isLegacyVersioned) {
+    const url = request.nextUrl.clone();
+    url.pathname = toV3Path(pathname);
     return NextResponse.redirect(url);
   }
 
@@ -51,14 +72,12 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Lecture rapide de la session via cookies (sans round-trip vers Supabase Auth).
-  // `getUser()` aurait ajout\u00e9 80\u2013200ms \u00e0 chaque navigation ; on garde getUser()
-  // pour les actions sensibles c\u00f4t\u00e9 server actions / route handlers.
+  // Valide le JWT auprès de Supabase Auth (pas seulement les cookies locaux).
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { completedAtPatchForColumnChange, completedAtIsoForNewTaskInColumn } from "./completedAt";
 import { mapTaskRow } from "./taskMappers";
@@ -12,10 +12,8 @@ import { DONE_COLUMN_NAME } from "./workflowConstants";
 import { useConfirm } from "../components/ui/ConfirmDialog";
 import type { ColumnId, Task } from "./types";
 import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
-
-const AUTO_ARCHIVE_DELAY_MS = 24 * 60 * 60 * 1000;
-
 import { requestOutlookSync } from "./outlookClientSync";
+
 
 function normalizeProjectedWorkForSave(
   items: Array<{ date: string; hours: number; startTime?: string; endTime?: string }>,
@@ -55,6 +53,8 @@ type UseTaskManagerParams = {
   newTaskColumn: ColumnId;
   editingTaskId: string | null;
   onTaskFormDone: () => void;
+  /** Appelé après un passage réussi vers « Terminé » (toutes tâches / sous-tâches). */
+  onMovedToDone?: (task: Task) => void;
 };
 
 export function useTaskManager({
@@ -66,19 +66,10 @@ export function useTaskManager({
   newTaskColumn,
   editingTaskId,
   onTaskFormDone,
+  onMovedToDone,
 }: UseTaskManagerParams) {
   const confirm = useConfirm();
-  useEffect(() => {
-    const toArchive = tasks.filter((t) => {
-      if (t.column !== DONE_COLUMN_NAME || t.isArchived || t.parentTaskId) return false;
-      const doneMs = t.completedAt ? new Date(t.completedAt).getTime() : 0;
-      return doneMs > 0 && Date.now() - doneMs > AUTO_ARCHIVE_DELAY_MS;
-    });
-    if (toArchive.length === 0) return;
-    for (const task of toArchive) {
-      void optimisticUpdate(task.id, { ...task, isArchived: true }, { is_archived: true });
-    }
-  }, [tasks, optimisticUpdate]);
+  // Auto-archivage « Terminé » > 2 jours : TasksProvider (partagé tâches + événementiel).
 
   const handleCreateTask = useCallback(
     async (values: TaskFormValuesWithSubtasks) => {
@@ -261,14 +252,17 @@ export function useTaskManager({
         toastError("Impossible de sauvegarder les modifications.");
         return;
       }
-      if (movingToDone) celebrateTaskDone();
+      if (movingToDone) {
+        celebrateTaskDone({ taskId });
+        onMovedToDone?.(next);
+      }
       const calendarKeys = ["projected_work", "project_name", "description", "company", "domain"];
       if (calendarKeys.some((k) => k in dbPatch)) {
         requestOutlookSync(taskId);
       }
       toastSuccess("Tâche mise à jour.");
     },
-    [setTasks, supabase, tasks],
+    [onMovedToDone, setTasks, supabase, tasks],
   );
 
   const handleRestoreTask = useCallback(
@@ -311,17 +305,17 @@ export function useTaskManager({
             : colMerge.completed_at
           : task.completedAt;
       const completedNow = newColumn === DONE_COLUMN_NAME && task.column !== DONE_COLUMN_NAME;
-      void optimisticUpdate(
-        taskId,
-        { ...task, column: newColumn, completedAt: nextCompletedAt },
-        dbPatch,
-      )
+      const nextTask = { ...task, column: newColumn, completedAt: nextCompletedAt };
+      void optimisticUpdate(taskId, nextTask, dbPatch)
         .then(() => {
-          if (completedNow) celebrateTaskDone();
+          if (completedNow) {
+            celebrateTaskDone({ taskId });
+            onMovedToDone?.(nextTask);
+          }
         })
         .catch(() => toastError("Impossible de déplacer la tâche. Veuillez réessayer."));
     },
-    [optimisticUpdate, tasks],
+    [onMovedToDone, optimisticUpdate, tasks],
   );
 
   return {

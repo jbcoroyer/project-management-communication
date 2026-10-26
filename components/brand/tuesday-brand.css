@@ -1,0 +1,153 @@
+/* ============================================================
+   Tuesday — identité (logo Bloc V1) + animations
+   À importer UNE fois, dans le layout racine (app/layout.tsx).
+   ============================================================ */
+
+:root {
+  --tue-ink: #1E1A16;    /* encre : blocs du haut, texte */
+  --tue-cream: #F6F1EA;  /* fond de l'app */
+  --tue-paper: #FBF8F3;  /* cartes / surfaces claires */
+  --tue-clay: #C4532F;   /* terracotta : le bloc « tâche » */
+  --tue-font-display: var(--font-tue-display, "Inter Tight"), system-ui, sans-serif;
+}
+
+/* ---------- Symbole ---------- */
+
+.tue-mark {
+  display: block;
+  flex: none;
+  overflow: visible; /* les blocs tombent depuis au-dessus du cadre */
+}
+.tue-mark rect { transform-box: fill-box; }
+.tue-mark .tue-b { fill: var(--tue-m); }
+.tue-mark .tue-b4 { fill: var(--tue-a); }
+
+/* Tons */
+.tue-mark[data-tone="light"] { --tue-m: var(--tue-ink);   --tue-a: var(--tue-clay); }
+.tue-mark[data-tone="dark"]  { --tue-m: var(--tue-cream); --tue-a: var(--tue-clay); }
+.tue-mark[data-tone="mono"]  { --tue-m: currentColor;     --tue-a: currentColor; }
+.tue-mark[data-tone="white"] { --tue-m: #FFFFFF;          --tue-a: #FFFFFF; }
+
+/* ---------- Animation « once » : entrée du logo (sidebar, splash) ---------- */
+/* Les blocs tombent un à un, se tassent, et RESTENT en place. */
+
+.tue-mark[data-anim="once"] .tue-b {
+  animation: tue-drop-in 0.9s cubic-bezier(0.3, 0, 0.2, 1) both;
+  transform-origin: 50% 100%;
+}
+.tue-mark[data-anim="once"] .tue-b2 { animation-delay: 0.08s; }
+.tue-mark[data-anim="once"] .tue-b3 { animation-delay: 0.16s; }
+.tue-mark[data-anim="once"] .tue-b4 { animation-delay: 0.34s; }
+
+@keyframes tue-drop-in {
+  0%   { transform: translateY(-40px); opacity: 0; }
+  40%  { opacity: 1; }
+  62%  { transform: translateY(0) scaleY(1); }
+  76%  { transform: translateY(0) scaleY(0.88); }
+  100% { transform: none; opacity: 1; }
+}
+
+/* ---------- Animation « loop » : loader 01 Empilement ---------- */
+/* Chute séquentielle, tassement, maintien, fondu, et on recommence (1,8 s). */
+
+.tue-mark[data-anim="loop"] .tue-b {
+  animation: tue-stack 1.8s cubic-bezier(0.3, 0, 0.2, 1) infinite both;
+  transform-origin: 50% 100%;
+}
+.tue-mark[data-anim="loop"] .tue-b2 { animation-delay: 0.1s; }
+.tue-mark[data-anim="loop"] .tue-b3 { animation-delay: 0.2s; }
+.tue-mark[data-anim="loop"] .tue-b4 { animation-delay: 0.38s; }
+
+@keyframes tue-stack {
+  0%   { transform: translateY(-40px); opacity: 0; }
+  15%  { opacity: 1; }
+  25%  { transform: translateY(0) scaleY(1); }
+  30%  { transform: translateY(0) scaleY(0.88); }
+  36%  { transform: none; }
+  80%  { transform: none; opacity: 1; }
+  100% { transform: none; opacity: 0; }
+}
+
+/* ---------- Logotype (symbole + mot) ---------- */
+
+.tue-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--tue-logo-size) * 0.22);
+  text-decoration: none;
+}
+.tue-wordmark {
+  font-family: var(--tue-font-display);
+  font-weight: 700;
+  font-size: calc(var(--tue-logo-size) * 0.72);
+  letter-spacing: -0.035em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.tue-logo[data-tone="light"] .tue-wordmark { color: var(--tue-ink); }
+.tue-logo[data-tone="dark"]  .tue-wordmark { color: var(--tue-cream); }
+.tue-logo[data-tone="mono"]  .tue-wordmark { color: currentColor; }
+.tue-logo[data-tone="white"] .tue-wordmark { color: #FFFFFF; }
+
+.tue-logo[data-intro] .tue-wordmark {
+  animation: tue-word-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s both;
+}
+@keyframes tue-word-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Loader inline ---------- */
+
+.tue-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+}
+.tue-loader-label { font-size: 13px; font-weight: 500; }
+
+/* ---------- Loader pleine zone / plein écran ---------- */
+
+.tue-page-loader {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  width: 100%;
+  /* Ne s'affiche qu'après 150 ms : évite le flash sur les chargements rapides */
+  animation: tue-fade-in 0.2s ease 0.15s both;
+}
+.tue-page-loader[data-fullscreen] {
+  position: fixed;
+  inset: 0;
+  min-height: 0;
+  z-index: 1000;
+  background: var(--tue-cream);
+}
+.tue-page-loader[data-leaving] {
+  animation: tue-fade-out 0.3s ease both;
+  pointer-events: none;
+}
+@keyframes tue-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tue-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+.tue-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Accessibilité : mouvement réduit ---------- */
+/* Pas de chute : logo fixe. Le loader garde un simple pouls d'opacité
+   pour signaler qu'il se passe quelque chose. */
+
+@media (prefers-reduced-motion: reduce) {
+  .tue-mark[data-anim] .tue-b,
+  .tue-logo[data-intro] .tue-wordmark { animation: none; }
+  .tue-mark[data-anim="loop"] { animation: tue-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes tue-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }

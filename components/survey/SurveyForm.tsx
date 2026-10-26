@@ -10,6 +10,7 @@ import { defaultCompanies } from "../../lib/types";
 import type { Question, SurveyAnswers, SurveyDefinition } from "../../lib/survey/surveyTypes";
 import { toastError } from "../../lib/toast";
 import { useReferenceData } from "../../lib/useReferenceData";
+import { TuesdayLoader } from "@/components/brand";
 import QuestionField from "./QuestionField";
 import SurveyBrandHeader from "./SurveyBrandHeader";
 
@@ -156,7 +157,9 @@ export default function SurveyForm({ surveyId }: SurveyFormProps) {
     return (
       <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-12">
         <SurveyBrandHeader />
-        <p className="mt-8 text-sm text-[color:var(--foreground)]/55">Chargement du questionnaire…</p>
+        <div className="mt-8 flex justify-center">
+          <TuesdayLoader size={28} label="Chargement du questionnaire…" showLabel />
+        </div>
       </div>
     );
   }

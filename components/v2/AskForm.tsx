@@ -7,6 +7,7 @@ import { submitIntakeRequest } from "../../lib/v2/intake";
 import { useReferenceData } from "../../lib/useReferenceData";
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { toastError, toastSuccess } from "../../lib/toast";
+import V2PageHeader from "./V2PageHeader";
 
 export default function AskForm() {
   const { companies: companyRecords } = useReferenceData();
@@ -61,41 +62,41 @@ export default function AskForm() {
 
   if (done) {
     return (
-      <div className="ui-surface mx-auto max-w-xl rounded-2xl border-l-4 border-l-[var(--accent)] p-8 text-center">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--success)]" />
-        <h1 className="mt-3 text-xl font-semibold text-[var(--foreground)]">Demande envoyée</h1>
-        <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-          Le service Communication va qualifier votre demande (budget, charge, priorité) avant de la transformer en
-          tâche.
-        </p>
-        <button
-          type="button"
-          onClick={resetForm}
-          className="ui-transition mt-5 inline-flex items-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
-        >
-          Nouvelle demande
-        </button>
+      <div className="mx-auto max-w-xl space-y-5">
+        <V2PageHeader
+          kicker="Demandes"
+          icon={Send}
+          title="Demande envoyée"
+          description="Le service Communication va qualifier le budget, la charge et la priorité avant d'en faire une tâche."
+        />
+        <div className="ui-surface rounded-2xl p-8 text-center">
+          <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--success)]" />
+          <button
+            type="button"
+            onClick={resetForm}
+            className="ui-transition mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+          >
+            Nouvelle demande
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="ui-surface mx-auto max-w-xl rounded-2xl border-l-4 border-l-[var(--accent)] p-6 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-        Portail collaborateurs externes
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Soumettre une demande</h1>
-      <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-        Décrivez votre besoin en communication. Le budget, la charge estimée et la priorité seront définis par
-        l&apos;équipe lors du triage.
-      </p>
-
+    <div className="mx-auto max-w-xl space-y-5">
+      <V2PageHeader
+        kicker="Demandes"
+        icon={Send}
+        title="Nouvelle demande"
+        description="Décrivez le besoin. L'équipe qualifiera le budget, la charge et la priorité au triage."
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
-        className="mt-5 space-y-4"
+        className="ui-surface space-y-4 rounded-2xl p-6 sm:p-8"
       >
         <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--foreground)]/70">
           Nom du projet *

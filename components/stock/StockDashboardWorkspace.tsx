@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BarChart3, Euro, TrendingDown } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import StockSectionNav from "../StockSectionNav";
 import type { InventoryItem } from "../../lib/inventoryTypes";
 import { inventoryItemValue } from "../../lib/inventoryTypes";
@@ -102,8 +103,8 @@ export default function StockDashboardWorkspace({
         </div>
 
         {itemsLoading || movementsLoading ? (
-          <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-16 text-center text-sm text-[color:var(--foreground)]/55">
-            Chargement du dashboard...
+          <div className="flex justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-16">
+            <TuesdayLoader size={28} label="Chargement du dashboard…" showLabel />
           </div>
         ) : chartData.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-16 text-center text-sm text-[color:var(--foreground)]/55">

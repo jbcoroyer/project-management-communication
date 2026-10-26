@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import IdenaLogo from "./IdenaLogo";
+import { TuesdayLogo } from "@/components/brand";
 import { useIdenaMark } from "../lib/idenaMarkContext";
 import { isExternalImageSrc } from "../lib/idenaMarkSrc";
 
@@ -27,41 +29,25 @@ export function IdenaMark({ className = "h-9 w-9" }: { className?: string }) {
   return <IdenaLogo variant="icon" className={className} />;
 }
 
-type WordmarkSize = "sidebar" | "login" | "compact";
-
-export function TuesdayWordmark({ size = "sidebar" }: { size?: WordmarkSize }) {
-  const sizeClass =
-    size === "login"
-      ? "text-[2.75rem] sm:text-[3.25rem]"
-      : size === "compact"
-        ? "text-xl"
-        : "text-[1.75rem] sm:text-[1.9rem]";
-
-  return (
-    <span
-      className={["tuesday-wordmark ui-display text-[var(--foreground)]", sizeClass].join(" ")}
-      aria-label="Tuesday"
-    >
-      Tues
-      <span className="text-[var(--accent)]">day</span>
-    </span>
-  );
-}
-
 type BrandHeadingProps = {
   size?: "sidebar" | "login";
+  /** Animation d’entrée des blocs (une fois au montage). Désactiver sur les doublons (ex. drawer mobile). */
+  intro?: boolean;
   children?: ReactNode;
 };
 
-export function ServiceCommunicationIdenaHeading({ size = "sidebar", children }: BrandHeadingProps) {
+export function ServiceCommunicationIdenaHeading({
+  size = "sidebar",
+  intro = true,
+  children,
+}: BrandHeadingProps) {
   const isLogin = size === "login";
   if (isLogin) {
     return (
       <div className="mb-10 text-center">
         <div className="mb-5 flex justify-center">
-          <IdenaMark className="h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]" />
+          <TuesdayLogo size={56} intro={intro} />
         </div>
-        <TuesdayWordmark size="login" />
         <p className="ui-kicker mt-3">Service Communication · IDENA</p>
         {children}
       </div>
@@ -69,15 +55,12 @@ export function ServiceCommunicationIdenaHeading({ size = "sidebar", children }:
   }
   return (
     <div>
-      <div className="flex items-start gap-3">
-        <IdenaMark className="mt-0.5 h-10 w-10" />
-        <div className="min-w-0">
-          <TuesdayWordmark size="sidebar" />
-          <p className="mt-1 text-[11px] font-medium tracking-[0.08em] text-[color:var(--foreground)]/50">
-            Service Communication · IDENA
-          </p>
-        </div>
-      </div>
+      <Link href="/v3/dashboard/kanban" aria-label="Tuesday — accueil" className="inline-flex">
+        <TuesdayLogo size={36} intro={intro} />
+      </Link>
+      <p className="mt-1.5 text-[10px] font-medium tracking-[0.04em] text-[color:var(--foreground)]/45">
+        Service Communication · IDENA
+      </p>
       {children}
     </div>
   );

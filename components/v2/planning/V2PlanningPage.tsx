@@ -33,6 +33,8 @@ import {
   detectConflicts,
   DAILY_CAPACITY_HOURS,
 } from "../../../lib/v2/workload";
+import V2PageHeader from "../V2PageHeader";
+import V2Segmented from "../V2Segmented";
 
 type ViewId = "week" | "month" | "timeline" | "workload";
 
@@ -116,53 +118,36 @@ export default function V2PlanningPage() {
 
   return (
       <div className="space-y-5">
-        <header className="ui-surface flex flex-wrap items-start justify-between gap-4 rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
-          <div>
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-              <CalendarDays className="h-3.5 w-3.5" /> Planning · V2
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Vues synchronisées</h1>
-            <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-              Semaine, mois, timeline et charge sur une même donnée, avec détection de conflits.
-            </p>
-          </div>
-          {conflicts.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-800">
-              <ShieldAlert className="h-4 w-4" /> {conflicts.length} conflit(s)
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">
-              Aucun conflit
-            </span>
-          )}
-        </header>
+        <V2PageHeader
+          kicker="Travail"
+          icon={CalendarDays}
+          title="Planning"
+          description="Semaine, mois, timeline et charge, avec les conflits de capacité."
+          aside={
+            conflicts.length > 0 ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-800">
+                <ShieldAlert className="h-4 w-4" /> {conflicts.length} conflit{conflicts.length > 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                Aucun conflit
+              </span>
+            )
+          }
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <nav className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] p-1">
-            {[
-              { id: "week" as const, label: "Semaine", icon: LayoutGrid },
-              { id: "month" as const, label: "Mois", icon: CalendarDays },
-              { id: "timeline" as const, label: "Timeline", icon: GanttChartSquare },
-              { id: "workload" as const, label: "Charge", icon: Scale },
-            ].map((v) => {
-              const Icon = v.icon;
-              const active = view === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setView(v.id)}
-                  className={[
-                    "ui-transition inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold",
-                    active ? "bg-[var(--accent)] text-[var(--accent-contrast)]" : "text-[color:var(--foreground)]/60 hover:bg-[var(--surface)]",
-                  ].join(" ")}
-                >
-                  <Icon className="h-4 w-4" />
-                  {v.label}
-                </button>
-              );
-            })}
-          </nav>
+          <V2Segmented
+            ariaLabel="Vues du planning"
+            value={view}
+            onChange={setView}
+            items={[
+              { id: "week", label: "Semaine", icon: LayoutGrid },
+              { id: "month", label: "Mois", icon: CalendarDays },
+              { id: "timeline", label: "Timeline", icon: GanttChartSquare },
+              { id: "workload", label: "Charge", icon: Scale },
+            ]}
+          />
           <div className="flex items-center gap-2">
             <button
               type="button"

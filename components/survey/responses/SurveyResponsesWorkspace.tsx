@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BarChart3, Download, Inbox, ListChecks, Smile, ThumbsUp, Users } from "lucide-react";
+import { TuesdayLoader } from "@/components/brand";
 import { deleteSurveyResponse, fetchSurveyDefinition } from "../../../app/actions/survey";
 import { useConfirm } from "../../ui/ConfirmDialog";
 import { findQuestion } from "../../../lib/survey/surveyDefinitionUtils";
@@ -295,7 +296,7 @@ export default function SurveyResponsesWorkspace({
       </div>
 
       {loading ? (
-        <p className="text-sm text-[color:var(--foreground)]/55">Chargement des réponses…</p>
+        <TuesdayLoader size={24} label="Chargement des réponses…" showLabel />
       ) : responses.length === 0 ? (
         <div className="ui-surface flex flex-col items-center gap-2 rounded-2xl p-12 text-center">
           <Inbox className="h-8 w-8 text-[color:var(--foreground)]/35" />
