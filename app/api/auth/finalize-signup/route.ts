@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdmin } from "../../../lib/server/supabaseAdmin";
+import { createSupabaseAdmin } from "../../../../lib/server/supabaseAdmin";
 
 /**
  * Confirme l’e-mail côté Auth (service role) puis permet une connexion immédiate.
