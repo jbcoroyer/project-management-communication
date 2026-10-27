@@ -12,6 +12,7 @@ import {
 } from "react";
 import { fallbackReferenceData, type ReferenceRecord } from "./referenceData";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { useWorkspace } from "./workspaceContext";
 
 type ReferenceDataState = {
   admins: ReferenceRecord[];
@@ -48,6 +49,7 @@ const ReferenceDataContext = createContext<ReferenceDataState | null>(null);
 
 export function ReferenceDataProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const { workspaceId, loading: workspaceLoading } = useWorkspace();
   const [state, setState] = useState<ReferenceDataState>({
     ...fallbackReferenceData,
     loading: true,
@@ -56,25 +58,33 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
   const loadedRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (!workspaceId) {
+      setState({ ...fallbackReferenceData, loading: false });
+      return;
+    }
     const [adminsRes, companiesRes, domainsRes, columnsRes] = await Promise.all([
       supabase
         .from("team_members")
         .select("id, display_name, avatar_url")
+        .eq("organization_id", workspaceId)
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
       supabase
         .from("companies")
         .select("id, name, logo_url")
+        .eq("organization_id", workspaceId)
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
       supabase
         .from("domains")
         .select("id, name, color")
+        .eq("organization_id", workspaceId)
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
       supabase
         .from("workflow_columns")
         .select("id, name")
+        .eq("organization_id", workspaceId)
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
     ]);
@@ -122,9 +132,10 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
       columns: columns.length > 0 ? columns : fallbackReferenceData.columns,
       loading: false,
     });
-  }, [supabase]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
+    if (workspaceLoading) return;
     let cancelled = false;
     const runLoad = async () => {
       try {
@@ -136,6 +147,12 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
 
     void runLoad();
 
+    if (!workspaceId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const scheduleReload = () => {
       if (reloadTimerRef.current) {
         window.clearTimeout(reloadTimerRef.current);
@@ -146,7 +163,7 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
     };
 
     const channel = supabase
-      .channel("reference-data-updates")
+      .channel(`reference-data-${workspaceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, () => {
         scheduleReload();
       })
@@ -168,7 +185,7 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
       }
       supabase.removeChannel(channel);
     };
-  }, [load, supabase]);
+  }, [load, supabase, workspaceId, workspaceLoading]);
 
   return (
     <ReferenceDataContext.Provider value={state}>{children}</ReferenceDataContext.Provider>

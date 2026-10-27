@@ -8,24 +8,30 @@ import { InAppNotificationProvider } from "../lib/inAppNotificationsContext";
 import { AdminAvatarProvider } from "../lib/adminAvatarContext";
 import { ReferenceDataProvider } from "../lib/referenceDataContext";
 import { TasksProvider } from "../lib/tasksContext";
+import { WorkspaceProvider } from "../lib/workspaceContext";
 import { ConfirmDialogProvider } from "./ui/ConfirmDialog";
+import ModulesOnboardingGate from "./ModulesOnboardingGate";
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <CurrentUserProvider>
-      <ReferenceDataProvider>
-        <AdminAvatarProvider>
-          <TasksProvider>
-          <IdenaMarkProvider>
-            <AppVersionProvider>
-              <ConfirmDialogProvider>
-                <InAppNotificationProvider>{children}</InAppNotificationProvider>
-              </ConfirmDialogProvider>
-            </AppVersionProvider>
-          </IdenaMarkProvider>
-          </TasksProvider>
-        </AdminAvatarProvider>
-      </ReferenceDataProvider>
+      <WorkspaceProvider>
+        <ModulesOnboardingGate>
+          <ReferenceDataProvider>
+            <AdminAvatarProvider>
+              <TasksProvider>
+              <IdenaMarkProvider>
+                <AppVersionProvider>
+                  <ConfirmDialogProvider>
+                    <InAppNotificationProvider>{children}</InAppNotificationProvider>
+                  </ConfirmDialogProvider>
+                </AppVersionProvider>
+              </IdenaMarkProvider>
+              </TasksProvider>
+            </AdminAvatarProvider>
+          </ReferenceDataProvider>
+        </ModulesOnboardingGate>
+      </WorkspaceProvider>
     </CurrentUserProvider>
   );
 }

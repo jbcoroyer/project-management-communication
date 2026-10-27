@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
 import { useRealtimeReload } from "./useRealtimeReload";
 import type { StockMovement } from "./stockTypes";
+import { useWorkspace } from "./workspaceContext";
 
 type StockMovementRow = {
   id: string;
@@ -45,10 +46,16 @@ function mapMovementRow(row: StockMovementRow): StockMovement {
 
 export function useStockMovements(limit = 500) {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const { workspaceId } = useWorkspace();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadMovements = useCallback(async () => {
+    if (!workspaceId) {
+      setMovements([]);
+      setLoading(false);
+      return;
+    }
     try {
       // loading silencieux après le 1er fetch
       const { data, error } = await supabase
@@ -64,6 +71,7 @@ export function useStockMovements(limit = 500) {
           inventory_items:item_id(name, category, item_type, unit_price),
           projects:project_id(id, name)
         `)
+        .eq("organization_id", workspaceId)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -71,7 +79,7 @@ export function useStockMovements(limit = 500) {
     } finally {
       setLoading(false);
     }
-  }, [limit, supabase]);
+  }, [limit, supabase, workspaceId]);
 
   useEffect(() => {
     void loadMovements().catch(() => {

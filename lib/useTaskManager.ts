@@ -13,6 +13,7 @@ import { useConfirm } from "../components/ui/ConfirmDialog";
 import type { ColumnId, Task } from "./types";
 import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
 import { requestOutlookSync } from "./outlookClientSync";
+import { useWorkspace } from "./workspaceContext";
 
 
 function normalizeProjectedWorkForSave(
@@ -69,10 +70,15 @@ export function useTaskManager({
   onMovedToDone,
 }: UseTaskManagerParams) {
   const confirm = useConfirm();
+  const { workspaceId } = useWorkspace();
   // Auto-archivage « Terminé » > 2 jours : TasksProvider (partagé tâches + événementiel).
 
   const handleCreateTask = useCallback(
     async (values: TaskFormValuesWithSubtasks) => {
+      if (!workspaceId) {
+        toastError("Aucun espace actif. Rechargez la page.");
+        return;
+      }
       const selectedAdmins = values.admins;
       const normalizedProjectedWork = normalizeProjectedWorkForSave(values.projectedWork ?? []);
       const basePayload = {
@@ -89,6 +95,7 @@ export function useTaskManager({
         projected_work: normalizedProjectedWork,
         estimated_hours: parseFloat(values.estimatedHours.replace(",", ".")) || 0,
         estimated_days: parseFloat(values.estimatedDays.replace(",", ".")) || 0,
+        organization_id: workspaceId,
       };
 
       if (editingTaskId) {
@@ -150,6 +157,7 @@ export function useTaskManager({
           estimated_days: 0,
           elapsed_ms: 0,
           is_running: false,
+          organization_id: workspaceId,
         }));
         const { data: subData, error: subError } = await supabase.from("tasks").insert(subtaskRows).select();
         if (subError) {
@@ -162,7 +170,7 @@ export function useTaskManager({
 
       onTaskFormDone();
     },
-    [columns, editingTaskId, newTaskColumn, onTaskFormDone, setTasks, supabase],
+    [columns, editingTaskId, newTaskColumn, onTaskFormDone, setTasks, supabase, workspaceId],
   );
 
   const handleArchiveTask = useCallback(

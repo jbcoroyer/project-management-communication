@@ -25,7 +25,6 @@ import {
 } from "../../lib/authAllowlist";
 import { ServiceCommunicationIdenaHeading } from "../../components/IdenaBrand";
 import { TuesdayLoader } from "@/components/brand";
-import LoginInlineDemo from "../../components/LoginInlineDemo";
 
 type AuthMode = "signin" | "signup";
 type SignupStep = 1 | 2;
@@ -39,6 +38,8 @@ function translateAuthError(message: string): string {
     return "Un compte avec cet email existe déjà. Connectez-vous.";
   if (message.includes("Password should be at least"))
     return "Le mot de passe doit contenir au moins 6 caractères.";
+  if (message.toLowerCase().includes("database error saving new user"))
+    return "Impossible de créer le compte (erreur base de données). Réessayez, ou contactez un admin si ça continue.";
   return message;
 }
 
@@ -76,6 +77,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("deleted") === "1") {
+      setSuccess("Compte supprimé définitivement. Vous pouvez en créer un nouveau si besoin.");
+      window.history.replaceState(null, "", "/login");
+      return;
+    }
     const errorCode = params.get("error_code");
     const accessDenied = params.get("error");
     let desc = params.get("error_description");
@@ -129,7 +135,13 @@ export default function LoginPage() {
         password,
       });
       if (signInError) throw signInError;
-      router.push("/");
+      const next =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("next") ||
+            window.sessionStorage.getItem("tuesday.postLoginRedirect")
+          : null;
+      if (next) window.sessionStorage.removeItem("tuesday.postLoginRedirect");
+      router.push(next && next.startsWith("/") ? next : "/");
       router.refresh();
     } catch (err: unknown) {
       setError(translateAuthError(err instanceof Error ? err.message : String(err)));
@@ -189,8 +201,9 @@ export default function LoginPage() {
     const displayName = `${firstName.trim()} ${lastName.trim()}`;
 
     try {
+      const emailNorm = signupEmail.trim();
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: signupEmail.trim(),
+        email: emailNorm,
         password: signupPassword,
         options: {
           data: {
@@ -200,43 +213,65 @@ export default function LoginPage() {
         },
       });
       if (signUpError) throw signUpError;
+      if (!data.user) throw new Error("Création du compte incomplète.");
 
-      // Si session immédiate (email confirmation désactivé), on upload la photo
-      if (data.session && photoFile) {
-        const ext = photoFile.name.split(".").pop() ?? "jpg";
-        // On récupère le member_id depuis le profil fraîchement créé
-        const { data: profileRow } = await supabase
-          .from("profiles")
-          .select("team_member_id")
-          .eq("id", data.session.user.id)
-          .maybeSingle();
-
-        if (profileRow?.team_member_id) {
-          const path = `${String(profileRow.team_member_id)}.${ext}`;
-          const { error: upErr } = await supabase.storage
-            .from("member-avatars")
-            .upload(path, photoFile, { upsert: true });
-          if (!upErr) {
-            const { data: { publicUrl } } = supabase.storage
-              .from("member-avatars")
-              .getPublicUrl(path);
-            await supabase
-              .from("team_members")
-              .update({ avatar_url: publicUrl })
-              .eq("id", String(profileRow.team_member_id));
-          }
+      // Pas de vérification e-mail : confirmer côté serveur puis ouvrir la session.
+      if (!data.session) {
+        const finalize = await fetch("/api/auth/finalize-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: data.user.id,
+            email: emailNorm,
+            password: signupPassword,
+          }),
+        });
+        const finalizeJson = (await finalize.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!finalize.ok) {
+          throw new Error(finalizeJson.error || "Impossible de finaliser l’inscription.");
         }
-        router.push("/");
-        router.refresh();
-        return;
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: emailNorm,
+          password: signupPassword,
+        });
+        if (signInError) throw signInError;
       }
 
-      // Email confirmation requis
-      setSuccess(
-        "Compte créé ! Vérifiez votre boite mail pour confirmer votre adresse, puis connectez-vous.",
-      );
-      setMode("signin");
-      setStep(1);
+      if (photoFile) {
+        const {
+          data: { user: sessionUser },
+        } = await supabase.auth.getUser();
+        if (sessionUser) {
+          const ext = photoFile.name.split(".").pop() ?? "jpg";
+          const { data: profileRow } = await supabase
+            .from("profiles")
+            .select("team_member_id")
+            .eq("id", sessionUser.id)
+            .maybeSingle();
+
+          if (profileRow?.team_member_id) {
+            const path = `${String(profileRow.team_member_id)}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from("member-avatars")
+              .upload(path, photoFile, { upsert: true });
+            if (!upErr) {
+              const {
+                data: { publicUrl },
+              } = supabase.storage.from("member-avatars").getPublicUrl(path);
+              await supabase
+                .from("team_members")
+                .update({ avatar_url: publicUrl })
+                .eq("id", String(profileRow.team_member_id));
+            }
+          }
+        }
+      }
+
+      router.push("/onboarding");
+      router.refresh();
+      return;
     } catch (err: unknown) {
       setError(translateAuthError(err instanceof Error ? err.message : String(err)));
     } finally {
@@ -252,13 +287,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] px-4 py-8 lg:px-8">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[minmax(400px,500px)_1fr] lg:items-start">
-        <div className="lg:pr-2">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-10">
+      <div className="w-full max-w-md">
           <ServiceCommunicationIdenaHeading size="login">
             <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
               {mode === "signin"
-                ? "Connectez-vous à votre espace Service Communication IDENA."
+                ? "Connectez-vous à votre espace."
                 : step === 1
                   ? "Parlez-nous de vous."
                   : "Créez vos identifiants de connexion."}
@@ -483,7 +517,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-6 text-center text-[11px] text-[color:var(--foreground)]/45">
-            Outil interne — IDENA · Service Communication
+            Outil interne — Tuesday · IDENA
           </p>
           <p className="mt-2 text-center text-[11px] text-[color:var(--foreground)]/35">
             Réinitialisation directe:{" "}
@@ -491,11 +525,6 @@ export default function LoginPage() {
               définir un nouveau mot de passe
             </Link>
           </p>
-        </div>
-
-        <div className="pb-4">
-          <LoginInlineDemo />
-        </div>
       </div>
     </div>
   );

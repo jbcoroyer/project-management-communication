@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "../../lib/server/supabaseServer";
+import { getCurrentWorkspaceId } from "../../lib/server/currentWorkspace";
 import { buildDefaultBudgetPosts } from "../../lib/eventBudgetUtils";
 import { buildChecklistTaskRows, shiftTaskDeadline } from "../../lib/eventTaskFactory";
 import type { EventClosureRecap, EventStatus } from "../../lib/eventTypes";
@@ -45,11 +46,16 @@ export async function createEventWithTasks(input: CreateEventInput): Promise<Cre
   }
 
   const supabase = await createServerSupabase();
+  const organizationId = await getCurrentWorkspaceId(supabase);
+  if (!organizationId) {
+    return { ok: false, error: "Aucun espace actif." };
+  }
   const sinceIso = new Date(Date.now() - DEDUP_WINDOW_MS).toISOString();
 
   const { data: recentDuplicate } = await supabase
     .from("events")
     .select("id")
+    .eq("organization_id", organizationId)
     .eq("name", name)
     .eq("start_date", input.startDate)
     .eq("end_date", input.endDate)
@@ -78,6 +84,7 @@ export async function createEventWithTasks(input: CreateEventInput): Promise<Cre
       allocated_budget: Math.max(0, Number(input.allocatedBudget) || 0),
       budget_posts: budgetPosts,
       template_key: input.templateKey?.trim() || null,
+      organization_id: organizationId,
     })
     .select("id")
     .single();
@@ -95,7 +102,7 @@ export async function createEventWithTasks(input: CreateEventInput): Promise<Cre
       startDate: input.startDate,
       templateKey: input.templateKey,
       defaultAdmin: adminName,
-    });
+    }).map((row) => ({ ...row, organization_id: organizationId }));
     if (rows.length > 0) {
       const { error: taskErr } = await supabase.from("tasks").insert(rows);
       if (taskErr) {
@@ -115,13 +122,15 @@ export async function createEventWithTasks(input: CreateEventInput): Promise<Cre
 
 export async function duplicateEvent(input: DuplicateEventInput): Promise<DuplicateEventResult> {
   const supabase = await createServerSupabase();
+  const organizationId = await getCurrentWorkspaceId(supabase);
+  if (!organizationId) return { ok: false, error: "Aucun espace actif." };
   const sourceId = input.sourceEventId?.trim();
   if (!sourceId) return { ok: false, error: "Événement source manquant." };
 
   const { data: source, error: srcErr } = await supabase
     .from("events")
     .select(
-      "id, name, location, start_date, end_date, status, allocated_budget, budget_posts, template_key",
+      "id, name, location, start_date, end_date, status, allocated_budget, budget_posts, template_key, organization_id",
     )
     .eq("id", sourceId)
     .maybeSingle();
@@ -131,6 +140,7 @@ export async function duplicateEvent(input: DuplicateEventInput): Promise<Duplic
   }
 
   const row = source as Record<string, unknown>;
+  const eventOrgId = (row.organization_id as string | null) ?? organizationId;
   const budgetPosts = (row.budget_posts as Record<string, number> | null) ?? buildDefaultBudgetPosts(
     Math.max(0, Number(row.allocated_budget ?? 0) || 0),
   );
@@ -146,6 +156,7 @@ export async function duplicateEvent(input: DuplicateEventInput): Promise<Duplic
       allocated_budget: Math.max(0, Number(row.allocated_budget ?? 0) || 0),
       budget_posts: budgetPosts,
       template_key: (row.template_key as string | null) ?? null,
+      organization_id: eventOrgId,
     })
     .select("id")
     .single();
@@ -198,6 +209,7 @@ export async function duplicateEvent(input: DuplicateEventInput): Promise<Duplic
         estimated_hours: tr.estimated_hours ?? 0,
         estimated_days: tr.estimated_days ?? 0,
         completed_at: null,
+        organization_id: eventOrgId,
       };
     });
 

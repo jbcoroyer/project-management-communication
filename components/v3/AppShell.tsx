@@ -22,7 +22,14 @@ import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../../lib/adminAvatarC
 import { useCurrentUser } from "../../lib/useCurrentUser";
 import { TuesdaySplash } from "@/components/brand";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
+import WorkspaceSwitcher from "../WorkspaceSwitcher";
 import V3GlobalSearch from "./GlobalSearch";
+import { useWorkspaceOptional } from "../../lib/useWorkspace";
+import {
+  allModulesEnabled,
+  moduleKeyForHref,
+  type WorkspaceModules,
+} from "../../lib/workspaceModules";
 
 type V3AppShellProps = {
   children: ReactNode;
@@ -139,7 +146,16 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
   const displayAvatar =
     user?.avatarUrl ?? (displayName ? resolveAdminAvatarUrl(avatarMap, displayName) : null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const sections = NAV_SECTIONS;
+  const workspaceCtx = useWorkspaceOptional();
+  const modules: WorkspaceModules = workspaceCtx?.modules ?? allModulesEnabled();
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => {
+      const key = moduleKeyForHref(item.href);
+      if (key === "settings" || key == null) return true;
+      return modules[key] === true;
+    }),
+  })).filter((section) => section.items.length > 0);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -176,8 +192,12 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
         </div>
       ) : null}
 
+      <div className="mt-4">
+        <WorkspaceSwitcher />
+      </div>
+
       <nav
-        className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-width:thin]"
+        className="mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-width:thin]"
         aria-label="Navigation V3"
       >
         {sections.map((section) => (

@@ -2,33 +2,22 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import PublicProductDemo from "../components/PublicProductDemo";
 import { DEFAULT_HOME_PATH } from "../lib/appVersion";
 import { useCurrentUser } from "../lib/useCurrentUser";
+import { TuesdayLoader } from "@/components/brand";
 
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(DEFAULT_HOME_PATH);
-    }
+    if (loading) return;
+    router.replace(user ? DEFAULT_HOME_PATH : "/login");
   }, [loading, user, router]);
 
-  if (loading || user) {
-    return (
-      <div className="min-h-screen bg-[var(--background)]">
-        <div className="mx-auto max-w-6xl space-y-4 px-4 py-8 lg:px-8">
-          <div className="ui-surface h-20 animate-pulse rounded-2xl" />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="ui-surface h-64 animate-pulse rounded-2xl" />
-            <div className="ui-surface h-64 animate-pulse rounded-2xl" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <PublicProductDemo />;
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+      <TuesdayLoader size={36} />
+    </div>
+  );
 }

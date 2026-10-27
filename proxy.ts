@@ -38,6 +38,7 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/invite") ||
     pathname.startsWith("/ideas") ||
     pathname === "/questionnaire" ||
     pathname.startsWith("/questionnaire/f/") ||

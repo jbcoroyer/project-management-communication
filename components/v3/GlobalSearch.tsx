@@ -10,6 +10,7 @@ import {
   type GlobalSearchHit,
   type GlobalSearchKind,
 } from "../../lib/globalSearch";
+import { useWorkspace } from "../../lib/useWorkspace";
 
 const KIND_ICON: Record<GlobalSearchKind, typeof Search> = {
   task: LayoutGrid,
@@ -23,6 +24,7 @@ export default function V3GlobalSearch() {
   const router = useRouter();
   const listId = useId();
   const supabase = getSupabaseBrowser();
+  const { workspaceId } = useWorkspace();
   const rootRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ export default function V3GlobalSearch() {
   const runSearch = useCallback(
     async (q: string) => {
       const trimmed = q.trim();
-      if (trimmed.length < 2) {
+      if (trimmed.length < 2 || !workspaceId) {
         setHits([]);
         return;
       }
@@ -43,21 +45,34 @@ export default function V3GlobalSearch() {
           supabase
             .from("tasks")
             .select("id, project_name, company, is_archived")
+            .eq("organization_id", workspaceId)
             .eq("is_archived", false)
             .ilike("project_name", `%${trimmed}%`)
             .limit(12),
-          supabase.from("events").select("id, name, location").ilike("name", `%${trimmed}%`).limit(8),
+          supabase
+            .from("events")
+            .select("id, name, location")
+            .eq("organization_id", workspaceId)
+            .ilike("name", `%${trimmed}%`)
+            .limit(8),
           supabase
             .from("inventory_items")
             .select("id, name, category")
+            .eq("organization_id", workspaceId)
             .ilike("name", `%${trimmed}%`)
             .limit(8),
           supabase
             .from("deliverables")
             .select("id, project_name, company")
+            .eq("organization_id", workspaceId)
             .ilike("project_name", `%${trimmed}%`)
             .limit(8),
-          supabase.from("dam_assets").select("id, name, company").ilike("name", `%${trimmed}%`).limit(8),
+          supabase
+            .from("dam_assets")
+            .select("id, name, company")
+            .eq("organization_id", workspaceId)
+            .ilike("name", `%${trimmed}%`)
+            .limit(8),
         ]);
 
         const collected: GlobalSearchHit[] = [];
@@ -114,7 +129,7 @@ export default function V3GlobalSearch() {
         setLoading(false);
       }
     },
-    [supabase],
+    [supabase, workspaceId],
   );
 
   useEffect(() => {

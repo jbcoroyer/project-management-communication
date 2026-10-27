@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "./supabaseBrowser";
 import { useRealtimeReload } from "./useRealtimeReload";
 import type { EventRow, EventStatus } from "./eventTypes";
+import { useWorkspace } from "./workspaceContext";
 
 type EventDbRow = {
   id: string;
@@ -52,11 +53,12 @@ function mapEvent(row: EventDbRow): EventRow {
 export function useEvents(options?: { enabled?: boolean }) {
   const enabled = options?.enabled ?? true;
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const { workspaceId } = useWorkspace();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadEvents = useCallback(async () => {
-    if (!enabled) {
+    if (!enabled || !workspaceId) {
       setEvents([]);
       setLoading(false);
       return;
@@ -68,13 +70,14 @@ export function useEvents(options?: { enabled?: boolean }) {
         .select(
           "id, created_at, name, location, start_date, end_date, status, allocated_budget, budget_posts, template_key, closure_recap",
         )
+        .eq("organization_id", workspaceId)
         .order("start_date", { ascending: true });
       if (error) throw error;
       setEvents(((data ?? []) as EventDbRow[]).map(mapEvent));
     } finally {
       setLoading(false);
     }
-  }, [enabled, supabase]);
+  }, [enabled, supabase, workspaceId]);
 
   useEffect(() => {
     if (!enabled) {
@@ -87,8 +90,8 @@ export function useEvents(options?: { enabled?: boolean }) {
 
   useRealtimeReload({
     table: "events",
-    channelName: "events-realtime",
-    enabled,
+    channelName: workspaceId ? `events-ws-${workspaceId}` : "events-realtime",
+    enabled: enabled && Boolean(workspaceId),
     onChange: useCallback(() => {
       void loadEvents().catch(() => {});
     }, [loadEvents]),

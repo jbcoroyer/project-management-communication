@@ -25,6 +25,20 @@ export async function createQuickTask(input: QuickTaskInput): Promise<{ id: stri
   const workDate = input.deadline ?? new Date().toISOString().slice(0, 10);
   const estimatedHours = input.estimatedHours ?? 1;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let organizationId: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    organizationId = (profile?.organization_id as string | null) ?? null;
+  }
+  if (!organizationId) throw new Error("Aucun espace actif");
+
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -47,6 +61,7 @@ export async function createQuickTask(input: QuickTaskInput): Promise<{ id: stri
       estimated_hours: estimatedHours,
       estimated_days: 0,
       event_id: input.eventId ?? null,
+      organization_id: organizationId,
     })
     .select("id")
     .maybeSingle();

@@ -9,6 +9,7 @@ import {
   type InventoryItemMutation,
 } from "./inventoryTypes";
 import type { RecordStockMovementPayload, RecordStockMovementResult } from "./stockTypes";
+import { useWorkspace } from "./workspaceContext";
 
 const INVENTORY_SELECT = [
   "id",
@@ -104,6 +105,7 @@ export function getInventoryErrorMessage(error: unknown, fallback: string): stri
 
 export function useInventory() {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const { workspaceId } = useWorkspace();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const itemsRef = useRef<InventoryItem[]>([]);
@@ -170,11 +172,17 @@ export function useInventory() {
   }, []);
 
   const loadItems = useCallback(async () => {
+    if (!workspaceId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     try {
       // loading silencieux après le 1er fetch
       const { data, error } = await supabase
         .from("inventory_items")
         .select(INVENTORY_SELECT)
+        .eq("organization_id", workspaceId)
         .order("category", { ascending: true })
         .order("name", { ascending: true });
       if (error) {
@@ -184,7 +192,7 @@ export function useInventory() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     let active = true;
@@ -198,11 +206,17 @@ export function useInventory() {
   }, [loadItems]);
 
   useEffect(() => {
+    if (!workspaceId) return;
     const channel = supabase
-      .channel("inventory-items-realtime")
+      .channel(`inventory-items-ws-${workspaceId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "inventory_items" },
+        {
+          event: "*",
+          schema: "public",
+          table: "inventory_items",
+          filter: `organization_id=eq.${workspaceId}`,
+        },
         (payload: { eventType?: string; old?: { id?: string }; new?: unknown }) => {
           if (payload.eventType === "DELETE") {
             const deletedId = payload.old?.id as string | undefined;
@@ -224,13 +238,14 @@ export function useInventory() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadItemById, supabase]);
+  }, [loadItemById, supabase, workspaceId]);
 
   const createItem = useCallback(
     async (payload: InventoryItemMutation) => {
+      if (!workspaceId) throw new Error("Aucun espace actif");
       const { data, error } = await supabase
         .from("inventory_items")
-        .insert(normalizeMutation(payload))
+        .insert({ ...normalizeMutation(payload), organization_id: workspaceId })
         .select(INVENTORY_SELECT)
         .single();
       if (error) throw error;
@@ -238,7 +253,7 @@ export function useInventory() {
       upsertItem(mapped);
       await notifyLowStock(mapped.name, mapped.quantity, mapped.alertThreshold);
     },
-    [notifyLowStock, supabase, upsertItem],
+    [notifyLowStock, supabase, upsertItem, workspaceId],
   );
 
   const updateItem = useCallback(

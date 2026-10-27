@@ -10,6 +10,7 @@ import {
   CalendarDays,
   ClipboardList,
   Command as CommandIcon,
+  GanttChart,
   KanbanSquare,
   ListFilter,
   PartyPopper,
@@ -34,6 +35,7 @@ import { useReferenceData } from "../../../lib/useReferenceData";
 import { useTasks } from "../../../lib/useTasks";
 import { useEvents } from "../../../lib/useEvents";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
+import { useWorkspace } from "../../../lib/useWorkspace";
 import { teamAdminNameForUser } from "../../../lib/taskConcernsUser";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { useTaskManager } from "../../../lib/useTaskManager";
@@ -78,6 +80,7 @@ type MainTab =
   | "list"
   | "todo"
   | "calendar"
+  | "gantt"
   | "analytics"
   | "archives"
   | "workload"
@@ -87,6 +90,7 @@ const MAIN_TAB_SET = new Set<MainTab>([
   "list",
   "todo",
   "calendar",
+  "gantt",
   "analytics",
   "archives",
   "workload",
@@ -103,6 +107,7 @@ const MAIN_TABS: {
   { id: "todo", label: "Ma To-Do List", short: "To-do", group: "work", icon: ClipboardList },
   { id: "kanban", label: "Tableau Kanban", short: "Kanban", group: "work", icon: KanbanSquare },
   { id: "list", label: "Vue liste", short: "Liste", group: "work", icon: Table2 },
+  { id: "gantt", label: "Vue Gantt", short: "Gantt", group: "work", icon: GanttChart },
   { id: "calendar", label: "Calendrier", short: "Calendrier", group: "work", icon: CalendarDays },
   { id: "workload", label: "Charge équipe", short: "Charge", group: "pilot", icon: Users },
   { id: "analytics", label: "Analytics", short: "Stats", group: "pilot", icon: BarChart3 },
@@ -114,6 +119,7 @@ const ToDoListView = dynamic(() => import("../../ToDoListView"));
 const AnalyticsView = dynamic(() => import("../../AnalyticsView"));
 const ArchivesView = dynamic(() => import("../../ArchivesView"));
 const CalendarView = dynamic(() => import("../../CalendarView"));
+const GanttView = dynamic(() => import("../../GanttView"));
 const WorkloadView = dynamic(() => import("../../WorkloadView"));
 const TaskDetailPanel = dynamic(() => import("../../TaskDetailPanel"));
 const NewTaskModal = dynamic(() => import("../../NewTaskModal"));
@@ -124,6 +130,7 @@ export default function V2DashboardHomePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user: currentUser } = useCurrentUser();
+  const { workspaceId } = useWorkspace();
 
   const appVersion = detectVersionFromPath(pathname);
   const routePrefix = pathVersionPrefix(pathname) || "/v2";
@@ -435,6 +442,7 @@ export default function V2DashboardHomePage() {
         last_start_time_ms: null,
         is_archived: false,
         completed_at: completedAtIsoForNewTaskInColumn(column),
+        organization_id: workspaceId,
       };
 
       const { data, error } = await supabase.from("tasks").insert(payload).select().single();
@@ -511,6 +519,7 @@ export default function V2DashboardHomePage() {
         last_start_time_ms: null,
         is_archived: false,
         completed_at: completedAtIsoForNewTaskInColumn(column),
+        organization_id: workspaceId,
       };
 
       const { data, error } = await supabase.from("tasks").insert(payload).select().single();
@@ -590,7 +599,15 @@ export default function V2DashboardHomePage() {
 
   const insertTaskRow = useCallback(
     async (payload: Record<string, unknown>): Promise<Task | null> => {
-      const { data, error } = await supabase.from("tasks").insert(payload).select().single();
+      if (!workspaceId) {
+        toastError("Aucun espace actif.");
+        return null;
+      }
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({ ...payload, organization_id: workspaceId })
+        .select()
+        .single();
       if (error || !data) {
         toastError(`Création impossible : ${error?.message ?? "erreur inconnue"}`);
         return null;
@@ -603,7 +620,7 @@ export default function V2DashboardHomePage() {
       });
       return created;
     },
-    [setTasks, supabase],
+    [setTasks, supabase, workspaceId],
   );
 
   const handleAcceptRequest = useCallback(
@@ -801,6 +818,7 @@ export default function V2DashboardHomePage() {
     "g k": () => navigateToTab("kanban"),
     "g l": () => navigateToTab("list"),
     "g t": () => navigateToTab("todo"),
+    "g g": () => navigateToTab("gantt"),
     "g c": () => navigateToTab("calendar"),
     "g w": () => navigateToTab("workload"),
     "g a": () => navigateToTab("analytics"),
@@ -849,6 +867,7 @@ export default function V2DashboardHomePage() {
       { id: "nav-kanban", group: "Navigation", label: "Tableau Kanban", hint: "G K", perform: () => navigateToTab("kanban") },
       { id: "nav-list", group: "Navigation", label: "Vue liste", hint: "G L", perform: () => navigateToTab("list") },
       { id: "nav-todo", group: "Navigation", label: "Ma To-Do List", hint: "G T", perform: () => navigateToTab("todo") },
+      { id: "nav-gantt", group: "Navigation", label: "Vue Gantt", hint: "G G", perform: () => navigateToTab("gantt") },
       { id: "nav-calendar", group: "Navigation", label: "Calendrier", hint: "G C", perform: () => navigateToTab("calendar") },
       { id: "nav-workload", group: "Navigation", label: "Charge équipe", hint: "G W", perform: () => navigateToTab("workload") },
       { id: "nav-analytics", group: "Navigation", label: "Analytics", hint: "G A", perform: () => navigateToTab("analytics") },
@@ -872,10 +891,10 @@ export default function V2DashboardHomePage() {
             },
           ] as PaletteAction[])),
       {
-        id: "open-automations",
+        id: "open-settings",
         group: "Navigation",
-        label: "Automatisations (paramètres)",
-        keywords: ["règles", "automation"],
+        label: "Réglages",
+        keywords: ["paramètres", "membres", "espace"],
         perform: () => router.push(`${routePrefix}/settings`),
       },
     ];
@@ -1183,6 +1202,18 @@ export default function V2DashboardHomePage() {
               admins={filterAdmins}
               currentUserName={effectiveUser}
               salonEvents={salonEvents}
+              onSelectTask={(taskId) => {
+                lastFocusedTaskIdRef.current = null;
+                setSelectedTaskId(taskId);
+              }}
+            />
+          )}
+
+          {activeTab === "gantt" && (
+            <GanttView
+              tasks={filteredActiveTasks}
+              admins={filterAdmins}
+              currentUserName={effectiveUser}
               onSelectTask={(taskId) => {
                 lastFocusedTaskIdRef.current = null;
                 setSelectedTaskId(taskId);

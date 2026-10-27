@@ -53,7 +53,6 @@ const nextConfig: NextConfig = {
       "@dnd-kit/core",
       "@dnd-kit/sortable",
       "framer-motion",
-      "@tanstack/react-virtual",
     ],
   },
 };

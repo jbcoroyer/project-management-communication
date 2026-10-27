@@ -162,6 +162,14 @@ export async function createDeliverable(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Session invalide. Reconnectez-vous." };
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const organizationId = (profile?.organization_id as string | null) ?? null;
+  if (!organizationId) return { error: "Aucun espace actif." };
+
   let storagePath: string | null = null;
   let fileUrl: string | null = null;
   let fileName: string | null = null;
@@ -191,6 +199,7 @@ export async function createDeliverable(
     file_name: fileName,
     file_mime: fileMime,
     file_size_bytes: fileSizeBytes,
+    organization_id: organizationId,
   };
 
   // Unicité task_id : si un livrable existe déjà pour la tâche, on le met à jour.

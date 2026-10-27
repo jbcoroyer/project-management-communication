@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowser } from "../supabaseBrowser";
 import { toastError, toastSuccess } from "../toast";
+import { useWorkspace } from "../workspaceContext";
 
 export const DAM_TYPES = ["Logo", "Visuel", "Template", "Document", "Vidéo", "Autre"] as const;
 export type DamType = (typeof DAM_TYPES)[number];
@@ -97,12 +98,18 @@ async function detectBackend(supabase: SupabaseClient): Promise<"supabase" | "lo
 
 export function useDamAssets() {
   const supabase = getSupabaseBrowser();
+  const { workspaceId } = useWorkspace();
   const [assets, setAssets] = useState<DamAsset[]>([]);
   const [backend, setBackend] = useState<"supabase" | "local">("local");
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     setLoading(true);
+    if (!workspaceId) {
+      setAssets([]);
+      setLoading(false);
+      return;
+    }
     const mode = await detectBackend(supabase);
     setBackend(mode);
     if (mode === "local") {
@@ -113,6 +120,7 @@ export function useDamAssets() {
     const { data, error } = await supabase
       .from("dam_assets")
       .select("*")
+      .eq("organization_id", workspaceId)
       .order("created_at", { ascending: false });
     if (error) {
       toastError(`Médias indisponibles : ${error.message}`);
@@ -125,7 +133,7 @@ export function useDamAssets() {
       setAssets(mapped);
     }
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     void reload();
@@ -199,6 +207,11 @@ export function useDamAssets() {
         return null;
       }
 
+      if (!workspaceId) {
+        toastError("Aucun espace actif.");
+        return null;
+      }
+
       const { data, error } = await supabase
         .from("dam_assets")
         .insert({
@@ -212,6 +225,7 @@ export function useDamAssets() {
           file_mime: fileMime,
           file_size_bytes: fileSizeBytes,
           created_by: user.id,
+          organization_id: workspaceId,
         })
         .select("*")
         .single();
@@ -226,7 +240,7 @@ export function useDamAssets() {
       toastSuccess("Asset enregistré");
       return mapped;
     },
-    [backend, supabase],
+    [backend, supabase, workspaceId],
   );
 
   const remove = useCallback(

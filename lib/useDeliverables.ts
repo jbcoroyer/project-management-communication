@@ -12,17 +12,25 @@ import {
   type UpdateDeliverableInput,
 } from "./deliverables";
 import { toastError, toastSuccess } from "./toast";
+import { useWorkspace } from "./workspaceContext";
 
 export function useDeliverables() {
   const supabase = getSupabaseBrowser();
+  const { workspaceId } = useWorkspace();
   const [items, setItems] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!workspaceId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     // loading silencieux après le 1er fetch (état initial = true)
     const { data, error } = await supabase
       .from("deliverables")
       .select("*")
+      .eq("organization_id", workspaceId)
       .order("completed_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) {
@@ -32,7 +40,7 @@ export function useDeliverables() {
       setItems(await mapDeliverableRowsWithSignedUrls(supabase, data ?? []));
     }
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     void load();

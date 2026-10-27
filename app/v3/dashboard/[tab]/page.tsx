@@ -9,6 +9,7 @@ const VALID_TABS = new Set([
   "list",
   "todo",
   "calendar",
+  "gantt",
   "analytics",
   "archives",
   "workload",

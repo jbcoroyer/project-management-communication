@@ -46,9 +46,10 @@ export function ServiceCommunicationIdenaHeading({
     return (
       <div className="mb-10 text-center">
         <div className="mb-5 flex justify-center">
-          <TuesdayLogo size={56} intro={intro} />
+          {/* Login : boucle continue même après chargement (pas seulement l’intro). */}
+          <TuesdayLogo size={56} animation="loop" />
         </div>
-        <p className="ui-kicker mt-3">Service Communication · IDENA</p>
+        <p className="ui-kicker mt-3">Tuesday · IDENA</p>
         {children}
       </div>
     );

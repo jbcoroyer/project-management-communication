@@ -28,6 +28,7 @@ import { useIdenaMark } from "../../lib/idenaMarkContext";
 import { IdenaMark } from "../IdenaBrand";
 import { TuesdayLoader } from "@/components/brand";
 import { useCurrentUser } from "../../lib/useCurrentUser";
+import { useWorkspace } from "../../lib/useWorkspace";
 import { syncAdminColorAssignments } from "../../lib/adminColorAssignments";
 import { adminSolidColorFor, getAdminColorPaletteSize } from "../../lib/kanbanStyles";
 import type { AdminId } from "../../lib/types";
@@ -186,6 +187,7 @@ function EntityRow(props: {
 /* ─────────────────────────── Page principale ─────────────────────────── */
 export default function AdminSettingsPanel() {
   const { user: currentUser, reload: reloadUser } = useCurrentUser();
+  const { workspaceId } = useWorkspace();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
 
   const [loading, setLoading] = useState(true);
@@ -226,11 +228,19 @@ export default function AdminSettingsPanel() {
   /* ─── Chargement ─── */
   const loadAll = useCallback(async () => {
     setLoading(true);
+    if (!workspaceId) {
+      setAdmins([]);
+      setCompanies([]);
+      setDomains([]);
+      setColumns([]);
+      setLoading(false);
+      return;
+    }
     const [adminsRes, companiesRes, domainsRes, columnsRes, settingsRes] = await Promise.all([
-      supabase.from("team_members").select("id, display_name, is_active, sort_order, avatar_url").order("sort_order"),
-      supabase.from("companies").select("id, name, is_active, sort_order, logo_url").order("sort_order"),
-      supabase.from("domains").select("id, name, color, is_active, sort_order").order("sort_order"),
-      supabase.from("workflow_columns").select("id, name, is_active, sort_order").order("sort_order"),
+      supabase.from("team_members").select("id, display_name, is_active, sort_order, avatar_url").eq("organization_id", workspaceId).order("sort_order"),
+      supabase.from("companies").select("id, name, is_active, sort_order, logo_url").eq("organization_id", workspaceId).order("sort_order"),
+      supabase.from("domains").select("id, name, color, is_active, sort_order").eq("organization_id", workspaceId).order("sort_order"),
+      supabase.from("workflow_columns").select("id, name, is_active, sort_order").eq("organization_id", workspaceId).order("sort_order"),
       supabase.from("app_settings").select("idena_mark_url").eq("id", "default").maybeSingle(),
     ]);
 
@@ -260,7 +270,7 @@ export default function AdminSettingsPanel() {
     const rawUrl = settingsRes.data?.idena_mark_url;
     setIdenaMarkUrl(typeof rawUrl === "string" && rawUrl.trim() !== "" ? rawUrl.trim() : null);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, workspaceId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -561,7 +571,7 @@ export default function AdminSettingsPanel() {
                   const name = newAdminName.trim();
                   if (!name) return;
                   void (async () => {
-                    const { error } = await supabase.from("team_members").insert({ display_name: name, is_active: true });
+                    const { error } = await supabase.from("team_members").insert({ display_name: name, is_active: true, organization_id: workspaceId });
                     if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                     setNewAdminName("");
                     await loadAll();
@@ -577,7 +587,7 @@ export default function AdminSettingsPanel() {
               onClick={async () => {
                 const name = newAdminName.trim();
                 if (!name) return;
-                const { error } = await supabase.from("team_members").insert({ display_name: name, is_active: true });
+                const { error } = await supabase.from("team_members").insert({ display_name: name, is_active: true, organization_id: workspaceId });
                 if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                 setNewAdminName("");
                 await loadAll();
@@ -685,7 +695,7 @@ export default function AdminSettingsPanel() {
                 const name = newCompanyName.trim();
                 if (!name) return;
                 void (async () => {
-                  const { error } = await supabase.from("companies").insert({ name, is_active: true });
+                  const { error } = await supabase.from("companies").insert({ name, is_active: true, organization_id: workspaceId });
                   if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                   setNewCompanyName("");
                   await loadAll();
@@ -700,7 +710,7 @@ export default function AdminSettingsPanel() {
               onClick={async () => {
                 const name = newCompanyName.trim();
                 if (!name) return;
-                const { error } = await supabase.from("companies").insert({ name, is_active: true });
+                const { error } = await supabase.from("companies").insert({ name, is_active: true, organization_id: workspaceId });
                 if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                 setNewCompanyName("");
                 await loadAll();
@@ -831,7 +841,7 @@ export default function AdminSettingsPanel() {
                 const name = `${newDomainEmoji.trim()} ${label}`.trim();
                 const { error } = await supabase
                   .from("domains")
-                  .insert({ name, color: DOMAIN_BADGE_COLOR, is_active: true });
+                  .insert({ name, color: DOMAIN_BADGE_COLOR, is_active: true, organization_id: workspaceId });
                 if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                 setNewDomainLabel("");
                 await loadAll();
@@ -910,7 +920,7 @@ export default function AdminSettingsPanel() {
               onClick={async () => {
                 const name = newColumnName.trim();
                 if (!name) return;
-                const { error } = await supabase.from("workflow_columns").insert({ name, is_active: true });
+                const { error } = await supabase.from("workflow_columns").insert({ name, is_active: true, organization_id: workspaceId });
                 if (error) { toastError(`Ajout impossible: ${error.message}`); return; }
                 setNewColumnName("");
                 await loadAll();

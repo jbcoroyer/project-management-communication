@@ -17,6 +17,7 @@ import { mapTaskRow } from "./taskMappers";
 import { TASK_SELECT_WITH_EVENT } from "./taskQueries";
 import { AUTO_ARCHIVE_DELAY_MS, DONE_COLUMN_NAME } from "./workflowConstants";
 import type { Task } from "./types";
+import { useWorkspace } from "./workspaceContext";
 
 type TasksContextValue = {
   tasks: Task[];
@@ -38,6 +39,7 @@ const TasksContext = createContext<TasksContextValue | null>(null);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser();
+  const { workspaceId, loading: workspaceLoading } = useWorkspace();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [tasks, setTasks] = useState<Task[]>([]);
   /** true jusqu’au premier cycle de chargement (splash + états vides). */
@@ -52,7 +54,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, [tasks]);
 
   const loadTasks = useCallback(async () => {
-    if (!user) {
+    if (!user || !workspaceId) {
       setTasks([]);
       setLoading(false);
       setArchivedLoaded(false);
@@ -63,6 +65,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("tasks")
         .select(TASK_SELECT_WITH_EVENT)
+        .eq("organization_id", workspaceId)
         .eq("is_archived", false)
         .order("created_at", { ascending: true })
         .limit(1000);
@@ -76,15 +79,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [archivedLoaded, supabase, user]);
+  }, [archivedLoaded, supabase, user, workspaceId]);
 
   const ensureArchivedLoaded = useCallback(async () => {
-    if (!user || archivedLoaded || archivedLoadingRef.current) return;
+    if (!user || !workspaceId || archivedLoaded || archivedLoadingRef.current) return;
     archivedLoadingRef.current = true;
     try {
       const { data, error } = await supabase
         .from("tasks")
         .select(TASK_SELECT_WITH_EVENT)
+        .eq("organization_id", workspaceId)
         .eq("is_archived", true)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -102,30 +106,44 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     } finally {
       archivedLoadingRef.current = false;
     }
-  }, [archivedLoaded, supabase, user]);
+  }, [archivedLoaded, supabase, user, workspaceId]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || workspaceLoading) {
+      if (!user) {
+        setTasks([]);
+        setLoading(false);
+        setArchivedLoaded(false);
+      }
+      return;
+    }
+    if (!workspaceId) {
       setTasks([]);
       setLoading(false);
       setArchivedLoaded(false);
       return;
     }
     setArchivedLoaded(false);
+    setLoading(true);
     void loadTasks().catch(() => {
       setTasks([]);
       setLoading(false);
     });
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps -- reload on auth only
+  }, [user, workspaceId, workspaceLoading]); // eslint-disable-line react-hooks/exhaustive-deps -- reload on auth/workspace
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !workspaceId) return;
 
     const channel = supabase
-      .channel("tasks-shared-realtime")
+      .channel(`tasks-ws-${workspaceId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tasks" },
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+          filter: `organization_id=eq.${workspaceId}`,
+        },
         (payload: { eventType?: string; old?: { id?: string }; new?: unknown }) => {
           if (payload.eventType === "DELETE") {
             const deletedId = payload.old?.id as string | undefined;
@@ -159,7 +177,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [archivedLoaded, supabase, user]);
+  }, [archivedLoaded, supabase, user, workspaceId]);
 
   const optimisticUpdate = useCallback(
     async (taskId: string, nextTask: Task, patch: Record<string, unknown>) => {
