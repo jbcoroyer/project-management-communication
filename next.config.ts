@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
             {
               protocol: "https" as const,
               hostname: supabaseHostname,
-              pathname: "/storage/v1/object/public/**",
+              pathname: "/storage/v1/object/**",
             },
           ])
         : []),
@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
       {
         protocol: "https" as const,
         hostname: "*.supabase.co",
-        pathname: "/storage/v1/object/public/**",
+        pathname: "/storage/v1/object/**",
       },
     ],
   },
@@ -53,6 +53,7 @@ const nextConfig: NextConfig = {
       "@dnd-kit/core",
       "@dnd-kit/sortable",
       "framer-motion",
+      "@tanstack/react-virtual",
     ],
   },
 };

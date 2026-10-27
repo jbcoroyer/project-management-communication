@@ -255,16 +255,8 @@ export default function EventDetailWorkspace({
   }, [id]);
 
   useEffect(() => {
-    void loadEvent();
-  }, [loadEvent]);
-
-  useEffect(() => {
-    void loadExpensesAndMovements();
-  }, [loadExpensesAndMovements]);
-
-  useEffect(() => {
-    void loadDocuments();
-  }, [loadDocuments]);
+    void Promise.allSettled([loadEvent(), loadExpensesAndMovements(), loadDocuments()]);
+  }, [loadEvent, loadExpensesAndMovements, loadDocuments]);
 
   useEffect(() => {
     if (!id) return;

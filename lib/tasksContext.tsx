@@ -22,7 +22,11 @@ type TasksContextValue = {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   loading: boolean;
+  /** true une fois les tâches archivées fusionnées (ou en cours). */
+  archivedLoaded: boolean;
   loadTasks: () => Promise<void>;
+  /** Charge les archivées à la demande (onglets Archives / Analytics). */
+  ensureArchivedLoaded: () => Promise<void>;
   optimisticUpdate: (
     taskId: string,
     nextTask: Task,
@@ -38,6 +42,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   /** true jusqu’au premier cycle de chargement (splash + états vides). */
   const [loading, setLoading] = useState(true);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const archivedLoadingRef = useRef(false);
   const mutationSeq = useRef(0);
   const tasksRef = useRef<Task[]>([]);
 
@@ -49,33 +55,68 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setTasks([]);
       setLoading(false);
+      setArchivedLoaded(false);
       return;
     }
     try {
-      setLoading(true);
+      // Actives seulement — les archivées via ensureArchivedLoaded.
       const { data, error } = await supabase
         .from("tasks")
         .select(TASK_SELECT_WITH_EVENT)
+        .eq("is_archived", false)
         .order("created_at", { ascending: true })
         .limit(1000);
       if (error) throw error;
-      setTasks((data ?? []).map(mapTaskRow));
+      const active = (data ?? []).map(mapTaskRow);
+      setTasks((prev) => {
+        if (!archivedLoaded) return active;
+        const archived = prev.filter((t) => t.isArchived);
+        return [...active, ...archived];
+      });
     } finally {
       setLoading(false);
     }
-  }, [supabase, user]);
+  }, [archivedLoaded, supabase, user]);
+
+  const ensureArchivedLoaded = useCallback(async () => {
+    if (!user || archivedLoaded || archivedLoadingRef.current) return;
+    archivedLoadingRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT_WITH_EVENT)
+        .eq("is_archived", true)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const archived = (data ?? []).map(mapTaskRow);
+      setTasks((prev) => {
+        const active = prev.filter((t) => !t.isArchived);
+        const byId = new Map(active.map((t) => [t.id, t]));
+        for (const t of archived) byId.set(t.id, t);
+        return Array.from(byId.values());
+      });
+      setArchivedLoaded(true);
+    } catch {
+      // Best-effort : l’onglet Archives restera vide plutôt que de bloquer.
+    } finally {
+      archivedLoadingRef.current = false;
+    }
+  }, [archivedLoaded, supabase, user]);
 
   useEffect(() => {
     if (!user) {
       setTasks([]);
       setLoading(false);
+      setArchivedLoaded(false);
       return;
     }
+    setArchivedLoaded(false);
     void loadTasks().catch(() => {
       setTasks([]);
       setLoading(false);
     });
-  }, [loadTasks, user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps -- reload on auth only
 
   useEffect(() => {
     if (!user) return;
@@ -94,6 +135,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           }
           if (!payload.new) return;
           const mapped = mapTaskRow(payload.new);
+          // Ignorer les nouvelles archivées tant qu’on n’a pas ouvert Archives.
+          if (mapped.isArchived && !archivedLoaded) {
+            setTasks((prev) => prev.filter((task) => task.id !== mapped.id));
+            return;
+          }
           setTasks((prev) => {
             const idx = prev.findIndex((task) => task.id === mapped.id);
             const prevTask = idx >= 0 ? prev[idx] : undefined;
@@ -113,7 +159,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, user]);
+  }, [archivedLoaded, supabase, user]);
 
   const optimisticUpdate = useCallback(
     async (taskId: string, nextTask: Task, patch: Record<string, unknown>) => {
@@ -155,10 +201,12 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       tasks,
       setTasks,
       loading,
+      archivedLoaded,
       loadTasks,
+      ensureArchivedLoaded,
       optimisticUpdate,
     }),
-    [tasks, loading, loadTasks, optimisticUpdate],
+    [tasks, loading, archivedLoaded, loadTasks, ensureArchivedLoaded, optimisticUpdate],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

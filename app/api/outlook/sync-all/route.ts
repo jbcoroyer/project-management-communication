@@ -18,7 +18,9 @@ export async function POST() {
     const { data: rows, error } = await supabase
       .from("tasks")
       .select("id, project_name, description, company, domain, projected_work, admin, lane, is_archived")
-      .eq("is_archived", false);
+      .eq("is_archived", false)
+      .not("projected_work", "eq", "[]")
+      .not("projected_work", "is", null);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

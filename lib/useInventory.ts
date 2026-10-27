@@ -171,7 +171,7 @@ export function useInventory() {
 
   const loadItems = useCallback(async () => {
     try {
-      setLoading(true);
+      // loading silencieux après le 1er fetch
       const { data, error } = await supabase
         .from("inventory_items")
         .select(INVENTORY_SELECT)

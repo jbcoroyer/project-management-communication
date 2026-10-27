@@ -533,7 +533,9 @@ export default function V2ListView(props: V2ListViewProps) {
   };
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const LIST_GROUP_SOFT_CAP = 50;
 
   const filteredTasks = useMemo(() => {
     if (filterAdmin === "Tous") return tasks;
@@ -693,31 +695,57 @@ export default function V2ListView(props: V2ListViewProps) {
                         Aucun élément dans ce groupe.
                       </div>
                     ) : (
-                      groupTasks.map((task) => (
-                        <ListRow
-                          key={task.id}
-                          task={task}
-                          columns={columns}
-                          admins={admins}
-                          companies={companies}
-                          domains={domains}
-                          companyRecords={companyRecords}
-                          now={now}
-                          selected={selectedIds.has(task.id)}
-                          onToggleSelect={() =>
-                            setSelectedIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(task.id)) next.delete(task.id);
-                              else next.add(task.id);
-                              return next;
-                            })
-                          }
-                          onOpenTask={onOpenTask}
-                          onMoveTask={onMoveTask}
-                          onInlineSave={onInlineSave}
-                          onEditTask={onEditTask}
-                        />
-                      ))
+                      (() => {
+                        const expanded = expandedGroups.has(groupColumn);
+                        const visible = expanded
+                          ? groupTasks
+                          : groupTasks.slice(0, LIST_GROUP_SOFT_CAP);
+                        const hidden = groupTasks.length - visible.length;
+                        return (
+                          <>
+                            {visible.map((task) => (
+                              <ListRow
+                                key={task.id}
+                                task={task}
+                                columns={columns}
+                                admins={admins}
+                                companies={companies}
+                                domains={domains}
+                                companyRecords={companyRecords}
+                                now={now}
+                                selected={selectedIds.has(task.id)}
+                                onToggleSelect={() =>
+                                  setSelectedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(task.id)) next.delete(task.id);
+                                    else next.add(task.id);
+                                    return next;
+                                  })
+                                }
+                                onOpenTask={onOpenTask}
+                                onMoveTask={onMoveTask}
+                                onInlineSave={onInlineSave}
+                                onEditTask={onEditTask}
+                              />
+                            ))}
+                            {hidden > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedGroups((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(groupColumn);
+                                    return next;
+                                  })
+                                }
+                                className="w-full border-t border-dashed border-[var(--line)] px-4 py-2.5 text-left text-xs font-semibold text-[color:var(--foreground)]/60 hover:bg-[var(--surface-soft)]"
+                              >
+                                Voir {hidden} ligne{hidden > 1 ? "s" : ""} de plus
+                              </button>
+                            ) : null}
+                          </>
+                        );
+                      })()
                     )}
                     <AddItemRow groupColumn={groupColumn} onQuickAdd={onQuickAdd} />
                   </>

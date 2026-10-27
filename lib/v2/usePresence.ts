@@ -20,7 +20,12 @@ type PresenceIdentity = {
  * Présence temps réel « qui regarde » via Supabase Realtime Presence.
  * Renvoie la liste des autres membres présents sur la même zone (`area`).
  */
-export function usePresence(area: string, identity: PresenceIdentity): PresenceMember[] {
+export function usePresence(
+  area: string,
+  identity: PresenceIdentity,
+  options?: { enabled?: boolean },
+): PresenceMember[] {
+  const enabled = options?.enabled ?? true;
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [members, setMembers] = useState<PresenceMember[]>([]);
 
@@ -29,7 +34,10 @@ export function usePresence(area: string, identity: PresenceIdentity): PresenceM
   const selfAvatar = identity.avatarUrl ?? null;
 
   useEffect(() => {
-    if (!selfKey) return;
+    if (!enabled || !selfKey) {
+      setMembers([]);
+      return;
+    }
 
     const channel = supabase.channel(`presence:${area}`, {
       config: { presence: { key: selfKey } },
@@ -68,7 +76,7 @@ export function usePresence(area: string, identity: PresenceIdentity): PresenceM
       void channel.untrack();
       supabase.removeChannel(channel);
     };
-  }, [supabase, area, selfKey, selfName, selfAvatar]);
+  }, [enabled, supabase, area, selfKey, selfName, selfAvatar]);
 
   return members;
 }

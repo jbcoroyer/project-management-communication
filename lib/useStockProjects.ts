@@ -32,7 +32,7 @@ export function useStockProjects() {
 
   const loadProjects = useCallback(async () => {
     try {
-      setLoading(true);
+      // loading silencieux après le 1er fetch
       const { data, error } = await supabase
         .from("projects")
         .select("id, created_at, name, status")

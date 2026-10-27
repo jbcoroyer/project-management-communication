@@ -6,11 +6,11 @@ import { getSupabaseBrowser } from "./supabaseBrowser";
 import { ideaToClient, type StockIdeaDto } from "./stockIdeasApi";
 import type { StockIdea } from "./stockIdeasTypes";
 import { toastError } from "./toast";
+import { useRealtimeReload } from "./useRealtimeReload";
 
 export type { StockIdea, StockIdeaCategory, StockIdeaStatus } from "./stockIdeasTypes";
 
 const PUBLIC_IDEAS_API = "/api/public/ideas";
-const POLL_MS = 12_000;
 
 async function parseJson<T>(res: Response): Promise<T> {
   const data = (await res.json()) as T & { error?: string };
@@ -28,7 +28,8 @@ export function useStockIdeas() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(PUBLIC_IDEAS_API, { cache: "no-store" });
+      // Cache HTTP servi par l’API (s-maxage=30).
+      const res = await fetch(PUBLIC_IDEAS_API);
       const rows = await parseJson<StockIdeaDto[]>(res);
       setIdeas(rows.map(ideaToClient));
     } catch (e) {
@@ -57,9 +58,16 @@ export function useStockIdeas() {
 
   useEffect(() => {
     void load();
-    const interval = window.setInterval(() => void load(), POLL_MS);
-    return () => window.clearInterval(interval);
   }, [load]);
+
+  // Remplace le polling 12s : reload silencieux sur changements Realtime.
+  useRealtimeReload({
+    table: "stock_ideas",
+    channelName: "stock-ideas-public-feed",
+    onChange: useCallback(() => {
+      void load();
+    }, [load]),
+  });
 
   const addIdea = useCallback(
     (draft: Omit<StockIdea, "id" | "createdAt">) => {

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { taskMatchesTrigger, type AutomationRule } from "../v2/automations";
 import { mapTaskRow } from "../taskMappers";
+import { TASK_SELECT_WITH_EVENT } from "../taskQueries";
 import type { Priority, Task } from "../types";
 
 type RuleRow = {
@@ -12,6 +13,11 @@ type RuleRow = {
   action_type: string;
   action_params: Record<string, string> | null;
   sort_order: number;
+};
+
+type PatchBucket = {
+  patch: Record<string, unknown>;
+  ids: string[];
 };
 
 function rowToRule(row: RuleRow): AutomationRule {
@@ -27,9 +33,13 @@ function rowToRule(row: RuleRow): AutomationRule {
   };
 }
 
+function patchKey(patch: Record<string, unknown>): string {
+  return JSON.stringify(patch);
+}
+
 /**
  * Exécute les automatisations côté serveur (service role).
- * Idempotence soft : une table automation_runs si présente, sinon best-effort.
+ * Les updates sont regroupés par patch identique (`.in("id", ids)`).
  */
 export async function runAutomationsServer(
   admin: SupabaseClient,
@@ -40,7 +50,9 @@ export async function runAutomationsServer(
 
   const { data: ruleRows, error: rulesErr } = await admin
     .from("automation_rules")
-    .select("*")
+    .select(
+      "id, enabled, name, trigger_type, trigger_params, action_type, action_params, sort_order",
+    )
     .eq("enabled", true)
     .order("sort_order", { ascending: true });
 
@@ -53,7 +65,7 @@ export async function runAutomationsServer(
 
   const { data: taskRows, error: tasksErr } = await admin
     .from("tasks")
-    .select("*")
+    .select(TASK_SELECT_WITH_EVENT)
     .eq("is_archived", false)
     .limit(2000);
 
@@ -63,6 +75,7 @@ export async function runAutomationsServer(
 
   const tasks = (taskRows ?? []).map((row) => mapTaskRow(row));
   const now = Date.now();
+  const buckets = new Map<string, PatchBucket>();
 
   for (const rule of rules) {
     for (const task of tasks) {
@@ -70,13 +83,31 @@ export async function runAutomationsServer(
         skipped += 1;
         continue;
       }
-      try {
-        await applyServerAction(admin, rule, task);
-        applied += 1;
-      } catch (e) {
-        errors.push(
-          `${rule.id}/${task.id}: ${e instanceof Error ? e.message : String(e)}`,
-        );
+      const patch = buildServerPatch(rule, task);
+      if (!patch) {
+        skipped += 1;
+        continue;
+      }
+      const key = patchKey(patch);
+      const bucket = buckets.get(key);
+      if (bucket) {
+        if (!bucket.ids.includes(task.id)) bucket.ids.push(task.id);
+      } else {
+        buckets.set(key, { patch, ids: [task.id] });
+      }
+    }
+  }
+
+  for (const bucket of buckets.values()) {
+    // Chunk pour rester sous les limites PostgREST.
+    const chunkSize = 100;
+    for (let i = 0; i < bucket.ids.length; i += chunkSize) {
+      const chunk = bucket.ids.slice(i, i + chunkSize);
+      const { error } = await admin.from("tasks").update(bucket.patch).in("id", chunk);
+      if (error) {
+        errors.push(`${JSON.stringify(bucket.patch)}: ${error.message}`);
+      } else {
+        applied += chunk.length;
       }
     }
   }
@@ -84,44 +115,35 @@ export async function runAutomationsServer(
   return { applied, skipped, errors };
 }
 
-async function applyServerAction(
-  admin: SupabaseClient,
+function buildServerPatch(
   rule: AutomationRule,
   task: Task,
-): Promise<void> {
+): Record<string, unknown> | null {
   switch (rule.actionType) {
     case "set_priority": {
       const p = rule.actionParams.priority as Priority | undefined;
-      if (p && task.priority !== p) {
-        await admin.from("tasks").update({ priority: p }).eq("id", task.id);
-      }
-      break;
+      if (p && task.priority !== p) return { priority: p };
+      return null;
     }
     case "move_to_column": {
       const c = rule.actionParams.column;
-      if (c && task.column !== c) {
-        await admin.from("tasks").update({ column: c }).eq("id", task.id);
-      }
-      break;
+      if (c && task.column !== c) return { column: c };
+      return null;
     }
     case "add_assignee": {
       const a = rule.actionParams.assignee;
       if (a && !task.admins.includes(a)) {
-        const nextAdmins = [...task.admins, a];
-        await admin.from("tasks").update({ admin: nextAdmins.join(",") }).eq("id", task.id);
+        return { admin: [...task.admins, a].join(",") };
       }
-      break;
+      return null;
     }
     case "archive": {
-      if (!task.isArchived) {
-        await admin.from("tasks").update({ is_archived: true }).eq("id", task.id);
-      }
-      break;
+      if (!task.isArchived) return { is_archived: true };
+      return null;
     }
     case "notify":
-      // Les notifications push restent côté client ; le cron journalise seulement.
-      break;
+      return null;
     default:
-      break;
+      return null;
   }
 }

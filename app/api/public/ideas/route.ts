@@ -19,7 +19,12 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json((data ?? []).map(ideaFromRow));
+    const res = NextResponse.json((data ?? []).map(ideaFromRow));
+    res.headers.set(
+      "Cache-Control",
+      "public, s-maxage=30, stale-while-revalidate=60",
+    );
+    return res;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur serveur";
     return NextResponse.json({ error: message }, { status: 500 });

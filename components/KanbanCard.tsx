@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, type CSSProperties } from "react";
-import { motion } from "framer-motion";
 import type { Task } from "../lib/types";
 import {
   AlertTriangle,
@@ -12,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { adminBadgeClassFor, adminSolidColorFor, domainTagStyles } from "../lib/kanbanStyles";
+import { useDeadlineClock } from "../lib/useNowInterval";
 import AdminAvatar from "./AdminAvatar";
 import CompanyAvatar from "./CompanyAvatar";
 
@@ -66,7 +66,6 @@ function PriorityBadge({ priority, dense }: { priority: Task["priority"]; dense?
 
 function CardBody(props: {
   task: Task;
-  currentNow: number;
   onEdit: () => void;
   onDelete: () => void;
   variant: "full" | "compact" | "dense";
@@ -74,9 +73,10 @@ function CardBody(props: {
   isMyTask?: boolean;
   companyLogoUrl?: string | null;
 }) {
-  const { task, currentNow, onEdit, onDelete, interactive, isMyTask } = props;
+  const { task, onEdit, onDelete, interactive, isMyTask } = props;
 
   const isDone = task.column === "Terminé";
+  const currentNow = useDeadlineClock(task.deadline, isDone);
   const deadlineMs = task.deadline ? new Date(task.deadline + "T23:59:59").getTime() : 0;
   const isOverdue = !isDone && deadlineMs > 0 && currentNow > deadlineMs;
   const isUrgent48h =
@@ -340,7 +340,6 @@ function CardBody(props: {
 
 function KanbanCardUIComponent(props: {
   task: Task;
-  currentNow: number;
   onArchive: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -350,7 +349,7 @@ function KanbanCardUIComponent(props: {
   companyLogoUrl?: string | null;
   style?: CSSProperties;
 }) {
-  const { task, currentNow, onEdit, onDelete, isMyTask } = props;
+  const { task, onEdit, onDelete, isMyTask } = props;
   const variant = props.variant ?? "full";
   const isOverlay = props.isOverlay ?? false;
 
@@ -359,17 +358,14 @@ function KanbanCardUIComponent(props: {
 
   const borderLeft = variant === "dense" ? 3 : 4;
 
+  // Pas de Framer Motion layout : trop coûteux avec DnD + Realtime.
   return (
-    <motion.article
+    <article
       style={{
         ...props.style,
         borderLeftColor: adminColor,
         borderLeftWidth: borderLeft,
       }}
-      layout={!isOverlay}
-      initial={isOverlay ? false : { opacity: 0, y: 4 }}
-      animate={isOverlay ? undefined : { opacity: 1, y: 0 }}
-      transition={isOverlay ? undefined : { duration: 0.2 }}
       className={[
         "group relative flex flex-col border border-[var(--line)] text-xs text-[var(--foreground)] ui-transition",
         variant === "dense" ? "gap-1 rounded-xl p-2" : variant === "compact" ? "gap-1.5 rounded-2xl p-2.5" : "gap-2.5 rounded-2xl p-4",
@@ -383,7 +379,6 @@ function KanbanCardUIComponent(props: {
     >
       <CardBody
         task={task}
-        currentNow={currentNow}
         onEdit={onEdit}
         onDelete={onDelete}
         variant={variant}
@@ -391,7 +386,7 @@ function KanbanCardUIComponent(props: {
         isMyTask={isMyTask}
         companyLogoUrl={props.companyLogoUrl}
       />
-    </motion.article>
+    </article>
   );
 }
 
@@ -405,7 +400,6 @@ function KanbanCardUIComponent(props: {
  */
 export const KanbanCardUI = memo(KanbanCardUIComponent, (prev, next) => {
   if (prev.task !== next.task) return false;
-  if (prev.currentNow !== next.currentNow) return false;
   if (prev.variant !== next.variant) return false;
   if (prev.isOverlay !== next.isOverlay) return false;
   if (prev.isMyTask !== next.isMyTask) return false;

@@ -275,6 +275,24 @@ function rowToTaskForSync(row: Record<string, unknown>): TaskForSync {
  * Synchronise toutes les tâches planifiées dont l'utilisateur est responsable.
  * Utile après la première connexion Outlook ou pour rattraper un retard de synchro.
  */
+const SYNC_ALL_CONCURRENCY = 4;
+
+async function mapPool<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      await worker(items[index]!);
+    }
+  });
+  await Promise.all(runners);
+}
+
 export async function syncAllTasksForUser(
   userId: string,
   identity: ServerUserIdentity,
@@ -285,12 +303,16 @@ export async function syncAllTasksForUser(
     return { connected: false, synced: 0, errors: 0, considered: 0, scanned: 0 };
   }
 
+  // Prépare la catégorie une fois pour toute la vague (évite N appels Graph).
+  await ensureOutlookCategory(accessToken).catch(() => {});
+
   let synced = 0;
   let errors = 0;
   let considered = 0;
   let scanned = 0;
   let firstError: string | undefined;
 
+  const eligible: Record<string, unknown>[] = [];
   for (const row of rows) {
     if (row.is_archived) continue;
     scanned += 1;
@@ -298,7 +320,10 @@ export async function syncAllTasksForUser(
     const projected = (row.projected_work as ProjectedWorkItem[] | null) ?? [];
     if (!projected.some((item) => item?.date)) continue;
     considered += 1;
+    eligible.push(row);
+  }
 
+  await mapPool(eligible, SYNC_ALL_CONCURRENCY, async (row) => {
     try {
       await syncTaskToOutlook(userId, rowToTaskForSync(row));
       synced += 1;
@@ -307,7 +332,7 @@ export async function syncAllTasksForUser(
       errors += 1;
       if (!firstError) firstError = e instanceof Error ? e.message : String(e);
     }
-  }
+  });
 
   return { connected: true, synced, errors, considered, scanned, firstError };
 }

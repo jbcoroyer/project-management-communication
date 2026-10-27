@@ -9,20 +9,24 @@ export type ServerUserIdentity = {
 /** Identité métier de l'utilisateur (pour matcher les responsables de tâches). */
 export async function getServerUserIdentity(userId: string): Promise<ServerUserIdentity> {
   const admin = createSupabaseAdmin();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("display_name, team_members(display_name)")
-    .eq("id", userId)
-    .maybeSingle();
+  const [profileResult, authResult] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("display_name, team_members(display_name)")
+      .eq("id", userId)
+      .maybeSingle(),
+    admin.auth.admin.getUserById(userId),
+  ]);
 
-  const member = (profile?.team_members as { display_name?: string | null } | null) ?? null;
-  const { data: authData, error } = await admin.auth.admin.getUserById(userId);
-  if (error) {
-    throw new Error(error.message);
+  if (authResult.error) {
+    throw new Error(authResult.error.message);
   }
 
+  const profile = profileResult.data;
+  const member = (profile?.team_members as { display_name?: string | null } | null) ?? null;
+
   return {
-    email: authData.user?.email ?? "",
+    email: authResult.data.user?.email ?? "",
     displayName: (profile?.display_name as string | null) ?? null,
     teamMemberName: member?.display_name ?? null,
   };

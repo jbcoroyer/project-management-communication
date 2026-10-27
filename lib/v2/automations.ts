@@ -132,7 +132,7 @@ export function useAutomationRules() {
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    setLoading(true);
+    // loading silencieux après le 1er fetch
     const mode = await detectBackend(supabase);
     setBackend(mode);
     if (mode === "supabase") {

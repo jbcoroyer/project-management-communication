@@ -67,8 +67,18 @@ export default function DashboardHomePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user: currentUser } = useCurrentUser();
-  const { tasks, setTasks, optimisticUpdate, loadTasks } = useTasks();
-  const { events: salonEvents } = useEvents();
+
+  const activeTab = useMemo<MainTab>(() => {
+    const match = pathname.match(/^\/dashboard\/([^/?#]+)/);
+    const candidate = match?.[1];
+    if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
+      return candidate as MainTab;
+    }
+    return "kanban";
+  }, [pathname]);
+
+  const { tasks, setTasks, optimisticUpdate, loadTasks, ensureArchivedLoaded } = useTasks();
+  const { events: salonEvents } = useEvents({ enabled: activeTab === "calendar" });
   const {
     admins: adminRecords,
     columns: columnRecords,
@@ -88,14 +98,12 @@ export default function DashboardHomePage() {
   const [commandQuery, setCommandQuery] = useState("");
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const activeTab = useMemo<MainTab>(() => {
-    const match = pathname.match(/^\/dashboard\/([^/?#]+)/);
-    const candidate = match?.[1];
-    if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
-      return candidate as MainTab;
+
+  useEffect(() => {
+    if (activeTab === "archives" || activeTab === "analytics") {
+      void ensureArchivedLoaded();
     }
-    return "kanban";
-  }, [pathname]);
+  }, [activeTab, ensureArchivedLoaded]);
 
   const navigateToTab = useCallback(
     (tab: MainTab) => {
@@ -525,7 +533,6 @@ export default function DashboardHomePage() {
               admins={filterAdmins}
               companies={companies}
               companyRecords={companyRecords}
-              now={now}
               currentUserName={effectiveUser}
               onMoveTask={handleMoveTask}
               onOpenTask={setSelectedTaskId}

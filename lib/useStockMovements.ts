@@ -50,7 +50,7 @@ export function useStockMovements(limit = 500) {
 
   const loadMovements = useCallback(async () => {
     try {
-      setLoading(true);
+      // loading silencieux après le 1er fetch
       const { data, error } = await supabase
         .from("stock_movements")
         .select(`

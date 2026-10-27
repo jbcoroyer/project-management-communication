@@ -19,7 +19,7 @@ export function useDeliverables() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // loading silencieux après le 1er fetch (état initial = true)
     const { data, error } = await supabase
       .from("deliverables")
       .select("*")

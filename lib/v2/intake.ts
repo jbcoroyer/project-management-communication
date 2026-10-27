@@ -146,14 +146,20 @@ async function detectBackend(supabase: SupabaseClient): Promise<IntakeBackend> {
   return error ? "local" : "supabase";
 }
 
-export function useIntakeRequests() {
+export function useIntakeRequests(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [requests, setRequests] = useState<IntakeRequest[]>([]);
   const [backend, setBackend] = useState<IntakeBackend>("local");
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    setLoading(true);
+    if (!enabled) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+    // loading silencieux après le 1er fetch
     const mode = await detectBackend(supabase);
     setBackend(mode);
     if (mode === "supabase") {
@@ -166,7 +172,7 @@ export function useIntakeRequests() {
       setRequests(readLocal().sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     }
     setLoading(false);
-  }, [supabase]);
+  }, [enabled, supabase]);
 
   useEffect(() => {
     void reload();

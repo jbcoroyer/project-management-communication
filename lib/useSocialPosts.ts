@@ -218,7 +218,7 @@ export function useSocialPosts() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
+      // loading silencieux après le 1er fetch
       const [postsRes, targetsRes] = await Promise.all([fetchPosts(), fetchTargets()]);
       const nextError = formatSupabaseErrorMessage(postsRes.error ?? targetsRes.error);
       setSchemaError(nextError);

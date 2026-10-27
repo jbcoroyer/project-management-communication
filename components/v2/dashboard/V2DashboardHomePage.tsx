@@ -124,8 +124,23 @@ export default function V2DashboardHomePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user: currentUser } = useCurrentUser();
-  const { tasks, setTasks, optimisticUpdate, loadTasks } = useTasks();
-  const { events: salonEvents } = useEvents();
+
+  const appVersion = detectVersionFromPath(pathname);
+  const routePrefix = pathVersionPrefix(pathname) || "/v2";
+  const isLightUi = appVersion === "v3";
+  const activeTab = useMemo<MainTab>(() => {
+    const match = pathname.match(/^\/v[23]\/dashboard\/([^/?#]+)/);
+    const candidate = match?.[1];
+    if (candidate === "inbox") return "kanban";
+    if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
+      if (isLightUi && candidate === "triage") return "kanban";
+      return candidate as MainTab;
+    }
+    return "kanban";
+  }, [pathname, isLightUi]);
+
+  const { tasks, setTasks, optimisticUpdate, loadTasks, ensureArchivedLoaded } = useTasks();
+  const { events: salonEvents } = useEvents({ enabled: activeTab === "calendar" });
   const {
     admins: adminRecords,
     columns: columnRecords,
@@ -140,12 +155,16 @@ export default function V2DashboardHomePage() {
     backend: intakeBackend,
     loading: intakeLoading,
     updateRequest: updateIntakeRequest,
-  } = useIntakeRequests();
-  const presenceMembers = usePresence("v2-dashboard", {
-    id: currentUser?.id ?? null,
-    name: currentUser?.teamMemberName ?? currentUser?.displayName ?? currentUser?.email ?? null,
-    avatarUrl: currentUser?.avatarUrl ?? null,
-  });
+  } = useIntakeRequests({ enabled: !isLightUi });
+  const presenceMembers = usePresence(
+    "v2-dashboard",
+    {
+      id: currentUser?.id ?? null,
+      name: currentUser?.teamMemberName ?? currentUser?.displayName ?? currentUser?.email ?? null,
+      avatarUrl: currentUser?.avatarUrl ?? null,
+    },
+    { enabled: !isLightUi },
+  );
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -163,24 +182,16 @@ export default function V2DashboardHomePage() {
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const appVersion = detectVersionFromPath(pathname);
-  const routePrefix = pathVersionPrefix(pathname) || "/v2";
-  const isLightUi = appVersion === "v3";
   const visibleTabs = useMemo(
     () => (isLightUi ? MAIN_TABS.filter((tab) => tab.id !== "triage") : MAIN_TABS),
     [isLightUi],
   );
 
-  const activeTab = useMemo<MainTab>(() => {
-    const match = pathname.match(/^\/v[23]\/dashboard\/([^/?#]+)/);
-    const candidate = match?.[1];
-    if (candidate === "inbox") return "kanban";
-    if (candidate && MAIN_TAB_SET.has(candidate as MainTab)) {
-      if (isLightUi && candidate === "triage") return "kanban";
-      return candidate as MainTab;
+  useEffect(() => {
+    if (activeTab === "archives" || activeTab === "analytics") {
+      void ensureArchivedLoaded();
     }
-    return "kanban";
-  }, [pathname, isLightUi]);
+  }, [activeTab, ensureArchivedLoaded]);
 
   const navigateToTab = useCallback(
     (tab: MainTab) => {
@@ -960,7 +971,7 @@ export default function V2DashboardHomePage() {
         }
         toolbarRight={
           <div className="flex h-9 shrink-0 items-center gap-1.5">
-            <PresenceBar members={presenceMembers} />
+            {!isLightUi ? <PresenceBar members={presenceMembers} /> : null}
             <button
               type="button"
               onClick={() => celebrateTaskManually()}
@@ -1136,7 +1147,6 @@ export default function V2DashboardHomePage() {
               admins={filterAdmins}
               companies={companies}
               companyRecords={companyRecords}
-              now={now}
               currentUserName={effectiveUser}
               onMoveTask={handleMoveTask}
               onOpenTask={setSelectedTaskId}

@@ -173,14 +173,21 @@ export async function listSurveys(): Promise<SurveyListItem[]> {
     .select("id, title, description, version, status, audience, created_at, public_path, definition")
     .order("created_at", { ascending: true });
 
-  const { data: resp } = await supabase.from("survey_responses").select("survey_version");
-  const counts: Record<string, number> = {};
-  for (const r of resp ?? []) {
-    const v = String((r as { survey_version?: string }).survey_version ?? "");
-    if (v) counts[v] = (counts[v] ?? 0) + 1;
-  }
+  const rows = (defs ?? []) as SurveyDefinitionRow[];
+  // Compte exact par version (head) — évite de charger toutes les réponses.
+  const countEntries = await Promise.all(
+    rows.map(async (row) => {
+      const version = row.version ?? row.id;
+      const { count } = await supabase
+        .from("survey_responses")
+        .select("id", { count: "exact", head: true })
+        .eq("survey_version", version);
+      return [version, count ?? 0] as const;
+    }),
+  );
+  const counts = Object.fromEntries(countEntries);
 
-  return ((defs ?? []) as SurveyDefinitionRow[]).map((row) => {
+  return rows.map((row) => {
     const meta = rowToSurveyMeta(row);
     const structure = countFromDefinition(row.definition);
     return {

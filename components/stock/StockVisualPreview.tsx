@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { isPdfUrl, pdfEmbedSrc } from "../../lib/stockVisualUtils";
 
 type StockVisualPreviewProps = {
@@ -45,6 +46,37 @@ function PdfEmbed({
   );
 }
 
+function VisualImage({
+  url,
+  name,
+  className,
+  sizes,
+}: {
+  url: string;
+  name: string;
+  className?: string;
+  sizes: string;
+}) {
+  // URLs externes / signed : next/image ; fallback unoptimized si domaine hors config.
+  const isRemote = /^https?:\/\//i.test(url);
+  if (!isRemote) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt={name} className={className} />
+    );
+  }
+  return (
+    <Image
+      src={url}
+      alt={name}
+      fill
+      sizes={sizes}
+      className={className}
+      unoptimized={url.includes("/object/sign/")}
+    />
+  );
+}
+
 export default function StockVisualPreview({
   url,
   name,
@@ -74,9 +106,21 @@ export default function StockVisualPreview({
 
   if (mode === "full") {
     return (
-      <div className={["mx-auto flex w-full max-w-[min(100%,28rem)] items-center justify-center", A4_ASPECT, className].filter(Boolean).join(" ")}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={name} className="max-h-full max-w-full object-contain" />
+      <div
+        className={[
+          "relative mx-auto flex w-full max-w-[min(100%,28rem)] items-center justify-center",
+          A4_ASPECT,
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <VisualImage
+          url={url}
+          name={name}
+          sizes="(max-width: 448px) 100vw, 448px"
+          className="object-contain"
+        />
       </div>
     );
   }
@@ -84,6 +128,7 @@ export default function StockVisualPreview({
   return (
     <div
       className={[
+        "relative",
         A4_ASPECT,
         "w-full overflow-hidden bg-white",
         mode === "detail" ? "rounded-lg border border-[var(--line)]" : "",
@@ -92,8 +137,12 @@ export default function StockVisualPreview({
         .filter(Boolean)
         .join(" ")}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt={name} className="h-full w-full object-contain object-center" />
+      <VisualImage
+        url={url}
+        name={name}
+        sizes={mode === "detail" ? "(max-width: 640px) 100vw, 320px" : "120px"}
+        className="object-contain object-center"
+      />
     </div>
   );
 }

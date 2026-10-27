@@ -20,7 +20,6 @@ import {
 import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../../lib/adminAvatarContext";
 import { useCurrentUser } from "../../lib/useCurrentUser";
-import { useTasks } from "../../lib/tasksContext";
 import { TuesdaySplash } from "@/components/brand";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import V3GlobalSearch from "./GlobalSearch";
@@ -130,8 +129,9 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
   const pathname = usePathname();
   const supabase = getSupabaseBrowser();
   const { user, loading: userLoading } = useCurrentUser();
-  const { loading: tasksLoading } = useTasks();
-  const splashReady = !userLoading && !tasksLoading;
+  // Splash uniquement sur l’auth — ne pas attendre le fetch global des tâches
+  // (sinon stock/DAM/settings restent bloqués et le shell re-rend à chaque mutation).
+  const splashReady = !userLoading;
   const avatarMap = useAdminAvatarMap();
   const displayName = user?.teamMemberName ?? user?.displayName ?? undefined;
   const displayEmail = user?.email;

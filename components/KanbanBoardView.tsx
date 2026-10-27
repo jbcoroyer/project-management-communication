@@ -46,6 +46,8 @@ import { partitionTasksByEvent, sortTasksByDeadline } from "../lib/eventTaskGrou
 const KANBAN_AUTO_COMPACT_MIN = 8;
 /** Colonnes très remplies : cartes encore plus denses. */
 const KANBAN_DENSE_MIN = 14;
+/** Soft-cap DOM : au-delà, « Voir plus » pour éviter de monter des centaines de cartes. */
+const KANBAN_COLUMN_SOFT_CAP = 40;
 
 type KanbanCardDisplayMode = "full" | "compact" | "dense";
 
@@ -143,7 +145,6 @@ function DroppableColumn(props: {
 
 function DraggableCard(props: {
   task: Task;
-  now: number;
   companyLogoUrl?: string | null;
   onArchive: () => void;
   onEdit: () => void;
@@ -180,7 +181,6 @@ function DraggableCard(props: {
     >
       <KanbanCardUI
         task={props.task}
-        currentNow={props.now}
         variant={props.cardVariant ?? "compact"}
         isMyTask={props.isMyTask}
         companyLogoUrl={props.companyLogoUrl}
@@ -220,7 +220,6 @@ export default function KanbanBoardView(props: {
   admins: string[];
   companies: string[];
   companyRecords?: ReferenceRecord[];
-  now: number;
   onMoveTask: (taskId: string, newColumn: ColumnId) => void;
   onOpenTask: (taskId: string) => void;
   onArchiveTask: (taskId: string) => void;
@@ -260,6 +259,7 @@ export default function KanbanBoardView(props: {
   const [filterCompany, setFilterCompany] = useState<string>("Toutes");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [cardDensity, setCardDensity] = useState<"compact" | "detailed">("detailed");
+  const [expandedColumns, setExpandedColumns] = useState<Set<string>>(() => new Set());
   const [collapsedEventIds, setCollapsedEventIds] = useState<Set<string>>(() =>
     loadCollapsedEventGroupIds(),
   );
@@ -473,7 +473,13 @@ export default function KanbanBoardView(props: {
               const colTasks = filteredTasks
                 .filter((t) => t.column === col)
                 .sort(sortTasksByDeadline);
-              const { standalone, groups } = partitionTasksByEvent(colTasks);
+              const columnExpanded = expandedColumns.has(col);
+              const hiddenCount = Math.max(0, colTasks.length - KANBAN_COLUMN_SOFT_CAP);
+              const visibleColTasks =
+                columnExpanded || colTasks.length <= KANBAN_COLUMN_SOFT_CAP
+                  ? colTasks
+                  : colTasks.slice(0, KANBAN_COLUMN_SOFT_CAP);
+              const { standalone, groups } = partitionTasksByEvent(visibleColTasks);
               const columnDisplayMode = resolveKanbanCardDisplayMode(cardDensity, colTasks.length);
               const tightColumn = colTasks.length >= KANBAN_AUTO_COMPACT_MIN;
               return (
@@ -492,7 +498,6 @@ export default function KanbanBoardView(props: {
                     <DraggableCard
                       key={task.id}
                       task={task}
-                      now={props.now}
                       companyLogoUrl={companyLogoMap[task.company] ?? null}
                       isMyTask={
                         props.currentUserName
@@ -558,7 +563,6 @@ export default function KanbanBoardView(props: {
                                 <DraggableCard
                                   key={task.id}
                                   task={task}
-                                  now={props.now}
                                   companyLogoUrl={companyLogoMap[task.company] ?? null}
                                   isMyTask={
                                     props.currentUserName
@@ -584,6 +588,21 @@ export default function KanbanBoardView(props: {
                       </DraggableEventGroup>
                     );
                   })}
+                  {!columnExpanded && hiddenCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedColumns((prev) => {
+                          const next = new Set(prev);
+                          next.add(col);
+                          return next;
+                        })
+                      }
+                      className="ui-transition mt-1 rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-[11px] font-semibold text-[color:var(--foreground)]/65 hover:border-[var(--line-strong)] hover:bg-[var(--surface)]"
+                    >
+                      Voir {hiddenCount} tâche{hiddenCount > 1 ? "s" : ""} de plus
+                    </button>
+                  )}
                   {colTasks.length === 0 && (
                     <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center">
                       <ListTodo className="h-8 w-8 text-[color:var(--foreground)]/20" />
@@ -604,7 +623,6 @@ export default function KanbanBoardView(props: {
                 {activeTask && (
                   <KanbanCardUI
                     task={activeTask}
-                    currentNow={props.now}
                     variant={overlayDisplayMode}
                     isOverlay
                     onArchive={() => {}}

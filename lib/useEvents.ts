@@ -49,14 +49,20 @@ function mapEvent(row: EventDbRow): EventRow {
   };
 }
 
-export function useEvents() {
+export function useEvents(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadEvents = useCallback(async () => {
+    if (!enabled) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
     try {
-      setLoading(true);
+      // loading silencieux après le 1er fetch (état initial = true)
       const { data, error } = await supabase
         .from("events")
         .select(
@@ -68,15 +74,21 @@ export function useEvents() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [enabled, supabase]);
 
   useEffect(() => {
+    if (!enabled) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
     void loadEvents().catch(() => setEvents([]));
-  }, [loadEvents]);
+  }, [enabled, loadEvents]);
 
   useRealtimeReload({
     table: "events",
     channelName: "events-realtime",
+    enabled,
     onChange: useCallback(() => {
       void loadEvents().catch(() => {});
     }, [loadEvents]),
