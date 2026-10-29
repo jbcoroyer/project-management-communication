@@ -1,27 +1,30 @@
 import { NextResponse } from "next/server";
+import { getCurrentWorkspaceId } from "../../../../../lib/server/currentWorkspace";
 import { createServerSupabase } from "../../../../../lib/server/supabaseServer";
 import { createSupabaseAdmin } from "../../../../../lib/server/supabaseAdmin";
 import { ideaFromRow } from "../../../../../lib/stockIdeasApi";
 import type { StockIdeaCategory, StockIdeaStatus } from "../../../../../lib/stockIdeasTypes";
+import { SERVICE_COMMUNICATION_ORG_ID } from "../../../../../lib/workspaceModules";
 
 const SELECT = "id, created_at, title, description, category, status";
 
-async function requireAuthenticatedUser() {
+async function requireAuthenticatedWorkspace() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
   if (error || !user) return null;
-  return user;
+  const workspaceId = (await getCurrentWorkspaceId(supabase)) ?? SERVICE_COMMUNICATION_ORG_ID;
+  return { user, workspaceId };
 }
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const user = await requireAuthenticatedUser();
-  if (!user) {
+  const auth = await requireAuthenticatedWorkspace();
+  if (!auth) {
     return NextResponse.json({ error: "Connexion requise pour modifier une idée." }, { status: 401 });
   }
 
@@ -49,6 +52,7 @@ export async function PATCH(
       .from("stock_ideas")
       .update(dbPatch)
       .eq("id", id)
+      .eq("organization_id", auth.workspaceId)
       .select(SELECT)
       .single();
 
@@ -68,8 +72,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const user = await requireAuthenticatedUser();
-  if (!user) {
+  const auth = await requireAuthenticatedWorkspace();
+  if (!auth) {
     return NextResponse.json({ error: "Connexion requise pour supprimer une idée." }, { status: 401 });
   }
 
@@ -77,7 +81,11 @@ export async function DELETE(
 
   try {
     const admin = createSupabaseAdmin();
-    const { error } = await admin.from("stock_ideas").delete().eq("id", id);
+    const { error } = await admin
+      .from("stock_ideas")
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", auth.workspaceId);
 
     if (error) {
       console.error("[public/ideas] DELETE", error.message);

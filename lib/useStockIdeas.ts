@@ -28,8 +28,7 @@ export function useStockIdeas() {
 
   const load = useCallback(async () => {
     try {
-      // Cache HTTP servi par l’API (s-maxage=30).
-      const res = await fetch(PUBLIC_IDEAS_API);
+      const res = await fetch(PUBLIC_IDEAS_API, { cache: "no-store" });
       const rows = await parseJson<StockIdeaDto[]>(res);
       setIdeas(rows.map(ideaToClient));
     } catch (e) {
@@ -70,25 +69,25 @@ export function useStockIdeas() {
   });
 
   const addIdea = useCallback(
-    (draft: Omit<StockIdea, "id" | "createdAt">) => {
-      void (async () => {
-        try {
-          const res = await fetch(PUBLIC_IDEAS_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: draft.title,
-              description: draft.description,
-              category: draft.category,
-            }),
-          });
-          const created = await parseJson<StockIdeaDto>(res);
-          setIdeas((prev) => [ideaToClient(created), ...prev].slice(0, 500));
-        } catch (e) {
-          console.warn("[StockIdeas] add:", e);
-          toastError("Impossible d'ajouter l'idée.");
-        }
-      })();
+    async (draft: Omit<StockIdea, "id" | "createdAt">) => {
+      try {
+        const res = await fetch(PUBLIC_IDEAS_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: draft.title,
+            description: draft.description,
+            category: draft.category,
+          }),
+        });
+        const created = await parseJson<StockIdeaDto>(res);
+        setIdeas((prev) => [ideaToClient(created), ...prev].slice(0, 500));
+        return true;
+      } catch (e) {
+        console.warn("[StockIdeas] add:", e);
+        toastError("Impossible d'ajouter l'idée.");
+        return false;
+      }
     },
     [],
   );

@@ -68,10 +68,19 @@ export default function V2IdeasPage() {
 
   const handleAdd = () => {
     if (!title.trim()) return;
-    addIdea({ title: title.trim(), description: description.trim(), category, status: "nouveau" });
-    setTitle("");
-    setDescription("");
-    toastSuccess("Idée ajoutée");
+    const draft = {
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      status: "nouveau" as const,
+    };
+    void (async () => {
+      const ok = await addIdea(draft);
+      if (!ok) return;
+      setTitle("");
+      setDescription("");
+      toastSuccess("Idée ajoutée");
+    })();
   };
 
   const promote = (idea: StockIdea) => {
