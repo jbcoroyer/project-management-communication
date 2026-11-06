@@ -5,6 +5,7 @@ const {
   Menu,
   nativeTheme,
   dialog,
+  ipcMain,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -114,15 +115,6 @@ function offlinePageUrl() {
   return `file://${path.join(__dirname, "offline.html").replace(/\\/g, "/")}`;
 }
 
-function titleBarOverlayOptions() {
-  const dark = nativeTheme.shouldUseDarkColors;
-  return {
-    color: dark ? "#141310" : "#F4F1EA",
-    symbolColor: dark ? "#F0EBE3" : "#1A1713",
-    height: 36,
-  };
-}
-
 function windowBackgroundColor() {
   return nativeTheme.shouldUseDarkColors ? "#141310" : "#F4F1EA";
 }
@@ -133,6 +125,54 @@ function chromeCss() {
   } catch {
     return "";
   }
+}
+
+function windowControlsScript() {
+  try {
+    return fs.readFileSync(path.join(__dirname, "window-controls.js"), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function registerWindowControlIpc() {
+  ipcMain.removeHandler("tuesday:window-minimize");
+  ipcMain.removeHandler("tuesday:window-toggle-maximize");
+  ipcMain.removeHandler("tuesday:window-close");
+  ipcMain.removeHandler("tuesday:window-is-maximized");
+
+  ipcMain.handle("tuesday:window-minimize", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
+  });
+
+  ipcMain.handle("tuesday:window-toggle-maximize", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+    return win.isMaximized();
+  });
+
+  ipcMain.handle("tuesday:window-close", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
+
+  ipcMain.handle("tuesday:window-is-maximized", (event) => {
+    return Boolean(BrowserWindow.fromWebContents(event.sender)?.isMaximized());
+  });
+}
+
+function wireWindowMaximizeEvents(win) {
+  const emit = () => {
+    if (win.isDestroyed()) return;
+    try {
+      win.webContents.send("tuesday:window-maximized", win.isMaximized());
+    } catch {
+      /* ignore */
+    }
+  };
+  win.on("maximize", emit);
+  win.on("unmaximize", emit);
 }
 
 async function applyDesktopChrome(win) {
@@ -155,10 +195,13 @@ async function applyDesktopChrome(win) {
   } catch {
     /* ignore */
   }
-  try {
-    win.setTitleBarOverlay(titleBarOverlayOptions());
-  } catch {
-    /* ignore */
+  const controlsJs = windowControlsScript();
+  if (controlsJs) {
+    try {
+      await win.webContents.executeJavaScript(controlsJs, true);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -176,9 +219,8 @@ function createWindow() {
     backgroundColor: windowBackgroundColor(),
     icon: iconPath(),
     autoHideMenuBar: true,
-    // Barre de titre Windows fondue dans l’UI (boutons natifs min/max/close)
+    // Barre de titre masquée : contrôles custom injectés (style Tuesday)
     titleBarStyle: "hidden",
-    titleBarOverlay: titleBarOverlayOptions(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -198,6 +240,7 @@ function createWindow() {
   win.on("resize", persist);
   win.on("move", persist);
   win.on("close", persist);
+  wireWindowMaximizeEvents(win);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (shouldOpenExternally(url)) {
@@ -209,10 +252,10 @@ function createWindow() {
       overrideBrowserWindowOptions: {
         autoHideMenuBar: true,
         titleBarStyle: "hidden",
-        titleBarOverlay: titleBarOverlayOptions(),
         backgroundColor: windowBackgroundColor(),
         icon: iconPath(),
         webPreferences: {
+          preload: path.join(__dirname, "preload.js"),
           contextIsolation: true,
           nodeIntegration: false,
           sandbox: true,
@@ -333,6 +376,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     app.setAppUserModelId("fr.idena.tuesday");
+    registerWindowControlIpc();
     buildMenu();
     createWindow();
     setupAutoUpdater(() => mainWindow);
@@ -341,7 +385,6 @@ if (!gotLock) {
       for (const win of BrowserWindow.getAllWindows()) {
         try {
           win.setBackgroundColor(windowBackgroundColor());
-          win.setTitleBarOverlay(titleBarOverlayOptions());
         } catch {
           /* ignore */
         }

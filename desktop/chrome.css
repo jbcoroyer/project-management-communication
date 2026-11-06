@@ -1,29 +1,101 @@
 /* Chrome bureau Tuesday — injecté dans la fenêtre Electron */
 
 html.tuesday-desktop {
-  --desktop-titlebar-h: env(titlebar-area-height, 36px);
-  --desktop-titlebar-w: env(titlebar-area-width, 100%);
+  --desktop-titlebar-h: 40px;
+  --desktop-controls-w: 120px;
+  --tue-ink: var(--foreground, #1a1713);
+  --tue-muted: color-mix(in srgb, var(--foreground, #1a1713) 45%, transparent);
+  --tue-hover: color-mix(in srgb, var(--foreground, #1a1713) 7%, transparent);
+  --tue-danger: #b4453f;
+  --tue-danger-soft: rgba(180, 69, 63, 0.12);
 }
 
-/* Zone de drag native (sous les boutons Windows) */
-html.tuesday-desktop::before {
-  content: "";
+/* Bandeau titre : drag + contrôles custom */
+#tuesday-titlebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: var(--desktop-titlebar-w);
+  right: 0;
   height: var(--desktop-titlebar-h);
-  z-index: 2147483000;
-  -webkit-app-region: drag;
-  pointer-events: auto;
+  z-index: 2147483646;
+  display: flex;
+  align-items: stretch;
+  pointer-events: none;
 }
 
-/* Contenu sous la barre de titre intégrée */
+#tuesday-titlebar .tue-drag {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  pointer-events: auto;
+  -webkit-app-region: drag;
+}
+
+#tuesday-window-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 100%;
+  padding: 0 10px 0 4px;
+  width: var(--desktop-controls-w);
+  box-sizing: border-box;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+#tuesday-window-controls button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  width: 34px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--tue-muted);
+  cursor: pointer;
+  transition:
+    background-color 160ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+#tuesday-window-controls button svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#tuesday-window-controls button:hover {
+  background: var(--tue-hover);
+  color: var(--tue-ink);
+}
+
+#tuesday-window-controls button.tue-close:hover {
+  background: var(--tue-danger-soft);
+  color: var(--tue-danger);
+}
+
+#tuesday-window-controls button:active {
+  transform: scale(0.96);
+}
+
+#tuesday-window-controls button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tue-ink) 18%, transparent);
+}
+
 html.tuesday-desktop body {
   padding-top: var(--desktop-titlebar-h) !important;
 }
 
-/* Éléments interactifs restents cliquables */
 html.tuesday-desktop a,
 html.tuesday-desktop button,
 html.tuesday-desktop input,

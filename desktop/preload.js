@@ -22,4 +22,20 @@ contextBridge.exposeInMainWorld("tuesdayDesktop", {
       ipcRenderer.removeListener("tuesday:update-status", listener);
     };
   },
+
+  window: {
+    minimize: () => ipcRenderer.invoke("tuesday:window-minimize"),
+    toggleMaximize: () => ipcRenderer.invoke("tuesday:window-toggle-maximize"),
+    close: () => ipcRenderer.invoke("tuesday:window-close"),
+    isMaximized: () => ipcRenderer.invoke("tuesday:window-is-maximized"),
+    onMaximizedChange: (handler) => {
+      const listener = (_event, maximized) => {
+        handler(Boolean(maximized));
+      };
+      ipcRenderer.on("tuesday:window-maximized", listener);
+      return () => {
+        ipcRenderer.removeListener("tuesday:window-maximized", listener);
+      };
+    },
+  },
 });

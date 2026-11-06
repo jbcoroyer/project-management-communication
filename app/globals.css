@@ -112,21 +112,9 @@ body {
   background: transparent;
 }
 
-/* App Electron : barre de titre Windows fondue dans l’UI */
+/* App Electron : barre de titre custom (contrôles injectés par le shell) */
 html.tuesday-desktop {
-  --desktop-titlebar-h: env(titlebar-area-height, 36px);
-  --desktop-titlebar-w: env(titlebar-area-width, 100%);
-}
-
-html.tuesday-desktop::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: var(--desktop-titlebar-w);
-  height: var(--desktop-titlebar-h);
-  z-index: 2147483000;
-  -webkit-app-region: drag;
+  --desktop-titlebar-h: 40px;
 }
 
 html.tuesday-desktop body {

@@ -4,6 +4,14 @@ export type DesktopUpdateStatus = {
   message?: string;
 };
 
+export type TuesdayDesktopWindowApi = {
+  minimize: () => Promise<void>;
+  toggleMaximize: () => Promise<boolean>;
+  close: () => Promise<void>;
+  isMaximized: () => Promise<boolean>;
+  onMaximizedChange: (handler: (maximized: boolean) => void) => () => void;
+};
+
 export type TuesdayDesktopApi = {
   isDesktop: true;
   platform: string;
@@ -11,6 +19,7 @@ export type TuesdayDesktopApi = {
   installUpdate: () => Promise<void>;
   checkForUpdates: () => Promise<void>;
   onUpdateStatus: (handler: (status: DesktopUpdateStatus) => void) => () => void;
+  window: TuesdayDesktopWindowApi;
 };
 
 declare global {
