@@ -4,6 +4,7 @@ import AdminSettingsPanel from "../../settings/AdminSettingsPanel";
 import WorkspaceMembersPanel from "../../settings/WorkspaceMembersPanel";
 import WorkspaceModulesPanel from "../../settings/WorkspaceModulesPanel";
 import DeleteAccountPanel from "../../settings/DeleteAccountPanel";
+import DesktopStartupPanel from "../../settings/DesktopStartupPanel";
 import { usePathname } from "next/navigation";
 import V2PageHeader from "../V2PageHeader";
 
@@ -32,6 +33,8 @@ export default function V2SettingsPage() {
           </header>
         )}
       </section>
+
+      <DesktopStartupPanel />
 
       <WorkspaceModulesPanel />
 

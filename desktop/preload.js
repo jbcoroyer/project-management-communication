@@ -38,4 +38,18 @@ contextBridge.exposeInMainWorld("tuesdayDesktop", {
       };
     },
   },
+
+  startup: {
+    get: () => ipcRenderer.invoke("tuesday:startup-get"),
+    set: (enabled) => ipcRenderer.invoke("tuesday:startup-set", enabled),
+    onChanged: (handler) => {
+      const listener = (_event, state) => {
+        handler(state);
+      };
+      ipcRenderer.on("tuesday:startup-changed", listener);
+      return () => {
+        ipcRenderer.removeListener("tuesday:startup-changed", listener);
+      };
+    },
+  },
 });

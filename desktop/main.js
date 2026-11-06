@@ -14,6 +14,10 @@ const {
   checkForUpdates,
   pushStatusToWindow,
 } = require("./updater");
+const {
+  registerStartupIpc,
+  maybeAskStartupPreference,
+} = require("./startup");
 
 /** URL de production (app online). Surcharge : TUESDAY_APP_URL */
 const APP_URL = (
@@ -377,9 +381,15 @@ if (!gotLock) {
   app.whenReady().then(() => {
     app.setAppUserModelId("fr.idena.tuesday");
     registerWindowControlIpc();
+    registerStartupIpc();
     buildMenu();
     createWindow();
     setupAutoUpdater(() => mainWindow);
+
+    // Proposition « lancer au démarrage » au premier lancement de cette version
+    setTimeout(() => {
+      void maybeAskStartupPreference(() => mainWindow);
+    }, 1800);
 
     nativeTheme.on("updated", () => {
       for (const win of BrowserWindow.getAllWindows()) {

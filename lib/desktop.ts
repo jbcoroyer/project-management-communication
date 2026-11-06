@@ -12,6 +12,17 @@ export type TuesdayDesktopWindowApi = {
   onMaximizedChange: (handler: (maximized: boolean) => void) => () => void;
 };
 
+export type TuesdayDesktopStartupApi = {
+  get: () => Promise<{
+    openAtLogin: boolean;
+    askedAtVersion: string | null;
+    version: string;
+    isPackaged: boolean;
+  }>;
+  set: (enabled: boolean) => Promise<{ openAtLogin: boolean }>;
+  onChanged: (handler: (state: { openAtLogin: boolean }) => void) => () => void;
+};
+
 export type TuesdayDesktopApi = {
   isDesktop: true;
   platform: string;
@@ -20,6 +31,7 @@ export type TuesdayDesktopApi = {
   checkForUpdates: () => Promise<void>;
   onUpdateStatus: (handler: (status: DesktopUpdateStatus) => void) => () => void;
   window: TuesdayDesktopWindowApi;
+  startup: TuesdayDesktopStartupApi;
 };
 
 declare global {
