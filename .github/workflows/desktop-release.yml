@@ -1,0 +1,43 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install root dependencies (sharp pour l’icône)
+        run: npm ci
+
+      - name: Install desktop dependencies
+        run: npm ci --prefix desktop
+
+      - name: Sync version from git tag
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          export VERSION
+          node -e "const fs=require('fs');const p='desktop/package.json';const pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version=process.env.VERSION;fs.writeFileSync(p,JSON.stringify(pkg,null,2)+'\n');console.log('desktop version =',pkg.version);"
+
+      - name: Build and publish
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:publish

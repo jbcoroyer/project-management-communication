@@ -23,6 +23,7 @@ import { useCurrentUser } from "../../lib/useCurrentUser";
 import { TuesdaySplash } from "@/components/brand";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import WorkspaceSwitcher from "../WorkspaceSwitcher";
+import DesktopUpdateButton from "../DesktopUpdateButton";
 import V3GlobalSearch from "./GlobalSearch";
 import { useWorkspaceOptional } from "../../lib/useWorkspace";
 import {
@@ -263,6 +264,7 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
               avatarUrl={displayAvatar}
               jobTitle={displayJob}
             />
+            <DesktopUpdateButton />
             <button
               type="button"
               onClick={() => void handleSignOut()}
@@ -291,7 +293,10 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
       <div className="relative mx-auto w-full max-w-[1680px] px-4 py-4 lg:px-7">
         <aside
           className="fixed bottom-4 left-4 top-4 hidden w-[15.75rem] flex-col pr-3 lg:flex"
-          style={{ zIndex: "var(--z-sidebar)" }}
+          style={{
+            zIndex: "var(--z-sidebar)",
+            top: "calc(1rem + var(--desktop-titlebar-h, 0px))",
+          }}
         >
           {sidebarContent()}
         </aside>
@@ -302,7 +307,10 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
               type="button"
               aria-label="Fermer le menu"
               className="fixed inset-0 bg-[var(--foreground)]/20 backdrop-blur-sm lg:hidden"
-              style={{ zIndex: "var(--z-overlay)" }}
+              style={{
+                zIndex: "var(--z-overlay)",
+                top: "var(--desktop-titlebar-h, 0px)",
+              }}
               onClick={() => setMobileNavOpen(false)}
             />
             <aside
@@ -310,7 +318,10 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
               aria-modal="true"
               aria-label="Navigation principale"
               className="fixed inset-y-0 left-0 flex w-72 max-w-[88vw] flex-col border-r border-[var(--line)] bg-[var(--background)] p-4 lg:hidden"
-              style={{ zIndex: "calc(var(--z-overlay) + 1)" }}
+              style={{
+                zIndex: "calc(var(--z-overlay) + 1)",
+                top: "var(--desktop-titlebar-h, 0px)",
+              }}
             >
               <div className="mb-3 flex items-center justify-between gap-2">
                 <ServiceCommunicationIdenaHeading intro={false} />

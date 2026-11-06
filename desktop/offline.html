@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tuesday — hors ligne</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f4ef;
+        --fg: #1a1a1a;
+        --muted: #5c564e;
+        --accent: #c15e39;
+        --btn: #1a1a1a;
+        --btn-fg: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121212;
+          --fg: #f3efe8;
+          --muted: #a39a8f;
+          --btn: #f3efe8;
+          --btn-fg: #121212;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background:
+          radial-gradient(ellipse at 20% 0%, rgba(193, 94, 57, 0.18), transparent 50%),
+          radial-gradient(ellipse at 80% 100%, rgba(193, 94, 57, 0.1), transparent 45%),
+          var(--bg);
+        color: var(--fg);
+        padding: 2rem;
+      }
+      main {
+        max-width: 26rem;
+        text-align: center;
+      }
+      .mark {
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 1.5rem;
+        border-radius: 16px;
+        background: var(--accent);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: 1fr 1fr;
+        gap: 5px;
+        padding: 12px;
+      }
+      .mark span {
+        border-radius: 6px;
+        background: #fff;
+      }
+      .mark span:nth-child(4) {
+        grid-column: 2;
+        background: #111;
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 650;
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0 0 1.5rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 10px;
+        background: var(--btn);
+        color: var(--btn-fg);
+        font: inherit;
+        font-weight: 600;
+        padding: 0.75rem 1.25rem;
+        cursor: pointer;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <h1>Connexion requise</h1>
+      <p>
+        Tuesday a besoin d’Internet pour se connecter à votre espace.
+        Vérifiez le réseau, puis réessayez.
+      </p>
+      <button type="button" id="retry">Réessayer</button>
+    </main>
+    <script>
+      document.getElementById("retry").addEventListener("click", () => {
+        location.href =
+          "https://project-management-communication.vercel.app";
+      });
+    </script>
+  </body>
+</html>

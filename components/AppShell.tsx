@@ -19,6 +19,7 @@ import { getSupabaseBrowser } from "../lib/supabaseBrowser";
 import { resolveAdminAvatarUrl, useAdminAvatarMap } from "../lib/adminAvatarContext";
 import { useCurrentUser } from "../lib/useCurrentUser";
 import { ServiceCommunicationIdenaHeading } from "./IdenaBrand";
+import DesktopUpdateButton from "./DesktopUpdateButton";
 
 type AppShellProps = {
   children: ReactNode;
@@ -184,6 +185,7 @@ export default function AppShell({
               avatarUrl={displayAvatar}
               jobTitle={displayJob}
             />
+            <DesktopUpdateButton />
             <button
               type="button"
               onClick={() => void handleSignOut()}

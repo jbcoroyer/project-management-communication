@@ -19,6 +19,10 @@
 
 # production
 /build
+/desktop-dist/
+/desktop/node_modules/
+/desktop/icon.ico
+/desktop/icon.png
 
 # misc
 .DS_Store

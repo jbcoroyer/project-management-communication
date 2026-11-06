@@ -11,10 +11,12 @@ import { TasksProvider } from "../lib/tasksContext";
 import { WorkspaceProvider } from "../lib/workspaceContext";
 import { ConfirmDialogProvider } from "./ui/ConfirmDialog";
 import ModulesOnboardingGate from "./ModulesOnboardingGate";
+import DesktopChrome from "./DesktopChrome";
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
     <CurrentUserProvider>
+      <DesktopChrome />
       <WorkspaceProvider>
         <ModulesOnboardingGate>
           <ReferenceDataProvider>

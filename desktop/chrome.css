@@ -1,0 +1,74 @@
+/* Chrome bureau Tuesday — injecté dans la fenêtre Electron */
+
+html.tuesday-desktop {
+  --desktop-titlebar-h: env(titlebar-area-height, 36px);
+  --desktop-titlebar-w: env(titlebar-area-width, 100%);
+}
+
+/* Zone de drag native (sous les boutons Windows) */
+html.tuesday-desktop::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--desktop-titlebar-w);
+  height: var(--desktop-titlebar-h);
+  z-index: 2147483000;
+  -webkit-app-region: drag;
+  pointer-events: auto;
+}
+
+/* Contenu sous la barre de titre intégrée */
+html.tuesday-desktop body {
+  padding-top: var(--desktop-titlebar-h) !important;
+}
+
+/* Éléments interactifs restents cliquables */
+html.tuesday-desktop a,
+html.tuesday-desktop button,
+html.tuesday-desktop input,
+html.tuesday-desktop textarea,
+html.tuesday-desktop select,
+html.tuesday-desktop [role="button"],
+html.tuesday-desktop [role="textbox"],
+html.tuesday-desktop [contenteditable="true"] {
+  -webkit-app-region: no-drag;
+}
+
+/* Scrollbars — fins, arrondis, teinte Tuesday */
+html.tuesday-desktop,
+html.tuesday-desktop * {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground, #1a1713) 28%, transparent) transparent;
+}
+
+html.tuesday-desktop::-webkit-scrollbar,
+html.tuesday-desktop *::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+html.tuesday-desktop::-webkit-scrollbar-track,
+html.tuesday-desktop *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.tuesday-desktop::-webkit-scrollbar-thumb,
+html.tuesday-desktop *::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground, #1a1713) 22%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.tuesday-desktop::-webkit-scrollbar-thumb:hover,
+html.tuesday-desktop *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground, #1a1713) 40%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.tuesday-desktop::-webkit-scrollbar-corner,
+html.tuesday-desktop *::-webkit-scrollbar-corner {
+  background: transparent;
+}

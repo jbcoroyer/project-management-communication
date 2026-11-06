@@ -1,0 +1,74 @@
+{
+  "name": "tuesday-desktop",
+  "version": "0.1.4",
+  "private": true,
+  "description": "Tuesday — application bureau Windows",
+  "author": "IDENA",
+  "main": "main.js",
+  "scripts": {
+    "icon": "node generate-icon.mjs",
+    "start": "npm run icon && electron .",
+    "build": "npm run icon && electron-builder --win nsis",
+    "build:publish": "npm run icon && electron-builder --win nsis --publish always",
+    "release:bump": "node release.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "6.7.3"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "png-to-ico": "3.0.2"
+  },
+  "build": {
+    "appId": "fr.idena.tuesday",
+    "productName": "Tuesday",
+    "copyright": "Copyright © IDENA",
+    "directories": {
+      "output": "../desktop-dist",
+      "buildResources": "."
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "updater.js",
+      "offline.html",
+      "chrome.css",
+      "icon.ico",
+      "icon.png",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jbcoroyer",
+        "repo": "project-management-communication",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Tuesday",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeaderIcon": "icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

@@ -16,7 +16,12 @@
     "db:v2-automations-intake": "node scripts/apply-v2-automations-intake.mjs",
     "db:satisfaction-survey": "node scripts/apply-satisfaction-survey.mjs",
     "db:deliverables": "node scripts/apply-deliverables.mjs",
-    "db:v3-harden": "node scripts/apply-v3-harden.mjs"
+    "db:v3-harden": "node scripts/apply-v3-harden.mjs",
+    "desktop:install": "npm install --prefix desktop",
+    "desktop:icon": "npm run icon --prefix desktop",
+    "desktop": "npm start --prefix desktop",
+    "desktop:build": "npm run build --prefix desktop",
+    "desktop:release": "npm run release:bump --prefix desktop"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

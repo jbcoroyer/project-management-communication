@@ -76,6 +76,70 @@ body {
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent;
+}
+
+/* Scrollbars — intégrés au design (navigateur + app bureau) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 40%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* App Electron : barre de titre Windows fondue dans l’UI */
+html.tuesday-desktop {
+  --desktop-titlebar-h: env(titlebar-area-height, 36px);
+  --desktop-titlebar-w: env(titlebar-area-width, 100%);
+}
+
+html.tuesday-desktop::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--desktop-titlebar-w);
+  height: var(--desktop-titlebar-h);
+  z-index: 2147483000;
+  -webkit-app-region: drag;
+}
+
+html.tuesday-desktop body {
+  padding-top: var(--desktop-titlebar-h);
+}
+
+html.tuesday-desktop a,
+html.tuesday-desktop button,
+html.tuesday-desktop input,
+html.tuesday-desktop textarea,
+html.tuesday-desktop select,
+html.tuesday-desktop [role="button"] {
+  -webkit-app-region: no-drag;
 }
 
 .ui-display {
