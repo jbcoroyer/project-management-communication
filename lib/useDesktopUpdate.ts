@@ -34,16 +34,24 @@ export function useDesktopUpdate() {
     await window.tuesdayDesktop.installUpdate();
   }, []);
 
+  const checkForUpdates = useCallback(async () => {
+    if (!window.tuesdayDesktop) return;
+    await window.tuesdayDesktop.checkForUpdates();
+  }, []);
+
   const updateReady = desktop && status.status === "ready";
   const downloading =
     desktop && (status.status === "downloading" || status.status === "available");
+  const checking = desktop && status.status === "checking";
 
   return {
     desktop,
     status,
     updateReady,
     downloading,
+    checking,
     version: status.version,
     installUpdate,
+    checkForUpdates,
   };
 }

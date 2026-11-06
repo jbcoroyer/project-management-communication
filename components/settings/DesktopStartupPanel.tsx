@@ -1,19 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Power } from "lucide-react";
+import { ArrowUpCircle, Loader2, Power, RefreshCw } from "lucide-react";
 import { isTuesdayDesktop } from "../../lib/desktop";
+import { useDesktopUpdate } from "../../lib/useDesktopUpdate";
 
 type StartupState = {
   openAtLogin: boolean;
   version?: string;
 };
 
-/** Réglage « lancer au démarrage » — visible uniquement dans l’app bureau. */
+/** Réglages app bureau : démarrage Windows + vérification des mises à jour. */
 export default function DesktopStartupPanel() {
   const [visible, setVisible] = useState(false);
   const [state, setState] = useState<StartupState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checkingManual, setCheckingManual] = useState(false);
+  const {
+    updateReady,
+    downloading,
+    checking,
+    version: updateVersion,
+    installUpdate,
+    checkForUpdates,
+  } = useDesktopUpdate();
 
   const refresh = useCallback(async () => {
     if (!window.tuesdayDesktop?.startup) return;
@@ -50,6 +60,19 @@ export default function DesktopStartupPanel() {
     }
   };
 
+  const handleCheckUpdates = async () => {
+    if (checkingManual || downloading || checking) return;
+    setCheckingManual(true);
+    try {
+      await checkForUpdates();
+    } finally {
+      // Laisse le temps aux events updater d’arriver
+      setTimeout(() => setCheckingManual(false), 800);
+    }
+  };
+
+  const checkBusy = checkingManual || checking || downloading;
+
   return (
     <section className="ui-surface space-y-4 rounded-2xl p-5">
       <header className="flex items-start gap-3">
@@ -61,10 +84,10 @@ export default function DesktopStartupPanel() {
             Application bureau
           </p>
           <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">
-            Lancement au démarrage
+            Application Windows
           </h2>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-            Ouvrir Tuesday automatiquement quand Windows démarre.
+            Démarrage automatique et mises à jour.
             {state.version ? (
               <span className="text-[color:var(--foreground)]/35">
                 {" "}
@@ -99,6 +122,41 @@ export default function DesktopStartupPanel() {
           />
         </button>
       </label>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {updateReady ? (
+          <button
+            type="button"
+            onClick={() => void installUpdate()}
+            className="ui-btn ui-btn-accent h-9 justify-center gap-2 px-3 text-xs"
+          >
+            <ArrowUpCircle className="h-3.5 w-3.5" aria-hidden />
+            Mettre à jour
+            {updateVersion ? ` · ${updateVersion}` : ""}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleCheckUpdates()}
+            disabled={checkBusy}
+            className="ui-btn ui-btn-secondary h-9 justify-center gap-2 px-3 text-xs disabled:opacity-60"
+          >
+            {checkBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {downloading
+              ? `Téléchargement${updateVersion ? ` ${updateVersion}` : ""}…`
+              : checking || checkingManual
+                ? "Vérification…"
+                : "Vérifier mise à jour"}
+          </button>
+        )}
+        <p className="text-[11px] text-[color:var(--foreground)]/40 sm:ml-1">
+          Recherche une nouvelle version de l’application Windows.
+        </p>
+      </div>
     </section>
   );
 }
