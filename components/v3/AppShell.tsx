@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
   Menu,
   Package,
   PackageCheck,
+  Plus,
   Settings2,
   UserCircle2,
   X,
@@ -23,9 +24,15 @@ import { useCurrentUser } from "../../lib/useCurrentUser";
 import { TuesdaySplash } from "@/components/brand";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import WorkspaceSwitcher from "../WorkspaceSwitcher";
+import ServiceSwitcher from "../ServiceSwitcher";
 import DesktopUpdateButton from "../DesktopUpdateButton";
 import V3GlobalSearch from "./GlobalSearch";
+import CreateBoardWizard from "../boards/CreateBoardWizard";
 import { useWorkspaceOptional } from "../../lib/useWorkspace";
+import { useServicesOptional } from "../../lib/servicesContext";
+import { useBoardsOptional } from "../../lib/boardsContext";
+import { isModuleVisibleForService } from "../../lib/services";
+import { resolveOrgLabel } from "../../lib/orgLabels";
 import {
   allModulesEnabled,
   moduleKeyForHref,
@@ -81,6 +88,9 @@ const NAV_SECTIONS: NavSection[] = [
 
 function isNavActive(href: string, pathname: string): boolean {
   if (href === "/v3/events/dashboard") return pathname.startsWith("/v3/events");
+  if (href.startsWith("/v3/boards/")) {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
   if (href === "/v3/dashboard/kanban") {
     return pathname === "/v3" || pathname.startsWith("/v3/dashboard");
   }
@@ -147,16 +157,46 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
   const displayAvatar =
     user?.avatarUrl ?? (displayName ? resolveAdminAvatarUrl(avatarMap, displayName) : null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [createBoardOpen, setCreateBoardOpen] = useState(false);
   const workspaceCtx = useWorkspaceOptional();
+  const servicesCtx = useServicesOptional();
+  const boardsCtx = useBoardsOptional();
   const modules: WorkspaceModules = workspaceCtx?.modules ?? allModulesEnabled();
-  const sections = NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => {
-      const key = moduleKeyForHref(item.href);
-      if (key === "settings" || key == null) return true;
-      return modules[key] === true;
-    }),
-  })).filter((section) => section.items.length > 0);
+  const activeServiceSlug = servicesCtx?.activeService?.slug ?? null;
+  const boardLabel = resolveOrgLabel(servicesCtx?.orgLabels, "board");
+  const visibleBoards = boardsCtx?.visibleBoards ?? [];
+  const boardNavItems = useMemo<NavItem[]>(
+    () =>
+      visibleBoards.map((b) => ({
+        href: b.isDefault ? "/v3/dashboard/kanban" : `/v3/boards/${b.id}`,
+        label: b.name,
+        hint: b.isDefault ? "Kanban & vues" : b.description || "Tableau sur mesure",
+        icon: LayoutGrid,
+      })),
+    [visibleBoards],
+  );
+  const sections = useMemo(() => {
+    const mapped = NAV_SECTIONS.map((section) => {
+      if (section.id === "travail") {
+        const livrables = section.items.find((i) => i.href === "/v3/deliverables");
+        const items: NavItem[] = [...boardNavItems];
+        if (livrables && modules.livrables) {
+          items.push(livrables);
+        }
+        return { ...section, label: boardLabel + "s", items };
+      }
+      return {
+        ...section,
+        items: section.items.filter((item) => {
+          const key = moduleKeyForHref(item.href);
+          if (key === "settings" || key == null) return true;
+          if (modules[key] !== true) return false;
+          return isModuleVisibleForService(key, activeServiceSlug);
+        }),
+      };
+    });
+    return mapped.filter((section) => section.items.length > 0);
+  }, [activeServiceSlug, boardLabel, boardNavItems, modules]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -193,8 +233,20 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
         </div>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-2">
         <WorkspaceSwitcher />
+        <ServiceSwitcher />
+        <button
+          type="button"
+          onClick={() => {
+            setCreateBoardOpen(true);
+            onNavClick?.();
+          }}
+          className="ui-btn ui-btn-primary h-9 w-full justify-center text-[12px]"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Créer un {boardLabel.toLowerCase()}
+        </button>
       </div>
 
       <nav
@@ -362,6 +414,8 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
           <main className="pb-10">{children}</main>
         </div>
       </div>
+
+      <CreateBoardWizard open={createBoardOpen} onClose={() => setCreateBoardOpen(false)} />
     </div>
   );
 }

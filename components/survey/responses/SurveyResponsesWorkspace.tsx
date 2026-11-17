@@ -216,7 +216,7 @@ export default function SurveyResponsesWorkspace({
             <ArrowLeft className="h-3.5 w-3.5" />
             Retour au questionnaire
           </Link>
-          <p className="ui-kicker mb-1">Service Communication</p>
+          <p className="ui-kicker mb-1">Tuesday · IDENA</p>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Réponses</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{title}</p>
         </div>

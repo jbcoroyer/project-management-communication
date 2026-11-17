@@ -39,7 +39,7 @@ export default function WorkspaceModulesPanel() {
             Modules de l’espace
           </h2>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-            L’espace Service Communication conserve tous les modules. Cette
+            L’espace principal IDENA conserve tous les modules. Cette
             configuration n’est pas modifiable.
           </p>
         </header>

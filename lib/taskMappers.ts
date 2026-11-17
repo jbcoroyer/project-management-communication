@@ -107,6 +107,8 @@ export function mapTaskRow(row: unknown): Task {
     estimatedHours: toNumber(r.estimated_hours),
     estimatedDays: toNumber(r.estimated_days),
     parentTaskId: typeof r.parent_task_id === "string" && r.parent_task_id ? r.parent_task_id : undefined,
+    boardId: typeof r.board_id === "string" && r.board_id ? r.board_id : null,
+    serviceId: typeof r.service_id === "string" && r.service_id ? r.service_id : null,
     eventId: typeof r.event_id === "string" && r.event_id ? r.event_id : undefined,
     eventCategory: typeof r.event_category === "string" && r.event_category.trim() ? r.event_category : null,
     eventName: parseEventName(r.events),

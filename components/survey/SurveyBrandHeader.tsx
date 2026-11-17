@@ -18,7 +18,7 @@ export default function SurveyBrandHeader({ variant = "header" }: SurveyBrandHea
         />
         <div className="hidden h-12 w-px bg-[var(--line)] sm:block" aria-hidden />
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/50">
-          Service Communication
+          Tuesday · IDENA
         </p>
       </div>
     );
@@ -30,7 +30,7 @@ export default function SurveyBrandHeader({ variant = "header" }: SurveyBrandHea
       <div className="min-w-0">
         <p className="text-lg font-bold leading-none tracking-tight text-[var(--foreground)]">IDENA</p>
         <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/50">
-          Service Communication
+          Tuesday · IDENA
         </p>
       </div>
     </div>

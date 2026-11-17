@@ -14,6 +14,7 @@ import type { ColumnId, Task } from "./types";
 import type { TaskFormValuesWithSubtasks } from "./validation/taskSchema";
 import { requestOutlookSync } from "./outlookClientSync";
 import { useWorkspace } from "./workspaceContext";
+import { useActiveBoard } from "./activeBoardContext";
 
 
 function normalizeProjectedWorkForSave(
@@ -71,6 +72,7 @@ export function useTaskManager({
 }: UseTaskManagerParams) {
   const confirm = useConfirm();
   const { workspaceId } = useWorkspace();
+  const { boardId: activeBoardId } = useActiveBoard();
   // Auto-archivage « Terminé » > 2 jours : TasksProvider (partagé tâches + événementiel).
 
   const handleCreateTask = useCallback(
@@ -96,6 +98,7 @@ export function useTaskManager({
         estimated_hours: parseFloat(values.estimatedHours.replace(",", ".")) || 0,
         estimated_days: parseFloat(values.estimatedDays.replace(",", ".")) || 0,
         organization_id: workspaceId,
+        ...(activeBoardId ? { board_id: activeBoardId } : {}),
       };
 
       if (editingTaskId) {
@@ -158,6 +161,7 @@ export function useTaskManager({
           elapsed_ms: 0,
           is_running: false,
           organization_id: workspaceId,
+          ...(activeBoardId ? { board_id: activeBoardId } : {}),
         }));
         const { data: subData, error: subError } = await supabase.from("tasks").insert(subtaskRows).select();
         if (subError) {
@@ -170,7 +174,7 @@ export function useTaskManager({
 
       onTaskFormDone();
     },
-    [columns, editingTaskId, newTaskColumn, onTaskFormDone, setTasks, supabase, workspaceId],
+    [activeBoardId, columns, editingTaskId, newTaskColumn, onTaskFormDone, setTasks, supabase, workspaceId],
   );
 
   const handleArchiveTask = useCallback(

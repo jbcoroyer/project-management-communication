@@ -53,7 +53,7 @@ export default function DeleteAccountPanel() {
           Action définitive : votre compte Auth Supabase est effacé. Vous pourrez vous
           réinscrire plus tard avec la même adresse, mais les données liées à votre
           compte (et vos espaces perso dont vous êtes le seul membre) seront perdues.
-          L’espace Service Communication n’est pas supprimé.
+          L’espace principal IDENA n’est pas supprimé.
         </p>
       </header>
 

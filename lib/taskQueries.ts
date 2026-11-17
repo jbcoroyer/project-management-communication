@@ -25,6 +25,8 @@ export const TASK_SELECT_WITH_EVENT = `
   parent_task_id,
   event_id,
   event_category,
+  board_id,
+  service_id,
   events (
     name
   )

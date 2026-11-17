@@ -3,6 +3,9 @@
 import AdminSettingsPanel from "../../settings/AdminSettingsPanel";
 import WorkspaceMembersPanel from "../../settings/WorkspaceMembersPanel";
 import WorkspaceModulesPanel from "../../settings/WorkspaceModulesPanel";
+import WorkspaceServicesPanel from "../../settings/WorkspaceServicesPanel";
+import OrgLabelsPanel from "../../settings/OrgLabelsPanel";
+import BoardPacksPanel from "../../settings/BoardPacksPanel";
 import DeleteAccountPanel from "../../settings/DeleteAccountPanel";
 import DesktopStartupPanel from "../../settings/DesktopStartupPanel";
 import { usePathname } from "next/navigation";
@@ -19,7 +22,7 @@ export default function V2SettingsPage() {
           <V2PageHeader
             kicker="Outils"
             title="Réglages"
-            description="Modules, membres de l’espace et paramètres de référence."
+            description="Services, vocabulaire, packs, modules, membres et paramètres de référence."
           />
         ) : (
           <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
@@ -28,13 +31,19 @@ export default function V2SettingsPage() {
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Réglages</h1>
             <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-              Modules, membres de l’espace et paramètres de référence.
+              Services, vocabulaire, packs, modules, membres et paramètres de référence.
             </p>
           </header>
         )}
       </section>
 
       <DesktopStartupPanel />
+
+      <WorkspaceServicesPanel />
+
+      <OrgLabelsPanel />
+
+      <BoardPacksPanel />
 
       <WorkspaceModulesPanel />
 

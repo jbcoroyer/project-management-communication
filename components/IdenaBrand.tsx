@@ -6,6 +6,8 @@ import IdenaLogo from "./IdenaLogo";
 import { TuesdayLogo } from "@/components/brand";
 import { useIdenaMark } from "../lib/idenaMarkContext";
 import { isExternalImageSrc } from "../lib/idenaMarkSrc";
+import { useWorkspaceOptional } from "../lib/useWorkspace";
+import { useServicesOptional } from "../lib/servicesContext";
 
 export function IdenaMark({ className = "h-9 w-9" }: { className?: string }) {
   const { customSrc } = useIdenaMark();
@@ -36,6 +38,16 @@ type BrandHeadingProps = {
   children?: ReactNode;
 };
 
+function BrandSubtitle() {
+  const workspace = useWorkspaceOptional();
+  const services = useServicesOptional();
+  const orgName = workspace?.workspace?.name?.trim() || "IDENA";
+  const serviceName = services?.activeService?.name?.trim();
+  if (serviceName) return `${serviceName} · ${orgName}`;
+  return orgName === "IDENA" ? "Tuesday · IDENA" : `${orgName} · IDENA`;
+}
+
+/** En-tête marque (nom historique conservé pour les imports existants). */
 export function ServiceCommunicationIdenaHeading({
   size = "sidebar",
   intro = true,
@@ -60,7 +72,7 @@ export function ServiceCommunicationIdenaHeading({
         <TuesdayLogo size={36} intro={intro} />
       </Link>
       <p className="mt-1.5 text-[10px] font-medium tracking-[0.04em] text-[color:var(--foreground)]/45">
-        Service Communication · IDENA
+        <BrandSubtitle />
       </p>
       {children}
     </div>

@@ -63,6 +63,10 @@ export type Task = {
   completedAt?: string;
   /** ID de la tache parente (null = tache racine) */
   parentTaskId?: string;
+  /** Tableau sur mesure (Phase B) — null = legacy / défaut org */
+  boardId?: string | null;
+  /** Service métier optionnel */
+  serviceId?: string | null;
   /** Lien optionnel vers un événement (salon) — imbrication charge de travail globale */
   eventId?: string;
   /** Catégorie métier événement (Logistique, Com, etc.) */

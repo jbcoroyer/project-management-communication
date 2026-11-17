@@ -36,6 +36,7 @@ import { useTasks } from "../../../lib/useTasks";
 import { useEvents } from "../../../lib/useEvents";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useWorkspace } from "../../../lib/useWorkspace";
+import { useActiveBoard } from "../../../lib/activeBoardContext";
 import { teamAdminNameForUser } from "../../../lib/taskConcernsUser";
 import { getSupabaseBrowser } from "../../../lib/supabaseBrowser";
 import { useTaskManager } from "../../../lib/useTaskManager";
@@ -131,11 +132,13 @@ export default function V2DashboardHomePage() {
   const searchParams = useSearchParams();
   const { user: currentUser } = useCurrentUser();
   const { workspaceId } = useWorkspace();
+  const { boardId: activeBoardId } = useActiveBoard();
 
   const appVersion = detectVersionFromPath(pathname);
   const routePrefix = pathVersionPrefix(pathname) || "/v2";
   const isLightUi = appVersion === "v3";
   const activeTab = useMemo<MainTab>(() => {
+    if (/^\/v3\/boards\/[^/?#]+/.test(pathname)) return "kanban";
     const match = pathname.match(/^\/v[23]\/dashboard\/([^/?#]+)/);
     const candidate = match?.[1];
     if (candidate === "inbox") return "kanban";
@@ -443,6 +446,7 @@ export default function V2DashboardHomePage() {
         is_archived: false,
         completed_at: completedAtIsoForNewTaskInColumn(column),
         organization_id: workspaceId,
+        ...(activeBoardId ? { board_id: activeBoardId } : {}),
       };
 
       const { data, error } = await supabase.from("tasks").insert(payload).select().single();
@@ -459,7 +463,7 @@ export default function V2DashboardHomePage() {
       });
       toastSuccess("Tâche créée");
     },
-    [columns, companyRecords, domainRecords, defaultAdminName, setTasks, supabase],
+    [activeBoardId, columns, companyRecords, domainRecords, defaultAdminName, setTasks, supabase, workspaceId],
   );
 
   const handleQuickCreateForColumn = useCallback(
@@ -520,6 +524,7 @@ export default function V2DashboardHomePage() {
         is_archived: false,
         completed_at: completedAtIsoForNewTaskInColumn(column),
         organization_id: workspaceId,
+        ...(activeBoardId ? { board_id: activeBoardId } : {}),
       };
 
       const { data, error } = await supabase.from("tasks").insert(payload).select().single();
@@ -536,7 +541,7 @@ export default function V2DashboardHomePage() {
       });
       toastSuccess("Tâche créée");
     },
-    [companyRecords, domainRecords, defaultAdminName, setTasks, supabase],
+    [activeBoardId, companyRecords, domainRecords, defaultAdminName, setTasks, supabase, workspaceId],
   );
 
   const domainNames = useMemo(() => domainRecords.map((d) => d.name), [domainRecords]);
@@ -605,7 +610,11 @@ export default function V2DashboardHomePage() {
       }
       const { data, error } = await supabase
         .from("tasks")
-        .insert({ ...payload, organization_id: workspaceId })
+        .insert({
+          ...payload,
+          organization_id: workspaceId,
+          ...(activeBoardId && payload.board_id == null ? { board_id: activeBoardId } : {}),
+        })
         .select()
         .single();
       if (error || !data) {
@@ -620,7 +629,7 @@ export default function V2DashboardHomePage() {
       });
       return created;
     },
-    [setTasks, supabase, workspaceId],
+    [activeBoardId, setTasks, supabase, workspaceId],
   );
 
   const handleAcceptRequest = useCallback(
@@ -1042,7 +1051,7 @@ export default function V2DashboardHomePage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                    Service Communication <span className="font-bold">IDENA</span> · V2
+                    Tuesday <span className="font-bold">IDENA</span> · V2
                   </p>
                   {effectiveUser ? (
                     <h1 className="ui-heading mt-1 text-3xl font-semibold tracking-tight text-[var(--foreground)]">

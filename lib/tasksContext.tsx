@@ -18,6 +18,7 @@ import { TASK_SELECT_WITH_EVENT } from "./taskQueries";
 import { AUTO_ARCHIVE_DELAY_MS, DONE_COLUMN_NAME } from "./workflowConstants";
 import type { Task } from "./types";
 import { useWorkspace } from "./workspaceContext";
+import { useActiveBoard } from "./activeBoardContext";
 
 type TasksContextValue = {
   tasks: Task[];
@@ -40,6 +41,7 @@ const TasksContext = createContext<TasksContextValue | null>(null);
 export function TasksProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser();
   const { workspaceId, loading: workspaceLoading } = useWorkspace();
+  const { board: activeBoard, boardId: activeBoardId, isBoardScoped } = useActiveBoard();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [tasks, setTasks] = useState<Task[]>([]);
   /** true jusqu’au premier cycle de chargement (splash + états vides). */
@@ -214,9 +216,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, tasks, optimisticUpdate]);
 
+  const visibleTasks = useMemo(() => {
+    if (!isBoardScoped || !activeBoardId) return tasks;
+    return tasks.filter((t) => {
+      if (t.boardId === activeBoardId) return true;
+      // Legacy sans board_id : visible uniquement sur le board par défaut
+      if (!t.boardId) return Boolean(activeBoard?.isDefault);
+      return false;
+    });
+  }, [activeBoard?.isDefault, activeBoardId, isBoardScoped, tasks]);
+
   const value = useMemo(
     () => ({
-      tasks,
+      tasks: visibleTasks,
       setTasks,
       loading,
       archivedLoaded,
@@ -224,7 +236,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       ensureArchivedLoaded,
       optimisticUpdate,
     }),
-    [tasks, loading, archivedLoaded, loadTasks, ensureArchivedLoaded, optimisticUpdate],
+    [visibleTasks, loading, archivedLoaded, loadTasks, ensureArchivedLoaded, optimisticUpdate],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

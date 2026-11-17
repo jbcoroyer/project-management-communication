@@ -219,7 +219,7 @@ export default function SurveyListWorkspace() {
     <div className="space-y-5">
       <header className="ui-surface flex flex-wrap items-start justify-between gap-4 rounded-2xl p-5">
         <div>
-          <p className="ui-kicker mb-1">Service Communication</p>
+          <p className="ui-kicker mb-1">Tuesday · IDENA</p>
           <h1 className="ui-display text-2xl text-[var(--foreground)]">Questionnaires</h1>
           <p className="mt-1 text-sm text-[color:var(--foreground)]/60">
             Chaque carte est codée par couleur selon son public cible : collaborateurs du groupe,

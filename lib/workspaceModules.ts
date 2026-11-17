@@ -85,7 +85,9 @@ export function parseWorkspaceModules(
 
 export function moduleKeyForHref(href: string): WorkspaceModuleKey | "settings" | null {
   if (href.startsWith("/v3/settings")) return "settings";
-  if (href.startsWith("/v3/dashboard") || href === "/v3") return "tableau";
+  if (href.startsWith("/v3/dashboard") || href.startsWith("/v3/boards") || href === "/v3") {
+    return "tableau";
+  }
   if (href.startsWith("/v3/deliverables")) return "livrables";
   if (href.startsWith("/v3/events")) return "events";
   if (href.startsWith("/v3/dam")) return "medias";
