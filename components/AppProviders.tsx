@@ -15,9 +15,11 @@ import { ActiveBoardProvider } from "../lib/activeBoardContext";
 import { ConfirmDialogProvider } from "./ui/ConfirmDialog";
 import ModulesOnboardingGate from "./ModulesOnboardingGate";
 import DesktopChrome from "./DesktopChrome";
+import { UiThemeProvider } from "../lib/uiThemeContext";
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   return (
+    <UiThemeProvider>
     <CurrentUserProvider>
       <DesktopChrome />
       <WorkspaceProvider>
@@ -44,5 +46,6 @@ export default function AppProviders({ children }: { children: ReactNode }) {
         </ServicesProvider>
       </WorkspaceProvider>
     </CurrentUserProvider>
+    </UiThemeProvider>
   );
 }
