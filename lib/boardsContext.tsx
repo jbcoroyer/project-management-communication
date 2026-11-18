@@ -19,6 +19,7 @@ import {
   type BoardFieldType,
   type OrgBoard,
 } from "./boards";
+import { isStrippedBoard } from "./strippedMetier";
 
 type BoardsContextValue = {
   boards: OrgBoard[];
@@ -50,7 +51,15 @@ type BoardRow = {
   capabilities: unknown;
   is_default: boolean;
   sort_order: number;
+  services?: { slug: string | null } | { slug: string | null }[] | null;
 };
+
+function serviceSlugFromRow(row: BoardRow): string | null {
+  const raw = row.services;
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw[0]?.slug ?? null;
+  return raw.slug ?? null;
+}
 
 function mapBoard(row: BoardRow): OrgBoard {
   return {
@@ -65,6 +74,15 @@ function mapBoard(row: BoardRow): OrgBoard {
     isDefault: Boolean(row.is_default),
     sortOrder: Number(row.sort_order) || 0,
   };
+}
+
+function keepCoreBoard(row: BoardRow): boolean {
+  if (row.is_default) return true;
+  return !isStrippedBoard({
+    slug: row.slug,
+    name: row.name,
+    serviceSlug: serviceSlugFromRow(row),
+  });
 }
 
 export function BoardsProvider({ children }: { children: ReactNode }) {
@@ -91,12 +109,13 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("boards")
         .select(
-          "id, organization_id, service_id, name, slug, description, icon, capabilities, is_default, sort_order",
+          "id, organization_id, service_id, name, slug, description, icon, capabilities, is_default, sort_order, services(slug)",
         )
         .eq("organization_id", workspaceId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      setBoards(((data ?? []) as BoardRow[]).map(mapBoard));
+      const rows = ((data ?? []) as BoardRow[]).filter(keepCoreBoard);
+      setBoards(rows.map(mapBoard));
     } catch (err) {
       console.error("boards reload failed", err);
       setBoards([]);
@@ -176,7 +195,7 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
   );
 
   const visibleBoards = useMemo(() => {
-    // Masque les tableaux liés à un service désactivé (ADV, R&D, GdP…).
+    // Boards déjà filtrés hors ADV/R&D/GdP au chargement ; soft-filter service actif.
     const kept = boards.filter(
       (b) =>
         b.isDefault ||
