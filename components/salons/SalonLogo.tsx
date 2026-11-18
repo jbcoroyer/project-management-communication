@@ -18,26 +18,22 @@ function resolveEntry(slug?: string | null, name?: string | null): SalonCatalogE
   return getCatalogEntry(slug) ?? (name ? matchCatalogFromName(name) : undefined);
 }
 
-/** Logo catalogue ; fallback monogramme si image absente. */
+/** Logo catalogue (SVG wordmark) ; fallback coloré si image absente. */
 export default function SalonLogo({ slug, name, size = 40, className = "" }: Props) {
   const entry = resolveEntry(slug, name);
   const [broken, setBroken] = useState(false);
-  const label = entry?.shortName ?? name?.replace(/\b20\d{2}\b/, "").trim() ?? "?";
-  const initials = label
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
+  const label = entry?.shortName ?? name?.replace(/\b20\d{2}\b/g, "").trim() ?? "?";
+  const showImg = Boolean(entry?.logoSrc) && !broken;
 
-  if (entry && !broken) {
+  if (showImg && entry) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={entry.logoSrc}
-        alt=""
+        alt={entry.name}
         width={size}
         height={size}
-        className={`shrink-0 rounded-xl object-contain bg-[var(--surface-soft)] ${className}`}
+        className={`shrink-0 rounded-2xl object-cover shadow-sm ring-1 ring-black/5 ${className}`}
         style={{ width: size, height: size }}
         onError={() => setBroken(true)}
       />
@@ -46,11 +42,14 @@ export default function SalonLogo({ slug, name, size = 40, className = "" }: Pro
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--foreground)]/[0.08] text-[color:var(--foreground)]/70 ${className}`}
-      style={{ width: size, height: size, fontSize: Math.max(10, size * 0.28) }}
+      className={`inline-flex shrink-0 items-center justify-center rounded-2xl bg-[var(--foreground)] text-[var(--accent-contrast)] shadow-sm ${className}`}
+      style={{ width: size, height: size, fontSize: Math.max(9, size * 0.22) }}
+      title={label}
       aria-hidden
     >
-      <span className="font-semibold tracking-tight">{initials || "·"}</span>
+      <span className="px-1 text-center font-bold uppercase leading-tight tracking-tight">
+        {label.length > 8 ? label.slice(0, 6) : label}
+      </span>
     </span>
   );
 }
