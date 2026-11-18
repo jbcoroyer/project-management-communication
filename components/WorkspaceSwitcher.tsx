@@ -5,24 +5,33 @@ import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useWorkspace } from "../lib/useWorkspace";
 import { toastError, toastSuccess } from "../lib/toast";
 
-export default function WorkspaceSwitcher() {
+type WorkspaceSwitcherProps = {
+  /** `toolbar` : compact, pour la top bar à côté du switcher métier. */
+  variant?: "sidebar" | "toolbar";
+};
+
+export default function WorkspaceSwitcher({ variant = "sidebar" }: WorkspaceSwitcherProps) {
   const { workspaces, workspace, workspaceId, switchWorkspace, createWorkspace, loading } =
     useWorkspace();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const isToolbar = variant === "toolbar";
 
   if (loading && !workspace) {
-    return <div className="h-9 animate-pulse rounded-lg bg-[var(--surface-soft)]" aria-hidden />;
+    return <div className="h-9 w-36 animate-pulse rounded-lg bg-[var(--surface-soft)]" aria-hidden />;
   }
 
   const label = workspace?.name ?? "Espace";
 
   return (
-    <div className="relative">
+    <div className={["relative", isToolbar ? "shrink-0" : ""].join(" ")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-2 text-left hover:bg-[var(--surface-soft)]"
+        className={[
+          "flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-left hover:bg-[var(--surface-soft)]",
+          isToolbar ? "h-9 max-w-[11rem] px-2.5" : "w-full px-2.5 py-2",
+        ].join(" ")}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -47,7 +56,10 @@ export default function WorkspaceSwitcher() {
           />
           <div
             role="listbox"
-            className="absolute left-0 right-0 z-[70] mt-1 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] py-1 shadow-lg"
+            className={[
+              "absolute z-[70] mt-1 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] py-1 shadow-lg",
+              isToolbar ? "left-0 min-w-[14rem]" : "left-0 right-0",
+            ].join(" ")}
           >
             {workspaces.map((ws) => {
               const active = ws.id === workspaceId;

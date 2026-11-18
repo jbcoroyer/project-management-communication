@@ -24,7 +24,7 @@ import { useCurrentUser } from "../../lib/useCurrentUser";
 import { TuesdaySplash } from "@/components/brand";
 import { ServiceCommunicationIdenaHeading } from "../IdenaBrand";
 import WorkspaceSwitcher from "../WorkspaceSwitcher";
-import ServiceSwitcher from "../ServiceSwitcher";
+import MetierSwitcher from "../MetierSwitcher";
 import DesktopUpdateButton from "../DesktopUpdateButton";
 import V3GlobalSearch from "./GlobalSearch";
 import CreateBoardWizard from "../boards/CreateBoardWizard";
@@ -33,6 +33,7 @@ import { useServicesOptional } from "../../lib/servicesContext";
 import { useBoardsOptional } from "../../lib/boardsContext";
 import { isModuleVisibleForService } from "../../lib/services";
 import { resolveOrgLabel } from "../../lib/orgLabels";
+import { metierNavForSlug } from "../../lib/metierSpaces";
 import {
   allModulesEnabled,
   moduleKeyForHref,
@@ -94,6 +95,8 @@ function isNavActive(href: string, pathname: string): boolean {
   if (href === "/v3/dashboard/kanban") {
     return pathname === "/v3" || pathname.startsWith("/v3/dashboard");
   }
+  if (href === "/v3/rd") return pathname === "/v3/rd";
+  if (href === "/v3/gdp") return pathname === "/v3/gdp";
   if (href === "/v3/stock") return pathname.startsWith("/v3/stock");
   if (href === "/v3/ideas") return pathname.startsWith("/v3/ideas");
   if (href === "/v3/dam") return pathname.startsWith("/v3/dam");
@@ -176,6 +179,20 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
     [visibleBoards],
   );
   const sections = useMemo(() => {
+    const metierNav = metierNavForSlug(activeServiceSlug);
+    if (metierNav) {
+      return metierNav.map((section) => ({
+        id: section.id,
+        label: section.label,
+        items: section.items.map((item) => ({
+          href: item.href,
+          label: item.label,
+          hint: item.hint,
+          icon: item.icon,
+        })),
+      }));
+    }
+
     const mapped = NAV_SECTIONS.map((section) => {
       if (section.id === "travail") {
         const livrables = section.items.find((i) => i.href === "/v3/deliverables");
@@ -234,19 +251,19 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
       ) : null}
 
       <div className="mt-4 space-y-2">
-        <WorkspaceSwitcher />
-        <ServiceSwitcher />
-        <button
-          type="button"
-          onClick={() => {
-            setCreateBoardOpen(true);
-            onNavClick?.();
-          }}
-          className="ui-btn ui-btn-primary h-9 w-full justify-center text-[12px]"
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Créer un {boardLabel.toLowerCase()}
-        </button>
+        {!metierNavForSlug(activeServiceSlug) ? (
+          <button
+            type="button"
+            onClick={() => {
+              setCreateBoardOpen(true);
+              onNavClick?.();
+            }}
+            className="ui-btn ui-btn-primary h-9 w-full justify-center text-[12px]"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Créer un {boardLabel.toLowerCase()}
+          </button>
+        ) : null}
       </div>
 
       <nav
@@ -404,6 +421,11 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
             >
               <Menu className="h-4 w-4" aria-hidden />
             </button>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <WorkspaceSwitcher variant="toolbar" />
+              <MetierSwitcher />
+            </div>
 
             <div className="min-w-0 flex-1">
               {searchSlot ?? <V3GlobalSearch />}
