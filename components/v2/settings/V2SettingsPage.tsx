@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpen,
   Home,
+  Palette,
   Smile,
   UsersRound,
 } from "lucide-react";
@@ -16,9 +17,10 @@ import WorkspaceServicesPanel from "../../settings/WorkspaceServicesPanel";
 import OrgLabelsPanel from "../../settings/OrgLabelsPanel";
 import DeleteAccountPanel from "../../settings/DeleteAccountPanel";
 import DesktopStartupPanel from "../../settings/DesktopStartupPanel";
+import UiThemePanel from "../../settings/UiThemePanel";
 import V2PageHeader from "../V2PageHeader";
 
-type SettingsIntent = "me" | "team" | "space" | "lists";
+type SettingsIntent = "me" | "look" | "team" | "space" | "lists";
 
 const INTENTS: {
   id: SettingsIntent;
@@ -35,6 +37,14 @@ const INTENTS: {
     hint: "Ce qui ne concerne que vous",
     icon: Smile,
     accent: "from-[#ffe8c8] to-[#ffd4a8]",
+  },
+  {
+    id: "look",
+    title: "Apparence",
+    blurb: "Cinq thèmes : typo, couleurs, coins, boutons.",
+    hint: "Changez le look de Tuesday",
+    icon: Palette,
+    accent: "from-[#fff3c4] to-[#ffe08a]",
   },
   {
     id: "team",
@@ -93,7 +103,7 @@ export default function V2SettingsPage() {
           <V2PageHeader
             kicker="Outils"
             title="Réglages"
-            description="Quatre portes, pas un interminable formulaire. Choisissez ce que vous voulez régler."
+            description="Cinq portes, pas un interminable formulaire. Choisissez ce que vous voulez régler."
           />
         ) : (
           <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
@@ -102,14 +112,14 @@ export default function V2SettingsPage() {
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Réglages</h1>
             <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-              Quatre portes, pas un interminable formulaire. Choisissez ce que vous voulez régler.
+              Cinq portes, pas un interminable formulaire. Choisissez ce que vous voulez régler.
             </p>
           </header>
         )}
       </section>
 
       {!active ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {INTENTS.map((item) => {
             const Icon = item.icon;
             return (
@@ -189,6 +199,12 @@ export default function V2SettingsPage() {
               <DesktopStartupPanel />
               <AdminSettingsPanel hideChrome sections={["profile", "outlook"]} />
               <DeleteAccountPanel />
+            </div>
+          )}
+
+          {intent === "look" && (
+            <div className="space-y-5">
+              <UiThemePanel />
             </div>
           )}
 
