@@ -69,10 +69,14 @@ export type Task = {
   serviceId?: string | null;
   /** Lien optionnel vers un événement (salon) — imbrication charge de travail globale */
   eventId?: string;
+  /** Lien vers un salon v3 — tableaux + agenda partagent les échéances checklist */
+  salonId?: string;
   /** Catégorie métier événement (Logistique, Com, etc.) */
   eventCategory?: string | null;
   /** Nom du salon (jointure `events`) — regroupement Kanban */
   eventName?: string | null;
+  /** Nom du salon v3 (jointure `salons`) */
+  salonName?: string | null;
   /** Sous-taches regroupees cote client (non persistees ici) */
   subtasks?: Task[];
 };

@@ -10,12 +10,14 @@ export type SalonSeedRow = {
   standNumber: string;
   surfaceM2: number | null;
   notes: string;
+  catalogSlug?: string;
 };
 
 /** Salons 2026 documentés — seed manuel après build. */
 export const SALON_SEED_2026: SalonSeedRow[] = [
   {
     name: "Health & Nutrition Asia 2026",
+    catalogSlug: "health-nutrition",
     mode: "C",
     location: "BITEC, Bangkok",
     startDate: "2026-03-10",
@@ -27,6 +29,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "VIV Select India 2026",
+    catalogSlug: "viv-india",
     mode: "C",
     location: "Yashobhoomi, New Delhi",
     startDate: "2026-04-22",
@@ -38,6 +41,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "CAHE 2026",
+    catalogSlug: "cahe",
     mode: "B",
     location: "Chengdu",
     startDate: "2026-05-18",
@@ -49,6 +53,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "VIV Europe 2026",
+    catalogSlug: "viv-europe",
     mode: "B",
     location: "Utrecht",
     startDate: "2026-06-02",
@@ -60,6 +65,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "SPACE 2026",
+    catalogSlug: "space",
     mode: "A",
     location: "Parc Expo Rennes",
     startDate: "2026-09-15",
@@ -71,6 +77,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "ILDEX Indonesia 2026",
+    catalogSlug: "ildex",
     mode: "C",
     location: "ICE BSD, Jakarta",
     startDate: "2026-09-16",
@@ -82,6 +89,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "Sommet de l'Élevage 2026",
+    catalogSlug: "sommet-elevage",
     mode: "A",
     location: "Cournon-d'Auvergne",
     startDate: "2026-10-06",
@@ -93,6 +101,7 @@ export const SALON_SEED_2026: SalonSeedRow[] = [
   },
   {
     name: "EuroTier 2026",
+    catalogSlug: "eurotier",
     mode: "A",
     location: "Hanovre",
     startDate: "2026-11-10",

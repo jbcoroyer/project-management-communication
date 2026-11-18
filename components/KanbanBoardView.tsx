@@ -545,13 +545,19 @@ export default function KanbanBoardView(props: {
                               )}
                             </button>
                             <Link
-                              href={`/events/${eventId}`}
+                              href={
+                                evTasks[0]?.salonId
+                                  ? `/v3/salons/${evTasks[0].salonId}`
+                                  : `/v3/salons`
+                              }
                               className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 hover:underline"
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <CalendarRange className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{evTasks[0]?.eventName ?? "Événement"}</span>
+                              <span className="truncate">
+                                {evTasks[0]?.salonName ?? evTasks[0]?.eventName ?? "Salon"}
+                              </span>
                             </Link>
                             <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/55">
                               {evTasks.length} tâche{evTasks.length > 1 ? "s" : ""}

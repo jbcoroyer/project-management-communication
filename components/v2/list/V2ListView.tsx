@@ -410,14 +410,14 @@ function ListRow({
       </div>
 
       <div role="cell" className="truncate px-2 py-1 text-xs text-[color:var(--foreground)]/65">
-        {task.eventName ? (
+        {task.salonName || task.eventName ? (
           <button
             type="button"
             onClick={() => onEditTask(task)}
             className="truncate text-left hover:text-[var(--accent)]"
             title={task.eventCategory ?? undefined}
           >
-            {task.eventName}
+            {task.salonName || task.eventName}
           </button>
         ) : (
           "—"

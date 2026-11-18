@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { TuesdayLoader } from "@/components/brand";
 import { useConfirm } from "../ui/ConfirmDialog";
+import SalonLogo from "./SalonLogo";
 import { useSalonDetail, useSalons } from "../../lib/useSalons";
 import { checklistProgress } from "../../lib/salonData";
 import {
@@ -157,55 +158,84 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
         </div>
       </div>
 
-      <header className="ui-surface rounded-2xl p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <header className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] p-5">
+        <div className="flex flex-wrap items-start gap-4">
+          <SalonLogo slug={salon.catalogSlug} name={salon.name} size={64} />
           <div className="min-w-0 flex-1">
             <input
-              className="w-full bg-transparent text-xl font-semibold outline-none"
+              className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
               value={salon.name}
               onChange={(e) => void patchSalon({ name: e.target.value })}
               onBlur={(e) => void patchSalon({ name: e.target.value.trim() || salon.name })}
             />
-            <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
+            <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
               {salon.startDate} → {salon.endDate}
               {salon.location ? ` · ${salon.location}` : ""}
               {(salon.hall || salon.standNumber) &&
                 ` · ${[salon.hall, salon.standNumber].filter(Boolean).join(" / ")}`}
               {salon.surfaceM2 != null ? ` · ${salon.surfaceM2} m²` : ""}
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-[color:var(--foreground)]/6 px-2.5 py-1 text-[11px] font-semibold">
-              {salon.mode} · {SALON_MODE_LABELS[salon.mode]}
-            </span>
-            <select
-              className="ui-input text-xs"
-              value={salon.status}
-              onChange={(e) => void patchSalon({ status: e.target.value as SalonStatus })}
-            >
-              {(Object.keys(SALON_STATUS_LABELS) as SalonStatus[]).map((st) => (
-                <option key={st} value={st}>
-                  {SALON_STATUS_LABELS[st]}
-                </option>
-              ))}
-            </select>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold">
+                {SALON_MODE_LABELS[salon.mode]}
+              </span>
+              <select
+                className="ui-input text-xs"
+                value={salon.status}
+                onChange={(e) => void patchSalon({ status: e.target.value as SalonStatus })}
+              >
+                {(Object.keys(SALON_STATUS_LABELS) as SalonStatus[]).map((st) => (
+                  <option key={st} value={st}>
+                    {SALON_STATUS_LABELS[st]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-[color:var(--foreground)]/60">
-          <span>Checklist {progress}%</span>
-          <span>
-            Budget {formatMoney(engaged)} · payé {formatMoney(paid)}
-          </span>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-[var(--surface-soft)] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-[color:var(--foreground)]/45">
+              Avancement
+            </p>
+            <p className="text-lg font-semibold">{progress}%</p>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface)]">
+              <div className="h-full bg-[var(--accent)]" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          <div className="rounded-2xl bg-[var(--surface-soft)] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-[color:var(--foreground)]/45">
+              Budget
+            </p>
+            <p className="text-lg font-semibold">{formatMoney(engaged)}</p>
+            <p className="text-xs text-[color:var(--foreground)]/50">payé {formatMoney(paid)}</p>
+          </div>
+          <div className="rounded-2xl bg-[var(--surface-soft)] px-3 py-2 text-xs text-[color:var(--foreground)]/60">
+            <p className="text-[10px] uppercase tracking-wide text-[color:var(--foreground)]/45">
+              Synchronisé
+            </p>
+            <p className="mt-1">
+              Les cases coché(e)s et les dates partent aussi sur le{" "}
+              <Link href="/v3/dashboard/kanban" className="underline">
+                tableau
+              </Link>{" "}
+              et l’
+              <Link href="/v3/dashboard/calendar" className="underline">
+                agenda
+              </Link>
+              .
+            </p>
+          </div>
         </div>
         {salon.notes ? (
-          <p className="mt-2 text-xs text-[color:var(--foreground)]/45">{salon.notes}</p>
+          <p className="mt-3 text-xs text-[color:var(--foreground)]/45">{salon.notes}</p>
         ) : null}
       </header>
 
       <div className="flex flex-wrap gap-1 border-b border-[color:var(--foreground)]/10 pb-1">
         {(
           [
-            ["checklist", "Checklist", CheckSquare],
+            ["checklist", "À faire", CheckSquare],
             ["docs", "Documents", FileText],
             ["contacts", "Contacts", Link2],
             ["budget", "Budget", Wallet],

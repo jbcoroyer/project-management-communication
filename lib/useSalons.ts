@@ -27,13 +27,11 @@ import {
   fetchContacts,
   fetchDocuments,
   fetchSalons,
-  seedSalons2026,
   updateBudgetLine,
   updateChecklistItem,
   updateSalon,
   type CreateSalonInput,
 } from "./salonData";
-
 export function useSalons() {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
@@ -76,20 +74,25 @@ export function useSalons() {
     void reload();
   }, [reload]);
 
+  const adminName = user?.teamMemberName ?? user?.displayName ?? user?.email ?? "";
+
   const addSalon = useCallback(
     async (input: CreateSalonInput) => {
       if (!workspaceId) return null;
       try {
-        const created = await createSalon(supabase, workspaceId, user?.id ?? null, input);
+        const created = await createSalon(supabase, workspaceId, user?.id ?? null, {
+          ...input,
+          adminName: input.adminName ?? adminName,
+        });
         await reload();
-        toastSuccess("Salon créé");
+        toastSuccess("Salon créé — checklist poussée au tableau");
         return created;
       } catch (err) {
         toastError(err instanceof Error ? err.message : "Création impossible");
         return null;
       }
     },
-    [reload, supabase, user?.id, workspaceId],
+    [adminName, reload, supabase, user?.id, workspaceId],
   );
 
   const patchSalon = useCallback(
@@ -144,19 +147,6 @@ export function useSalons() {
     [reload, supabase, user?.id, workspaceId],
   );
 
-  const seedYear = useCallback(async () => {
-    if (!workspaceId) return 0;
-    try {
-      const n = await seedSalons2026(supabase, workspaceId, user?.id ?? null);
-      await reload();
-      toastSuccess(n ? `${n} salon(s) ajouté(s)` : "Tous les salons 2026 sont déjà là");
-      return n;
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Seed impossible");
-      return 0;
-    }
-  }, [reload, supabase, user?.id, workspaceId]);
-
   const toggleChecklist = useCallback(
     async (id: string, done: boolean) => {
       try {
@@ -181,7 +171,6 @@ export function useSalons() {
     patchSalon,
     removeSalon,
     duplicateSalon,
-    seedYear,
     toggleChecklist,
     workspaceId,
     userId: user?.id ?? null,
@@ -192,6 +181,8 @@ export function useSalons() {
 export function useSalonDetail(salonId: string | null) {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
+  const { user } = useCurrentUser();
+  const adminName = user?.teamMemberName ?? user?.displayName ?? user?.email ?? "";
   const [salon, setSalon] = useState<Salon | null>(null);
   const [checklist, setChecklist] = useState<SalonChecklistItem[]>([]);
   const [documents, setDocuments] = useState<SalonDocument[]>([]);
@@ -246,7 +237,7 @@ export function useSalonDetail(salonId: string | null) {
 
   const createChecklist = useCallback(
     async (label: string, dueDate: string | null) => {
-      if (!workspaceId || !salonId) return null;
+      if (!workspaceId || !salonId || !salon) return null;
       const item = await addChecklistItem(
         supabase,
         workspaceId,
@@ -254,11 +245,12 @@ export function useSalonDetail(salonId: string | null) {
         label,
         dueDate,
         checklist.length,
+        { salonName: salon.name, mode: salon.mode, adminName },
       );
       setChecklist((prev) => [...prev, item]);
       return item;
     },
-    [checklist.length, salonId, supabase, workspaceId],
+    [adminName, checklist.length, salon, salonId, supabase, workspaceId],
   );
 
   const createDoc = useCallback(

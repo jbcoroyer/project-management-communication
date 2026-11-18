@@ -33,7 +33,7 @@ import {
 import { useNowInterval } from "../../../lib/useNowInterval";
 import { useReferenceData } from "../../../lib/useReferenceData";
 import { useTasks } from "../../../lib/useTasks";
-import { useEvents } from "../../../lib/useEvents";
+import { useSalons } from "../../../lib/useSalons";
 import { useCurrentUser } from "../../../lib/useCurrentUser";
 import { useWorkspace } from "../../../lib/useWorkspace";
 import { useActiveBoard } from "../../../lib/activeBoardContext";
@@ -150,7 +150,18 @@ export default function V2DashboardHomePage() {
   }, [pathname, isLightUi]);
 
   const { tasks, setTasks, optimisticUpdate, loadTasks, ensureArchivedLoaded } = useTasks();
-  const { events: salonEvents } = useEvents({ enabled: activeTab === "calendar" });
+  const { salons: salonRows } = useSalons();
+  const salonEvents = useMemo(
+    () =>
+      salonRows.map((s) => ({
+        id: s.id,
+        name: s.name,
+        location: s.location,
+        startDate: s.startDate,
+        endDate: s.endDate,
+      })),
+    [salonRows],
+  );
   const {
     admins: adminRecords,
     columns: columnRecords,

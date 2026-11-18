@@ -1,4 +1,4 @@
-/** Sélection Supabase des tâches avec le nom du salon (jointure `events`). */
+/** Sélection Supabase des tâches avec le nom du salon (jointures `events` + `salons`). */
 export const TASK_SELECT_WITH_EVENT = `
   id,
   project_name,
@@ -24,10 +24,14 @@ export const TASK_SELECT_WITH_EVENT = `
   completed_at,
   parent_task_id,
   event_id,
+  salon_id,
   event_category,
   board_id,
   service_id,
   events (
+    name
+  ),
+  salons (
     name
   )
 `;
