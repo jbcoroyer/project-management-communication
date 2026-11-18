@@ -19,7 +19,7 @@ export type SalonCatalogEntry = {
 
 /**
  * Catalogue des salons connus IDENA / Communication.
- * Logos : `public/salons/logos/` (icônes publiques des sites officiels).
+ * Logos officiels JB dans `public/salons/logos/*-icon.png` (+ SVG fallback).
  */
 export const SALON_CATALOG: SalonCatalogEntry[] = [
   {
@@ -30,7 +30,7 @@ export const SALON_CATALOG: SalonCatalogEntry[] = [
     defaultLocation: "Parc Expo Rennes",
     typicalMonth: 9,
     typicalDurationDays: 3,
-    logoSrc: "/salons/logos/space.svg",
+    logoSrc: "/salons/logos/space-icon.png",
     website: "https://www.space.fr",
     blurb: "Salon mondial de l’élevage — standiste IN FACT.",
     nameMatchers: ["space"],
@@ -43,7 +43,7 @@ export const SALON_CATALOG: SalonCatalogEntry[] = [
     defaultLocation: "Hanovre",
     typicalMonth: 11,
     typicalDurationDays: 4,
-    logoSrc: "/salons/logos/eurotier.svg",
+    logoSrc: "/salons/logos/eurotier-icon.png",
     website: "https://www.eurotier.com",
     blurb: "Salon mondial livestock — type A distant.",
     nameMatchers: ["eurotier"],
@@ -56,7 +56,7 @@ export const SALON_CATALOG: SalonCatalogEntry[] = [
     defaultLocation: "Cournon-d'Auvergne",
     typicalMonth: 10,
     typicalDurationDays: 4,
-    logoSrc: "/salons/logos/sommet-elevage.svg",
+    logoSrc: "/salons/logos/sommet-elevage-icon.png",
     website: "https://www.sommet-elevage.fr",
     blurb: "Grand rendez-vous français — standiste IN FACT.",
     nameMatchers: ["sommet"],
@@ -95,10 +95,23 @@ export const SALON_CATALOG: SalonCatalogEntry[] = [
     defaultLocation: "Bangkok",
     typicalMonth: 3,
     typicalDurationDays: 3,
-    logoSrc: "/salons/logos/viv-asia.svg",
+    logoSrc: "/salons/logos/viv-asia-icon.png",
     website: "https://www.vivasia.nl",
     blurb: "Direct organisateur VNU — Asie.",
     nameMatchers: ["viv asia"],
+  },
+  {
+    slug: "viv-mea",
+    name: "VIV MEA",
+    shortName: "VIV MEA",
+    mode: "C",
+    defaultLocation: "Abu Dhabi",
+    typicalMonth: 11,
+    typicalDurationDays: 3,
+    logoSrc: "/salons/logos/viv-mea-icon.png",
+    website: "https://www.vivmea.nl",
+    blurb: "Direct orga VNU — Moyen-Orient / Afrique.",
+    nameMatchers: ["viv mea", "viv middle"],
   },
   {
     slug: "viv-india",
@@ -134,7 +147,7 @@ export const SALON_CATALOG: SalonCatalogEntry[] = [
     defaultLocation: "Chengdu",
     typicalMonth: 5,
     typicalDurationDays: 3,
-    logoSrc: "/salons/logos/cahe.svg",
+    logoSrc: "/salons/logos/cahe-icon.png",
     website: "https://www.caheexpo.com",
     blurb: "Pavillon France — Chine.",
     nameMatchers: ["cahe"],

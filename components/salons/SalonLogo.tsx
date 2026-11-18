@@ -27,16 +27,20 @@ export default function SalonLogo({ slug, name, size = 40, className = "" }: Pro
 
   if (showImg && entry) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={entry.logoSrc}
-        alt={entry.name}
-        width={size}
-        height={size}
-        className={`shrink-0 rounded-2xl object-cover shadow-sm ring-1 ring-black/5 ${className}`}
+      <span
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 ${className}`}
         style={{ width: size, height: size }}
-        onError={() => setBroken(true)}
-      />
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={entry.logoSrc}
+          alt={entry.name}
+          width={size}
+          height={size}
+          className="h-full w-full object-contain p-[8%]"
+          onError={() => setBroken(true)}
+        />
+      </span>
     );
   }
 
