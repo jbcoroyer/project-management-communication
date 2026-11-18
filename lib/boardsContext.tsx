@@ -72,6 +72,10 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
   const services = useServicesOptional();
   const workspaceId = workspace?.workspaceId ?? null;
   const activeServiceId = services?.activeServiceId ?? null;
+  const activeServiceIds = useMemo(
+    () => new Set((services?.services ?? []).map((s) => s.id)),
+    [services?.services],
+  );
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [boards, setBoards] = useState<OrgBoard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,11 +176,19 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
   );
 
   const visibleBoards = useMemo(() => {
-    if (!activeServiceId) return boards;
-    return boards.filter(
+    // Masque les tableaux liés à un service désactivé (ADV, R&D, GdP…).
+    const kept = boards.filter(
+      (b) =>
+        b.isDefault ||
+        b.serviceId == null ||
+        activeServiceIds.size === 0 ||
+        activeServiceIds.has(b.serviceId),
+    );
+    if (!activeServiceId) return kept;
+    return kept.filter(
       (b) => b.serviceId == null || b.serviceId === activeServiceId || b.isDefault,
     );
-  }, [activeServiceId, boards]);
+  }, [activeServiceId, activeServiceIds, boards]);
 
   const value = useMemo<BoardsContextValue>(
     () => ({

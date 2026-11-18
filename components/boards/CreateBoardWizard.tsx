@@ -126,7 +126,7 @@ export default function CreateBoardWizard({
               className="ui-input w-full"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex. Devis ADV, Suivi export…"
+              placeholder="Ex. Campagne print, Suivi contenus…"
               autoFocus
             />
           </div>

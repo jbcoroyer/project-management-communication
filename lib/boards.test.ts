@@ -18,6 +18,6 @@ describe("boards helpers", () => {
   });
 
   it("slugifie un nom", () => {
-    expect(slugifyBoardName("Devis ADV 2026!")).toBe("devis-adv-2026");
+    expect(slugifyBoardName("Campagne Print 2026!")).toBe("campagne-print-2026");
   });
 });
