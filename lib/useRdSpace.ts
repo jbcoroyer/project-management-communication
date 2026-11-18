@@ -50,7 +50,8 @@ export function useRdSpace() {
       setGates(g);
     } catch (err) {
       console.error(err);
-      toastError(err instanceof Error ? err.message : "Chargement R&D impossible");
+      // Message stable + id Sonner : évite 3 toasts identiques (Strict Mode / multi-mount).
+      toastError("Chargement R&D impossible", { id: "rd-space-load" });
       setProjects([]);
       setExperiences([]);
       setGates([]);

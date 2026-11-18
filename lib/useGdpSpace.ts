@@ -56,7 +56,8 @@ export function useGdpSpace() {
       setDecisions(d);
     } catch (err) {
       console.error(err);
-      toastError(err instanceof Error ? err.message : "Chargement GdP impossible");
+      // Message stable + id Sonner : évite le spam de toasts identiques.
+      toastError("Chargement GdP impossible", { id: "gdp-space-load" });
       setProjects([]);
       setMilestones([]);
       setRisks([]);
