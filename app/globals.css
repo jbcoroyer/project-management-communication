@@ -111,8 +111,8 @@ html[data-theme="encre"] {
       rgba(18, 24, 38, 0.04) 50%,
       transparent 50%
     );
-  --font-sans: var(--font-encre-sans), system-ui, sans-serif;
-  --font-display: var(--font-encre-display), Georgia, serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "Source Serif 4", Georgia, serif;
   --radius-xs: 2px;
   --radius-sm: 3px;
   --radius-md: 5px;
@@ -144,8 +144,8 @@ html[data-theme="phare"] {
   --body-gradient:
     radial-gradient(ellipse 70% 45% at 80% -5%, rgba(240, 163, 90, 0.14), transparent 50%),
     radial-gradient(ellipse 50% 40% at 0% 20%, rgba(90, 140, 220, 0.1), transparent 45%);
-  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
-  --font-display: var(--font-phare-display), system-ui, sans-serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: Sora, system-ui, sans-serif;
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -177,8 +177,8 @@ html[data-theme="prairie"] {
   --body-gradient:
     radial-gradient(ellipse 60% 50% at 20% 0%, rgba(79, 138, 91, 0.12), transparent 55%),
     radial-gradient(ellipse 50% 40% at 100% 10%, rgba(196, 168, 90, 0.1), transparent 50%);
-  --font-sans: var(--font-prairie-sans), system-ui, sans-serif;
-  --font-display: var(--font-prairie-display), Georgia, serif;
+  --font-sans: Nunito, system-ui, sans-serif;
+  --font-display: Fraunces, Georgia, serif;
   --radius-xs: 8px;
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -214,8 +214,8 @@ html[data-theme="rail"] {
     rgba(28, 28, 26, 0.035) 23px,
     rgba(28, 28, 26, 0.035) 24px
   );
-  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
-  --font-display: var(--font-rail-display), system-ui, sans-serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --radius-xs: 0px;
   --radius-sm: 2px;
   --radius-md: 3px;

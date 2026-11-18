@@ -15,20 +15,20 @@ function ThemePreview({ theme }: { theme: UiThemeMeta }) {
     theme.id === "atelier"
       ? "var(--font-atelier-display), var(--font-atelier-sans), system-ui, sans-serif"
       : theme.id === "encre"
-        ? "var(--font-encre-display), var(--font-encre-sans), Georgia, serif"
+        ? '"Source Serif 4", "IBM Plex Sans", Georgia, serif'
         : theme.id === "phare"
-          ? "var(--font-phare-display), var(--font-dm-sans), system-ui, sans-serif"
+          ? "Sora, \"DM Sans\", system-ui, sans-serif"
           : theme.id === "prairie"
-            ? "var(--font-prairie-display), var(--font-prairie-sans), Georgia, serif"
-            : "var(--font-rail-display), var(--font-dm-sans), system-ui, sans-serif";
+            ? "Fraunces, Nunito, Georgia, serif"
+            : '"Space Grotesk", "DM Sans", system-ui, sans-serif';
   const bodyFont =
     theme.id === "atelier"
       ? "var(--font-atelier-sans), system-ui, sans-serif"
       : theme.id === "encre"
-        ? "var(--font-encre-sans), system-ui, sans-serif"
+        ? '"IBM Plex Sans", system-ui, sans-serif'
         : theme.id === "prairie"
-          ? "var(--font-prairie-sans), system-ui, sans-serif"
-          : "var(--font-dm-sans), system-ui, sans-serif";
+          ? "Nunito, system-ui, sans-serif"
+          : '"DM Sans", system-ui, sans-serif';
 
   return (
     <div
