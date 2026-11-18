@@ -10,7 +10,7 @@ export type GlobalSearchHit = {
 
 export const GLOBAL_SEARCH_KIND_LABEL: Record<GlobalSearchKind, string> = {
   task: "Tâche",
-  event: "Événement",
+  event: "Salon",
   stock: "Stock",
   deliverable: "Livrable",
   dam: "Médias",

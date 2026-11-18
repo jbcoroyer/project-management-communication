@@ -72,7 +72,7 @@ const NAV_SECTIONS: NavSection[] = [
     id: "contenu",
     label: "Contenu",
     items: [
-      { href: "/v3/events/dashboard", label: "Événements", hint: "Salons & retex", icon: CalendarRange },
+      { href: "/v3/salons", label: "Salons", hint: "Portefeuille & checklist", icon: CalendarRange },
       { href: "/v3/dam", label: "Médias", hint: "Bibliothèque", icon: FolderOpen },
       { href: "/v3/ideas", label: "Idées", hint: "Boîte à idées", icon: Lightbulb },
     ],
@@ -88,7 +88,7 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 function isNavActive(href: string, pathname: string): boolean {
-  if (href === "/v3/events/dashboard") return pathname.startsWith("/v3/events");
+  if (href === "/v3/salons") return pathname.startsWith("/v3/salons") || pathname.startsWith("/v3/events");
   if (href.startsWith("/v3/boards/")) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
