@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  FolderInput,
   LayoutGrid,
   ListTodo,
   Plus,
@@ -41,6 +42,7 @@ import {
   toggleCollapsedEventGroup,
 } from "../lib/eventGroupCollapse";
 import { partitionTasksByEvent, sortTasksByDeadline } from "../lib/eventTaskGroups";
+import { folderTaskIdsNeedingMove } from "../lib/folderBulkMove";
 
 /** Au-dessus de ce seuil, les cartes passent en mode compact (même en « vue détaillée »). */
 const KANBAN_AUTO_COMPACT_MIN = 8;
@@ -263,6 +265,8 @@ export default function KanbanBoardView(props: {
   const [collapsedEventIds, setCollapsedEventIds] = useState<Set<string>>(() =>
     loadCollapsedEventGroupIds(),
   );
+  /** Menu « déplacer tout le dossier » ouvert pour ce groupId (salon:… / event:…). */
+  const [folderMoveMenuId, setFolderMoveMenuId] = useState<string | null>(null);
 
   const toggleEventGroupCollapse = (eventId: string) => {
     setCollapsedEventIds((prev) => {
@@ -270,6 +274,18 @@ export default function KanbanBoardView(props: {
       persistCollapsedEventGroupIds(next);
       return next;
     });
+  };
+
+  const moveEntireFolder = (sample: Task, column: ColumnId) => {
+    const target = sample.salonId
+      ? ({ kind: "salon", salonId: sample.salonId } as const)
+      : sample.eventId
+        ? ({ kind: "event", eventId: sample.eventId } as const)
+        : null;
+    if (!target) return;
+    const ids = folderTaskIdsNeedingMove(props.tasks, target, column);
+    for (const id of ids) props.onMoveTask(id, column);
+    setFolderMoveMenuId(null);
   };
 
   const sensors = useSensors(
@@ -520,6 +536,9 @@ export default function KanbanBoardView(props: {
                   {groups.map(([eventId, evTasks]) => {
                     const collapsed = collapsedEventIds.has(eventId);
                     const eventDragId = `event:${col}:${eventId}`;
+                    const folderMenuKey = `${col}:${eventId}`;
+                    const sample = evTasks[0];
+                    const folderMoveOpen = folderMoveMenuId === folderMenuKey;
                     return (
                       <DraggableEventGroup key={eventId} dragId={eventDragId}>
                         <div
@@ -546,8 +565,8 @@ export default function KanbanBoardView(props: {
                             </button>
                             <Link
                               href={
-                                evTasks[0]?.salonId
-                                  ? `/v3/salons/${evTasks[0].salonId}`
+                                sample?.salonId
+                                  ? `/v3/salons/${sample.salonId}`
                                   : `/v3/salons`
                               }
                               className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 hover:underline"
@@ -556,12 +575,62 @@ export default function KanbanBoardView(props: {
                             >
                               <CalendarRange className="h-3.5 w-3.5 shrink-0" />
                               <span className="truncate">
-                                {evTasks[0]?.salonName ?? evTasks[0]?.eventName ?? "Salon"}
+                                {sample?.salonName ?? sample?.eventName ?? "Salon"}
                               </span>
                             </Link>
                             <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/55">
                               {evTasks.length} tâche{evTasks.length > 1 ? "s" : ""}
                             </span>
+                            {sample && (sample.salonId || sample.eventId) && (
+                              <div className="relative shrink-0">
+                                <button
+                                  type="button"
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFolderMoveMenuId((prev) =>
+                                      prev === folderMenuKey ? null : folderMenuKey,
+                                    );
+                                  }}
+                                  className="ui-transition flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75"
+                                  title="Déplacer tout le dossier vers une colonne"
+                                  aria-haspopup="menu"
+                                  aria-expanded={folderMoveOpen}
+                                >
+                                  <FolderInput className="h-3.5 w-3.5" />
+                                </button>
+                                {folderMoveOpen && (
+                                  <div
+                                    role="menu"
+                                    className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-[0_12px_28px_rgba(20,17,13,0.12)]"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                  >
+                                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
+                                      Tout déplacer vers
+                                    </p>
+                                    {props.columns.map((targetCol) => (
+                                      <button
+                                        key={targetCol}
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={targetCol === col}
+                                        onClick={() =>
+                                          moveEntireFolder(sample, targetCol as ColumnId)
+                                        }
+                                        className={[
+                                          "ui-transition flex w-full items-center rounded-lg px-2 py-1.5 text-left text-[12px] font-medium",
+                                          targetCol === col
+                                            ? "cursor-default text-[color:var(--foreground)]/35"
+                                            : "text-[color:var(--foreground)]/80 hover:bg-[var(--surface-soft)]",
+                                        ].join(" ")}
+                                      >
+                                        {targetCol}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           {!collapsed && (
                             <div className="space-y-2">

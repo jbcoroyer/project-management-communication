@@ -356,6 +356,8 @@ export async function createSalon(
       salonId: salon.id,
       salonName: salon.name,
       mode: salon.mode,
+      endDate: salon.endDate,
+      status: salon.status,
       items: checklist.map((c) => ({
         id: c.id,
         label: c.label,
@@ -458,7 +460,13 @@ export async function addChecklistItem(
   label: string,
   dueDate: string | null,
   sortOrder: number,
-  opts?: { salonName?: string; mode?: SalonMode; adminName?: string },
+  opts?: {
+    salonName?: string;
+    mode?: SalonMode;
+    adminName?: string;
+    endDate?: string | null;
+    status?: SalonStatus | null;
+  },
 ): Promise<SalonChecklistItem> {
   const { data, error } = await supabase
     .from("salon_checklist_items")
@@ -474,7 +482,11 @@ export async function addChecklistItem(
     .single();
   if (error || !data) throw error ?? new Error("Ajout impossible");
   const item = mapChecklist(data as ChecklistRow);
-  if (opts?.salonName && opts.mode) {
+  const today = new Date().toISOString().slice(0, 10);
+  const past =
+    opts?.status === "termine" ||
+    (typeof opts?.endDate === "string" && opts.endDate.slice(0, 10) < today);
+  if (opts?.salonName && opts.mode && !past) {
     const taskId = await createTaskForChecklistItem({
       supabase,
       organizationId,
@@ -700,9 +712,11 @@ export async function seedSalons2026(
 ): Promise<number> {
   const existing = await fetchSalons(supabase, organizationId);
   const names = new Set(existing.map((s) => s.name.toLowerCase()));
+  const today = new Date().toISOString().slice(0, 10);
   let created = 0;
   for (const seed of SALON_SEED_2026) {
     if (names.has(seed.name.toLowerCase())) continue;
+    const past = seed.endDate < today;
     await createSalon(supabase, organizationId, userId, {
       name: seed.name,
       mode: seed.mode,
@@ -715,6 +729,8 @@ export async function seedSalons2026(
       notes: seed.notes,
       catalogSlug: seed.catalogSlug ?? matchCatalogFromName(seed.name)?.slug ?? null,
       adminName: adminName ?? null,
+      // Salons déjà terminés : fiche OK, pas de checklist sur le board actif.
+      syncToBoard: !past,
     });
     created += 1;
   }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { completedAtIsoForNewTaskInColumn } from "./completedAt";
+import { isEndDatePast, todayIsoDate } from "./pastSalonBoard";
 import { defaultCompanies, defaultDomains } from "./types";
 import type { SalonChecklistItem, SalonMode } from "./salonTypes";
 import { SALON_MODE_LABELS } from "./salonTypes";
@@ -30,7 +31,13 @@ export async function syncChecklistItemsToBoard(params: {
   mode: SalonMode;
   items: Array<{ id: string; label: string; dueDate: string | null; done: boolean }>;
   adminName: string;
+  /** Si fourni et passé / statut terminé → no-op (évite de re-polluer le board). */
+  endDate?: string | null;
+  status?: string | null;
 }): Promise<void> {
+  if (params.status === "termine" || isEndDatePast(params.endDate)) {
+    return;
+  }
   const boardId = await defaultBoardId(params.supabase, params.organizationId);
   const admin = params.adminName.trim();
 
@@ -110,12 +117,18 @@ export async function backfillMissingSalonTasks(params: {
 
   const { data: salons } = await params.supabase
     .from("salons")
-    .select("id, name, mode")
+    .select("id, name, mode, end_date, status")
     .eq("organization_id", params.organizationId);
+  const today = todayIsoDate();
   const byId = new Map(
     (salons ?? []).map((s) => [
       s.id as string,
-      { name: s.name as string, mode: s.mode as SalonMode },
+      {
+        name: s.name as string,
+        mode: s.mode as SalonMode,
+        endDate: (s.end_date as string | null) ?? null,
+        status: (s.status as string | null) ?? null,
+      },
     ]),
   );
 
@@ -123,6 +136,7 @@ export async function backfillMissingSalonTasks(params: {
   for (const raw of items) {
     const salon = byId.get(raw.salon_id as string);
     if (!salon) continue;
+    if (salon.status === "termine" || isEndDatePast(salon.endDate, today)) continue;
     const taskId = await createTaskForChecklistItem({
       supabase: params.supabase,
       organizationId: params.organizationId,

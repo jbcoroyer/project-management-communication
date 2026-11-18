@@ -245,7 +245,13 @@ export function useSalonDetail(salonId: string | null) {
         label,
         dueDate,
         checklist.length,
-        { salonName: salon.name, mode: salon.mode, adminName },
+        {
+          salonName: salon.name,
+          mode: salon.mode,
+          adminName,
+          endDate: salon.endDate,
+          status: salon.status,
+        },
       );
       setChecklist((prev) => [...prev, item]);
       return item;

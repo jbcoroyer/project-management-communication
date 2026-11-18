@@ -610,7 +610,7 @@ export default function V2DashboardHomePage() {
     enabled: detectVersionFromPath(pathname) !== "v3",
   });
 
-  // Auto-archivage « Terminé » > 2 jours : géré globalement dans TasksProvider
+  // Auto-archivage « Terminé » > 24 h : TasksProvider + cron
   // (tableau + événementiel).
 
   const insertTaskRow = useCallback(

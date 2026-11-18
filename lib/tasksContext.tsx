@@ -15,7 +15,8 @@ import { getSupabaseBrowser } from "./supabaseBrowser";
 import { markTaskMutatedLocally } from "./taskMutatedLocally";
 import { mapTaskRow } from "./taskMappers";
 import { TASK_SELECT_WITH_EVENT } from "./taskQueries";
-import { AUTO_ARCHIVE_DELAY_MS, DONE_COLUMN_NAME } from "./workflowConstants";
+import { selectTasksReadyToAutoArchive } from "./autoArchive";
+import { filterOutPastSalonTasks, selectPastSalonTasksToArchive } from "./pastSalonBoard";
 import type { Task } from "./types";
 import { useWorkspace } from "./workspaceContext";
 import { useActiveBoard } from "./activeBoardContext";
@@ -200,14 +201,18 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
-  // Tâches « Terminé » depuis +2 jours → archives (kanban + événementiel).
+  // Terminé > 24 h (ou sans completed_at) + tâches salons/events passés → archives.
   useEffect(() => {
     if (!user || loading) return;
-    const toArchive = tasks.filter((t) => {
-      if (t.column !== DONE_COLUMN_NAME || t.isArchived || t.parentTaskId) return false;
-      const doneMs = t.completedAt ? new Date(t.completedAt).getTime() : 0;
-      return doneMs > 0 && Date.now() - doneMs > AUTO_ARCHIVE_DELAY_MS;
-    });
+    const byDone = selectTasksReadyToAutoArchive(tasks);
+    const byPastSalon = selectPastSalonTasksToArchive(tasks) as Task[];
+    const seen = new Set<string>();
+    const toArchive: Task[] = [];
+    for (const task of [...byDone, ...byPastSalon]) {
+      if (seen.has(task.id)) continue;
+      seen.add(task.id);
+      toArchive.push(task);
+    }
     if (toArchive.length === 0) return;
     for (const task of toArchive) {
       void optimisticUpdate(task.id, { ...task, isArchived: true }, { is_archived: true }).catch(
@@ -217,13 +222,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, [user, loading, tasks, optimisticUpdate]);
 
   const visibleTasks = useMemo(() => {
-    if (!isBoardScoped || !activeBoardId) return tasks;
-    return tasks.filter((t) => {
-      if (t.boardId === activeBoardId) return true;
-      // Legacy sans board_id : visible uniquement sur le board par défaut
-      if (!t.boardId) return Boolean(activeBoard?.isDefault);
-      return false;
-    });
+    let list = tasks;
+    if (isBoardScoped && activeBoardId) {
+      list = list.filter((t) => {
+        if (t.boardId === activeBoardId) return true;
+        // Legacy sans board_id : visible uniquement sur le board par défaut
+        if (!t.boardId) return Boolean(activeBoard?.isDefault);
+        return false;
+      });
+    }
+    // Salons / events passés : hors board actif (archives via effet + cron).
+    return filterOutPastSalonTasks(list);
   }, [activeBoard?.isDefault, activeBoardId, isBoardScoped, tasks]);
 
   const value = useMemo(
