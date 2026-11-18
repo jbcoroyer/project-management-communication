@@ -15,6 +15,12 @@ import {
   dateFromDaysBeforeStart,
 } from "./salonTemplates";
 import { SALON_SEED_2026 } from "./salonSeed";
+import { matchCatalogFromName } from "./salonCatalog";
+import {
+  createTaskForChecklistItem,
+  syncChecklistItemsToBoard,
+  syncChecklistPatchToTask,
+} from "./salonTaskSync";
 
 type SalonRow = {
   id: string;
@@ -29,6 +35,7 @@ type SalonRow = {
   stand_number: string;
   surface_m2: number | null;
   notes: string;
+  catalog_slug?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +49,7 @@ type ChecklistRow = {
   done: boolean;
   sort_order: number;
   document_id: string | null;
+  task_id?: string | null;
 };
 
 type DocRow = {
@@ -92,6 +100,7 @@ export function mapSalon(row: SalonRow): Salon {
     standNumber: row.stand_number ?? "",
     surfaceM2: row.surface_m2 == null ? null : Number(row.surface_m2),
     notes: row.notes ?? "",
+    catalogSlug: row.catalog_slug ?? matchCatalogFromName(row.name)?.slug ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -107,6 +116,7 @@ function mapChecklist(row: ChecklistRow): SalonChecklistItem {
     done: Boolean(row.done),
     sortOrder: row.sort_order,
     documentId: row.document_id,
+    taskId: row.task_id ?? null,
   };
 }
 
@@ -275,6 +285,11 @@ export type CreateSalonInput = {
   standNumber?: string;
   surfaceM2?: number | null;
   notes?: string;
+  catalogSlug?: string | null;
+  /** Nom affiché pour les tâches tableau / agenda. */
+  adminName?: string | null;
+  /** Si false, ne pousse pas la checklist sur le board (défaut: true). */
+  syncToBoard?: boolean;
 };
 
 export async function createSalon(
@@ -283,6 +298,8 @@ export async function createSalon(
   userId: string | null,
   input: CreateSalonInput,
 ): Promise<Salon> {
+  const catalogSlug =
+    input.catalogSlug?.trim() || matchCatalogFromName(input.name)?.slug || null;
   const { data, error } = await supabase
     .from("salons")
     .insert({
@@ -297,6 +314,7 @@ export async function createSalon(
       stand_number: input.standNumber?.trim() ?? "",
       surface_m2: input.surfaceM2 ?? null,
       notes: input.notes?.trim() ?? "",
+      catalog_slug: catalogSlug,
       created_by: userId,
     })
     .select("*")
@@ -304,6 +322,23 @@ export async function createSalon(
   if (error || !data) throw error ?? new Error("Création salon impossible");
   const salon = mapSalon(data as SalonRow);
   await insertTemplateRows(supabase, organizationId, salon.id, salon.mode, salon.startDate);
+  if (input.syncToBoard !== false) {
+    const checklist = await fetchChecklist(supabase, organizationId, salon.id);
+    await syncChecklistItemsToBoard({
+      supabase,
+      organizationId,
+      salonId: salon.id,
+      salonName: salon.name,
+      mode: salon.mode,
+      items: checklist.map((c) => ({
+        id: c.id,
+        label: c.label,
+        dueDate: c.dueDate,
+        done: c.done,
+      })),
+      adminName: input.adminName ?? "",
+    });
+  }
   return salon;
 }
 
@@ -380,7 +415,14 @@ export async function updateChecklistItem(
     .select("*")
     .single();
   if (error || !data) throw error ?? new Error("Checklist impossible");
-  return mapChecklist(data as ChecklistRow);
+  const item = mapChecklist(data as ChecklistRow);
+  await syncChecklistPatchToTask(supabase, {
+    taskId: item.taskId,
+    done: patch.done ?? item.done,
+    dueDate: patch.dueDate !== undefined ? patch.dueDate : item.dueDate,
+    label: patch.label ?? item.label,
+  });
+  return item;
 }
 
 export async function addChecklistItem(
@@ -390,6 +432,7 @@ export async function addChecklistItem(
   label: string,
   dueDate: string | null,
   sortOrder: number,
+  opts?: { salonName?: string; mode?: SalonMode; adminName?: string },
 ): Promise<SalonChecklistItem> {
   const { data, error } = await supabase
     .from("salon_checklist_items")
@@ -404,7 +447,22 @@ export async function addChecklistItem(
     .select("*")
     .single();
   if (error || !data) throw error ?? new Error("Ajout impossible");
-  return mapChecklist(data as ChecklistRow);
+  const item = mapChecklist(data as ChecklistRow);
+  if (opts?.salonName && opts.mode) {
+    const taskId = await createTaskForChecklistItem({
+      supabase,
+      organizationId,
+      salonId,
+      salonName: opts.salonName,
+      mode: opts.mode,
+      checklistItemId: item.id,
+      label: item.label,
+      dueDate: item.dueDate,
+      adminName: opts.adminName ?? "",
+    });
+    if (taskId) return { ...item, taskId };
+  }
+  return item;
 }
 
 export async function addDocument(
@@ -526,6 +584,7 @@ export async function seedSalons2026(
   supabase: SupabaseClient,
   organizationId: string,
   userId: string | null,
+  adminName?: string | null,
 ): Promise<number> {
   const existing = await fetchSalons(supabase, organizationId);
   const names = new Set(existing.map((s) => s.name.toLowerCase()));
@@ -542,6 +601,8 @@ export async function seedSalons2026(
       standNumber: seed.standNumber,
       surfaceM2: seed.surfaceM2,
       notes: seed.notes,
+      catalogSlug: seed.catalogSlug ?? matchCatalogFromName(seed.name)?.slug ?? null,
+      adminName: adminName ?? null,
     });
     created += 1;
   }

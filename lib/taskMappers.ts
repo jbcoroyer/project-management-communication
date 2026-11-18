@@ -110,12 +110,14 @@ export function mapTaskRow(row: unknown): Task {
     boardId: typeof r.board_id === "string" && r.board_id ? r.board_id : null,
     serviceId: typeof r.service_id === "string" && r.service_id ? r.service_id : null,
     eventId: typeof r.event_id === "string" && r.event_id ? r.event_id : undefined,
+    salonId: typeof r.salon_id === "string" && r.salon_id ? r.salon_id : undefined,
     eventCategory: typeof r.event_category === "string" && r.event_category.trim() ? r.event_category : null,
-    eventName: parseEventName(r.events),
+    eventName: parseJoinedName(r.events),
+    salonName: parseJoinedName(r.salons),
   };
 }
 
-function parseEventName(raw: unknown): string | null {
+function parseJoinedName(raw: unknown): string | null {
   if (raw == null) return null;
   if (typeof raw === "object" && !Array.isArray(raw) && "name" in raw) {
     const n = (raw as { name?: unknown }).name;

@@ -30,6 +30,8 @@ export type Salon = {
   standNumber: string;
   surfaceM2: number | null;
   notes: string;
+  /** Slug catalogue (SPACE, EuroTier…) — logos & création guidée. */
+  catalogSlug: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -43,6 +45,8 @@ export type SalonChecklistItem = {
   done: boolean;
   sortOrder: number;
   documentId: string | null;
+  /** Tâche miroir sur le tableau / agenda (même échéance). */
+  taskId: string | null;
 };
 
 export type SalonDocument = {

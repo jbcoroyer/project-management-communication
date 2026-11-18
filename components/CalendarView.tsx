@@ -14,11 +14,19 @@ import {
 import { useRouter } from "next/navigation";
 import { fr } from "date-fns/locale";
 import { Building2, ChevronLeft, ChevronRight, MapPin, Plus, Trash2, X } from "lucide-react";
-import { createEventWithTasks } from "../app/actions/events";
+import { createSalonFromCalendar } from "../app/actions/salons";
 import AdminAvatar from "./AdminAvatar";
 import type { Task, AdminId } from "../lib/types";
-import type { EventRow } from "../lib/eventTypes";
 import { toastError, toastSuccess } from "../lib/toast";
+
+/** Bloc agenda « salon » — compatible EventRow legacy et Salon v3. */
+export type SalonCalendarItem = {
+  id: string;
+  name: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+};
 import {
   loadCalendarExtraEvents,
   saveCalendarExtraEvents,
@@ -52,7 +60,7 @@ type CalendarEventResource = {
   owner: AdminId;
   ownerColor: string;
   extra?: CalendarExtraEvent;
-  salonEvent?: EventRow;
+  salonEvent?: SalonCalendarItem;
 };
 
 type CalendarEvent = {
@@ -450,7 +458,7 @@ export default function CalendarView(props: {
   tasks: Task[];
   admins: string[];
   currentUserName?: string | null;
-  salonEvents?: EventRow[];
+  salonEvents?: SalonCalendarItem[];
   onSelectTask: (taskId: string) => void;
 }) {
   const router = useRouter();
@@ -520,20 +528,18 @@ export default function CalendarView(props: {
 
     const startDate = format(new Date(ev.start), "yyyy-MM-dd");
     const endDate = format(new Date(ev.end), "yyyy-MM-dd");
-    const result = await createEventWithTasks({
+    const result = await createSalonFromCalendar({
       name: ev.title.trim(),
       location: ev.salon?.trim() ?? "",
       startDate,
       endDate,
-      status: "En préparation",
-      allocatedBudget: 0,
     });
 
     if (!result.ok) {
       toastError(result.error);
       return false;
     }
-    toastSuccess("Événement ajouté au hub événementiel");
+    toastSuccess("Salon ajouté — checklist + échéances sur le tableau");
     setEditingExtra(null);
     return true;
   }, [extraEvents]);
@@ -794,7 +800,7 @@ export default function CalendarView(props: {
                 return;
               }
               if (event.resource.kind === "salon" && event.resource.salonEvent) {
-                router.push(`/events/${event.resource.salonEvent.id}`);
+                router.push(`/v3/salons/${event.resource.salonEvent.id}`);
                 return;
               }
               if (event.resource.task) {
