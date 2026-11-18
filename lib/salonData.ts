@@ -5,6 +5,7 @@ import type {
   SalonChecklistItem,
   SalonContact,
   SalonDocCategory,
+  SalonDocKind,
   SalonDocument,
   SalonMode,
   SalonStatus,
@@ -21,6 +22,11 @@ import {
   syncChecklistItemsToBoard,
   syncChecklistPatchToTask,
 } from "./salonTaskSync";
+import {
+  removeSalonDocumentFile,
+  signSalonDocUrl,
+  uploadSalonDocumentFile,
+} from "./salonDocumentUpload";
 
 type SalonRow = {
   id: string;
@@ -57,8 +63,14 @@ type DocRow = {
   organization_id: string;
   salon_id: string;
   category: string;
+  doc_kind?: string | null;
   title: string;
+  description?: string | null;
   url: string;
+  storage_path?: string | null;
+  file_name?: string | null;
+  file_mime?: string | null;
+  file_size_bytes?: number | null;
   amount_ht: number | null;
   amount_ttc: number | null;
   due_date: string | null;
@@ -120,14 +132,22 @@ function mapChecklist(row: ChecklistRow): SalonChecklistItem {
   };
 }
 
-function mapDoc(row: DocRow): SalonDocument {
+function mapDoc(row: DocRow, signedUrl?: string | null): SalonDocument {
+  const storagePath = row.storage_path ?? null;
+  const externalUrl = row.url ?? "";
   return {
     id: row.id,
     organizationId: row.organization_id,
     salonId: row.salon_id,
     category: row.category as SalonDocCategory,
+    docKind: (row.doc_kind as SalonDocKind) || "autre",
     title: row.title,
-    url: row.url ?? "",
+    description: row.description ?? "",
+    url: signedUrl || externalUrl,
+    storagePath,
+    fileName: row.file_name ?? null,
+    fileMime: row.file_mime ?? null,
+    fileSizeBytes: row.file_size_bytes == null ? null : Number(row.file_size_bytes),
     amountHt: row.amount_ht == null ? null : Number(row.amount_ht),
     amountTtc: row.amount_ttc == null ? null : Number(row.amount_ttc),
     dueDate: row.due_date,
@@ -213,7 +233,13 @@ export async function fetchDocuments(
     .eq("salon_id", salonId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as DocRow[]).map(mapDoc);
+  const rows = (data ?? []) as DocRow[];
+  return Promise.all(
+    rows.map(async (row) => {
+      const signed = await signSalonDocUrl(supabase, row.storage_path);
+      return mapDoc(row, signed);
+    }),
+  );
 }
 
 export async function fetchContacts(
@@ -465,40 +491,124 @@ export async function addChecklistItem(
   return item;
 }
 
+export type AddSalonDocumentInput = {
+  category: SalonDocCategory;
+  docKind?: SalonDocKind;
+  title: string;
+  description?: string;
+  url?: string;
+  file?: File | null;
+  amountHt?: number | null;
+  amountTtc?: number | null;
+  dueDate?: string | null;
+  /** Si devis/facture : crée aussi une ligne budget engagé liée. */
+  createBudgetLine?: boolean;
+};
+
 export async function addDocument(
   supabase: SupabaseClient,
   organizationId: string,
   salonId: string,
-  input: {
-    category: SalonDocCategory;
-    title: string;
-    url?: string;
-    amountHt?: number | null;
-    amountTtc?: number | null;
-    dueDate?: string | null;
-  },
-): Promise<SalonDocument> {
+  input: AddSalonDocumentInput,
+): Promise<{ document: SalonDocument; budgetLine: SalonBudgetLine | null }> {
+  const title = input.title.trim();
+  if (!title) throw new Error("Indiquez un titre.");
+
+  const docKind: SalonDocKind = input.docKind ?? "autre";
+  const isCostDoc = docKind === "devis" || docKind === "facture";
+  const amountTtc =
+    input.amountTtc != null && Number.isFinite(input.amountTtc) ? Number(input.amountTtc) : null;
+  const amountHt =
+    input.amountHt != null && Number.isFinite(input.amountHt) ? Number(input.amountHt) : null;
+
+  if (isCostDoc && (amountTtc == null || amountTtc <= 0) && (amountHt == null || amountHt <= 0)) {
+    throw new Error("Montant obligatoire pour un devis ou une facture.");
+  }
+
+  let storagePath: string | null = null;
+  let fileName: string | null = null;
+  let fileMime: string | null = null;
+  let fileSizeBytes: number | null = null;
+  let signedUrl: string | null = null;
+  let externalUrl = input.url?.trim() ?? "";
+
+  if (input.file) {
+    const uploaded = await uploadSalonDocumentFile(
+      supabase,
+      organizationId,
+      salonId,
+      input.file,
+    );
+    if ("error" in uploaded) throw new Error(uploaded.error);
+    storagePath = uploaded.storagePath;
+    signedUrl = uploaded.fileUrl || null;
+    fileName = input.file.name;
+    fileMime = input.file.type || null;
+    fileSizeBytes = input.file.size;
+    if (!externalUrl && signedUrl) externalUrl = signedUrl;
+  }
+
+  if (!storagePath && !externalUrl) {
+    throw new Error("Ajoutez un fichier (max. 5 Mo) ou une URL.");
+  }
+
   const { data, error } = await supabase
     .from("salon_documents")
     .insert({
       organization_id: organizationId,
       salon_id: salonId,
       category: input.category,
-      title: input.title.trim(),
-      url: input.url?.trim() ?? "",
-      amount_ht: input.amountHt ?? null,
-      amount_ttc: input.amountTtc ?? null,
+      doc_kind: docKind,
+      title,
+      description: input.description?.trim() ?? "",
+      url: externalUrl,
+      storage_path: storagePath,
+      file_name: fileName,
+      file_mime: fileMime,
+      file_size_bytes: fileSizeBytes,
+      amount_ht: amountHt,
+      amount_ttc: amountTtc,
       due_date: input.dueDate ?? null,
     })
     .select("*")
     .single();
-  if (error || !data) throw error ?? new Error("Document impossible");
-  return mapDoc(data as DocRow);
+
+  if (error || !data) {
+    if (storagePath) await removeSalonDocumentFile(supabase, storagePath);
+    throw error ?? new Error("Document impossible");
+  }
+
+  const document = mapDoc(data as DocRow, signedUrl);
+  let budgetLine: SalonBudgetLine | null = null;
+
+  const shouldBudget = input.createBudgetLine !== false && isCostDoc;
+  if (shouldBudget) {
+    const engaged = amountTtc && amountTtc > 0 ? amountTtc : amountHt ?? 0;
+    budgetLine = await addBudgetLine(supabase, organizationId, salonId, {
+      label: `${docKind === "facture" ? "Facture" : "Devis"} — ${title}`,
+      category: input.category,
+      amountHt: amountHt ?? engaged,
+      amountTtc: amountTtc ?? engaged,
+      dueDate: input.dueDate ?? null,
+      paid: docKind === "facture" ? false : false,
+      documentId: document.id,
+    });
+  }
+
+  return { document, budgetLine };
 }
 
 export async function deleteDocument(supabase: SupabaseClient, id: string): Promise<void> {
+  const { data, error: fetchErr } = await supabase
+    .from("salon_documents")
+    .select("storage_path")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+  const storagePath = (data as { storage_path?: string | null } | null)?.storage_path ?? null;
   const { error } = await supabase.from("salon_documents").delete().eq("id", id);
   if (error) throw error;
+  await removeSalonDocumentFile(supabase, storagePath);
 }
 
 export async function addContact(
@@ -535,6 +645,7 @@ export async function addBudgetLine(
     amountTtc: number;
     dueDate?: string | null;
     paid?: boolean;
+    documentId?: string | null;
   },
 ): Promise<SalonBudgetLine> {
   const { data, error } = await supabase
@@ -548,6 +659,7 @@ export async function addBudgetLine(
       amount_ttc: input.amountTtc,
       due_date: input.dueDate ?? null,
       paid: input.paid ?? false,
+      document_id: input.documentId ?? null,
     })
     .select("*")
     .single();

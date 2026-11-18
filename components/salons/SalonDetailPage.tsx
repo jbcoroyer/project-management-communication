@@ -19,12 +19,15 @@ import { useSalonDetail, useSalons } from "../../lib/useSalons";
 import { checklistProgress } from "../../lib/salonData";
 import {
   SALON_DOC_CATEGORY_LABELS,
+  SALON_DOC_KIND_LABELS,
   SALON_MODE_LABELS,
   SALON_STATUS_LABELS,
   docCategoriesForMode,
   type SalonDocCategory,
+  type SalonDocKind,
   type SalonStatus,
 } from "../../lib/salonTypes";
+import { SALON_DOC_ACCEPT, salonDocFileError } from "../../lib/salonDocumentUpload";
 import { toastError, toastSuccess } from "../../lib/toast";
 
 type Tab = "checklist" | "docs" | "contacts" | "budget";
@@ -63,8 +66,12 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
   const [newCheckLabel, setNewCheckLabel] = useState("");
   const [newCheckDue, setNewCheckDue] = useState("");
   const [docTitle, setDocTitle] = useState("");
-  const [docUrl, setDocUrl] = useState("");
+  const [docDescription, setDocDescription] = useState("");
+  const [docFile, setDocFile] = useState<File | null>(null);
   const [docCat, setDocCat] = useState<SalonDocCategory>("orga");
+  const [docKind, setDocKind] = useState<SalonDocKind>("autre");
+  const [docAmount, setDocAmount] = useState("");
+  const [docBusy, setDocBusy] = useState(false);
   const [contactLabel, setContactLabel] = useState("");
   const [contactValue, setContactValue] = useState("");
   const [budgetLabel, setBudgetLabel] = useState("");
@@ -341,21 +348,37 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
                         className="ui-surface flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm"
                       >
                         <div className="min-w-0">
-                          <p className="truncate font-medium">{d.title}</p>
-                          {d.url ? (
-                            <a
-                              href={d.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="truncate text-[11px] text-[var(--accent)] hover:underline"
-                            >
-                              {d.url}
-                            </a>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate font-medium">{d.title}</p>
+                            <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold">
+                              {SALON_DOC_KIND_LABELS[d.docKind]}
+                            </span>
+                          </div>
+                          {d.description ? (
+                            <p className="mt-0.5 truncate text-[11px] text-[color:var(--foreground)]/50">
+                              {d.description}
+                            </p>
                           ) : null}
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[color:var(--foreground)]/45">
+                            {d.fileName ? <span>{d.fileName}</span> : null}
+                            {(d.amountTtc ?? d.amountHt) != null ? (
+                              <span>{formatMoney(d.amountTtc ?? d.amountHt ?? 0)}</span>
+                            ) : null}
+                            {d.url ? (
+                              <a
+                                href={d.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[var(--accent)] hover:underline"
+                              >
+                                Ouvrir
+                              </a>
+                            ) : null}
+                          </div>
                         </div>
                         <button
                           type="button"
-                          className="text-xs text-red-600"
+                          className="shrink-0 text-xs text-red-600"
                           onClick={() =>
                             void removeDoc(d.id).catch((err) =>
                               toastError(err instanceof Error ? err.message : "Erreur"),
@@ -372,51 +395,154 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
             );
           })}
           <form
-            className="ui-surface space-y-2 rounded-2xl p-3"
+            className="ui-surface space-y-3 rounded-2xl border border-[var(--line)] p-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!docTitle.trim()) return;
+              if (!docTitle.trim() || !docFile || docBusy) return;
+              const fileErr = salonDocFileError(docFile);
+              if (fileErr) {
+                toastError(fileErr);
+                return;
+              }
+              const needsAmount = docKind === "devis" || docKind === "facture";
+              const amount = docAmount ? Number(docAmount.replace(",", ".")) : NaN;
+              if (needsAmount && (!Number.isFinite(amount) || amount <= 0)) {
+                toastError("Indiquez le montant TTC pour un devis ou une facture.");
+                return;
+              }
+              setDocBusy(true);
               void createDoc({
                 category: docCat,
+                docKind,
                 title: docTitle,
-                url: docUrl,
+                description: docDescription,
+                file: docFile,
+                amountTtc: needsAmount ? amount : null,
+                amountHt: needsAmount ? amount : null,
               })
                 .then(() => {
                   setDocTitle("");
-                  setDocUrl("");
-                  toastSuccess("Document ajouté");
+                  setDocDescription("");
+                  setDocFile(null);
+                  setDocAmount("");
+                  setDocKind("autre");
+                  toastSuccess(
+                    needsAmount
+                      ? "Document ajouté — budget engagé mis à jour"
+                      : "Document ajouté",
+                  );
                 })
-                .catch((err) => toastError(err instanceof Error ? err.message : "Erreur"));
+                .catch((err) => toastError(err instanceof Error ? err.message : "Erreur"))
+                .finally(() => setDocBusy(false));
             }}
           >
-            <p className="text-xs font-semibold">Ajouter un document / lien</p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <select
-                className="ui-input text-xs"
-                value={docCat}
-                onChange={(e) => setDocCat(e.target.value as SalonDocCategory)}
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {SALON_DOC_CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="ui-input text-xs sm:col-span-2"
-                placeholder="Titre"
-                value={docTitle}
-                onChange={(e) => setDocTitle(e.target.value)}
-              />
+            <div>
+              <p className="text-sm font-semibold">Lier un document</p>
+              <p className="mt-0.5 text-[11px] text-[color:var(--foreground)]/50">
+                Fichier ≤ 5 Mo (PDF ou image). Pour un devis / facture, le montant augmente le
+                budget engagé.
+              </p>
             </div>
-            <input
-              className="ui-input w-full text-xs"
-              placeholder="URL ou chemin"
-              value={docUrl}
-              onChange={(e) => setDocUrl(e.target.value)}
-            />
-            <button type="submit" className="ui-btn ui-btn-primary text-xs">
-              Ajouter
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+                Fichier
+                <input
+                  type="file"
+                  accept={SALON_DOC_ACCEPT}
+                  className="ui-input mt-1.5 w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-[var(--surface-soft)] file:px-2 file:py-1 file:text-xs"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    if (f) {
+                      const err = salonDocFileError(f);
+                      if (err) {
+                        toastError(err);
+                        e.target.value = "";
+                        setDocFile(null);
+                        return;
+                      }
+                    }
+                    setDocFile(f);
+                    if (f && !docTitle.trim()) {
+                      setDocTitle(f.name.replace(/\.[^.]+$/, ""));
+                    }
+                  }}
+                  required
+                />
+              </label>
+              <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+                Type
+                <select
+                  className="ui-input mt-1.5 w-full"
+                  value={docKind}
+                  onChange={(e) => setDocKind(e.target.value as SalonDocKind)}
+                >
+                  {(Object.keys(SALON_DOC_KIND_LABELS) as SalonDocKind[]).map((k) => (
+                    <option key={k} value={k}>
+                      {SALON_DOC_KIND_LABELS[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+                Titre
+                <input
+                  className="ui-input mt-1.5 w-full"
+                  placeholder="ex. Devis standiste SPACE"
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+                Catégorie
+                <select
+                  className="ui-input mt-1.5 w-full"
+                  value={docCat}
+                  onChange={(e) => setDocCat(e.target.value as SalonDocCategory)}
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {SALON_DOC_CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+              Description <span className="font-normal text-[color:var(--foreground)]/40">(facultatif)</span>
+              <textarea
+                className="ui-input mt-1.5 min-h-[64px] w-full resize-y"
+                placeholder="Contexte, version, notes…"
+                value={docDescription}
+                onChange={(e) => setDocDescription(e.target.value)}
+              />
+            </label>
+            {(docKind === "devis" || docKind === "facture") && (
+              <label className="block text-xs font-semibold text-[color:var(--foreground)]/70">
+                Montant TTC (€) — obligatoire
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="ui-input mt-1.5 w-full sm:max-w-xs"
+                  placeholder="0,00"
+                  value={docAmount}
+                  onChange={(e) => setDocAmount(e.target.value)}
+                  required
+                />
+                <span className="mt-1 block text-[11px] font-normal text-[color:var(--foreground)]/45">
+                  Ajouté au budget engagé du salon (saisie manuelle — pas d’OCR PDF en v1).
+                </span>
+              </label>
+            )}
+            <button
+              type="submit"
+              className="ui-btn ui-btn-primary text-xs"
+              disabled={docBusy || !docFile || !docTitle.trim()}
+            >
+              {docBusy ? "Envoi…" : "Lier le document"}
             </button>
           </form>
         </section>

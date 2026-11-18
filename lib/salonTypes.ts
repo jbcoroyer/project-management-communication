@@ -17,6 +17,9 @@ export const salonDocCategories = [
 ] as const;
 export type SalonDocCategory = (typeof salonDocCategories)[number];
 
+export const salonDocKinds = ["autre", "devis", "facture"] as const;
+export type SalonDocKind = (typeof salonDocKinds)[number];
+
 export type Salon = {
   id: string;
   organizationId: string;
@@ -54,8 +57,14 @@ export type SalonDocument = {
   organizationId: string;
   salonId: string;
   category: SalonDocCategory;
+  docKind: SalonDocKind;
   title: string;
+  description: string;
   url: string;
+  storagePath: string | null;
+  fileName: string | null;
+  fileMime: string | null;
+  fileSizeBytes: number | null;
   amountHt: number | null;
   amountTtc: number | null;
   dueDate: string | null;
@@ -105,6 +114,12 @@ export const SALON_DOC_CATEGORY_LABELS: Record<SalonDocCategory, string> = {
   travel: "Travel",
   portails: "Portails",
   autre: "Autre",
+};
+
+export const SALON_DOC_KIND_LABELS: Record<SalonDocKind, string> = {
+  autre: "Document",
+  devis: "Devis",
+  facture: "Facture",
 };
 
 export function docCategoriesForMode(mode: SalonMode): SalonDocCategory[] {

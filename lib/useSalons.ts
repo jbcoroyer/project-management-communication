@@ -256,9 +256,17 @@ export function useSalonDetail(salonId: string | null) {
   const createDoc = useCallback(
     async (input: Parameters<typeof addDocument>[3]) => {
       if (!workspaceId || !salonId) return null;
-      const doc = await addDocument(supabase, workspaceId, salonId, input);
-      setDocuments((prev) => [doc, ...prev]);
-      return doc;
+      const { document, budgetLine } = await addDocument(
+        supabase,
+        workspaceId,
+        salonId,
+        input,
+      );
+      setDocuments((prev) => [document, ...prev]);
+      if (budgetLine) {
+        setBudgetLines((prev) => [...prev, budgetLine]);
+      }
+      return document;
     },
     [salonId, supabase, workspaceId],
   );
