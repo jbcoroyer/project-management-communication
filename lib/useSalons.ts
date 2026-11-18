@@ -27,14 +27,11 @@ import {
   fetchContacts,
   fetchDocuments,
   fetchSalons,
-  seedSalons2026,
   updateBudgetLine,
   updateChecklistItem,
   updateSalon,
   type CreateSalonInput,
 } from "./salonData";
-import { backfillMissingSalonTasks } from "./salonTaskSync";
-
 export function useSalons() {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
@@ -150,35 +147,6 @@ export function useSalons() {
     [reload, supabase, user?.id, workspaceId],
   );
 
-  const seedYear = useCallback(async () => {
-    if (!workspaceId) return 0;
-    try {
-      const n = await seedSalons2026(supabase, workspaceId, user?.id ?? null, adminName);
-      const linked = await backfillMissingSalonTasks({
-        supabase,
-        organizationId: workspaceId,
-        adminName,
-      });
-      await reload();
-      if (n || linked) {
-        toastSuccess(
-          [
-            n ? `${n} salon(s) ajouté(s)` : null,
-            linked ? `${linked} échéance(s) liées au tableau/agenda` : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        );
-      } else {
-        toastSuccess("Portefeuille 2026 déjà en place et lié au tableau");
-      }
-      return n;
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Seed impossible");
-      return 0;
-    }
-  }, [adminName, reload, supabase, user?.id, workspaceId]);
-
   const toggleChecklist = useCallback(
     async (id: string, done: boolean) => {
       try {
@@ -203,7 +171,6 @@ export function useSalons() {
     patchSalon,
     removeSalon,
     duplicateSalon,
-    seedYear,
     toggleChecklist,
     workspaceId,
     userId: user?.id ?? null,
