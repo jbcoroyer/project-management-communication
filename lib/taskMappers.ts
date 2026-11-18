@@ -113,20 +113,34 @@ export function mapTaskRow(row: unknown): Task {
     salonId: typeof r.salon_id === "string" && r.salon_id ? r.salon_id : undefined,
     eventCategory: typeof r.event_category === "string" && r.event_category.trim() ? r.event_category : null,
     eventName: parseJoinedName(r.events),
+    eventEndDate: parseJoinedField(r.events, "end_date"),
     salonName: parseJoinedName(r.salons),
+    salonEndDate: parseJoinedField(r.salons, "end_date"),
+    salonStatus: parseJoinedField(r.salons, "status"),
   };
 }
 
-function parseJoinedName(raw: unknown): string | null {
+function joinedRow(raw: unknown): Record<string, unknown> | null {
   if (raw == null) return null;
-  if (typeof raw === "object" && !Array.isArray(raw) && "name" in raw) {
-    const n = (raw as { name?: unknown }).name;
-    return typeof n === "string" && n.trim() ? n.trim() : null;
-  }
-  if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object" && "name" in raw[0]) {
-    const n = (raw[0] as { name?: unknown }).name;
-    return typeof n === "string" && n.trim() ? n.trim() : null;
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
+    return raw[0] as Record<string, unknown>;
   }
   return null;
+}
+
+function parseJoinedName(raw: unknown): string | null {
+  const row = joinedRow(raw);
+  if (!row) return null;
+  const n = row.name;
+  return typeof n === "string" && n.trim() ? n.trim() : null;
+}
+
+function parseJoinedField(raw: unknown, key: string): string | null {
+  const row = joinedRow(raw);
+  if (!row) return null;
+  const v = row[key];
+  if (typeof v !== "string" || !v.trim()) return null;
+  return v.trim();
 }
 

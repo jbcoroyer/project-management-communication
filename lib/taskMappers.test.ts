@@ -137,4 +137,17 @@ describe("mapTaskRow", () => {
     expect(mapTaskRow({ completed_at: "" }).completedAt).toBeUndefined();
     expect(mapTaskRow({ completed_at: "  " }).completedAt).toBeUndefined();
   });
+
+  it("mappe salonEndDate / salonStatus / eventEndDate depuis les jointures", () => {
+    const task = mapTaskRow({
+      salon_id: "s1",
+      salons: { name: "CAHE 2026", end_date: "2026-03-12", status: "termine" },
+      event_id: "e1",
+      events: { name: "Legacy", end_date: "2026-01-01" },
+    });
+    expect(task.salonName).toBe("CAHE 2026");
+    expect(task.salonEndDate).toBe("2026-03-12");
+    expect(task.salonStatus).toBe("termine");
+    expect(task.eventEndDate).toBe("2026-01-01");
+  });
 });

@@ -5,9 +5,9 @@ import { AUTO_ARCHIVE_HOURS } from "../workflowConstants";
 
 const AUTO_ARCHIVE_KEY = "v2-auto-archive-hours";
 const AUTO_ARCHIVE_EVENT = "v2-auto-archive-hours-changed";
-/** Défaut = 2 jours (tâches + événementiel). */
+/** Défaut = J+1 (24 h), aligné sur workflowConstants. */
 export const DEFAULT_AUTO_ARCHIVE_HOURS = AUTO_ARCHIVE_HOURS;
-const MAX_AUTO_ARCHIVE_HOURS = AUTO_ARCHIVE_HOURS;
+const MAX_AUTO_ARCHIVE_HOURS = 168;
 
 function readAutoArchiveHours(): number {
   try {
@@ -15,8 +15,6 @@ function readAutoArchiveHours(): number {
     if (!raw) return DEFAULT_AUTO_ARCHIVE_HOURS;
     const value = Number(raw);
     if (!Number.isFinite(value) || value <= 0) return DEFAULT_AUTO_ARCHIVE_HOURS;
-    // Ancien plafond / défaut (24 h) → nouveau délai de 2 jours.
-    if (value === 24) return DEFAULT_AUTO_ARCHIVE_HOURS;
     return Math.min(value, MAX_AUTO_ARCHIVE_HOURS);
   } catch {
     return DEFAULT_AUTO_ARCHIVE_HOURS;
@@ -25,7 +23,7 @@ function readAutoArchiveHours(): number {
 
 /**
  * Délai d'auto-archivage (heures) pour les tâches « Terminé »
- * (tableau + événementiel). Plafonné à 48 h (2 jours).
+ * (tableau + événementiel). Défaut 24 h ; plafonné à 7 jours.
  */
 export function useAutoArchiveHours(): [number, (hours: number) => void] {
   const [hours, setHours] = useState<number>(DEFAULT_AUTO_ARCHIVE_HOURS);

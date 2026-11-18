@@ -75,8 +75,14 @@ export type Task = {
   eventCategory?: string | null;
   /** Nom du salon (jointure `events`) — regroupement Kanban */
   eventName?: string | null;
+  /** Date de fin event (YYYY-MM-DD) — filtre board / archive salons passés */
+  eventEndDate?: string | null;
   /** Nom du salon v3 (jointure `salons`) */
   salonName?: string | null;
+  /** Date de fin salon (YYYY-MM-DD) */
+  salonEndDate?: string | null;
+  /** Statut salon v3 (`preparation` | `en_cours` | `termine`) */
+  salonStatus?: string | null;
   /** Sous-taches regroupees cote client (non persistees ici) */
   subtasks?: Task[];
 };

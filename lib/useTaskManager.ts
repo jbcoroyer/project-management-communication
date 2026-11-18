@@ -73,7 +73,7 @@ export function useTaskManager({
   const confirm = useConfirm();
   const { workspaceId } = useWorkspace();
   const { boardId: activeBoardId } = useActiveBoard();
-  // Auto-archivage « Terminé » > 2 jours : TasksProvider (partagé tâches + événementiel).
+  // Auto-archivage « Terminé » > 24 h : TasksProvider + cron /api/cron/auto-archive.
 
   const handleCreateTask = useCallback(
     async (values: TaskFormValuesWithSubtasks) => {

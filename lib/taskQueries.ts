@@ -29,9 +29,12 @@ export const TASK_SELECT_WITH_EVENT = `
   board_id,
   service_id,
   events (
-    name
+    name,
+    end_date
   ),
   salons (
-    name
+    name,
+    end_date,
+    status
   )
 `;
