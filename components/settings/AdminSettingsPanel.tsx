@@ -184,8 +184,40 @@ function EntityRow(props: {
   );
 }
 
+export type AdminSettingsSectionId =
+  | "outlook"
+  | "identity"
+  | "profile"
+  | "collaborators"
+  | "companies"
+  | "domains"
+  | "columns"
+  | "archive";
+
+const ALL_ADMIN_SECTIONS: AdminSettingsSectionId[] = [
+  "outlook",
+  "identity",
+  "profile",
+  "collaborators",
+  "companies",
+  "domains",
+  "columns",
+  "archive",
+];
+
 /* ─────────────────────────── Page principale ─────────────────────────── */
-export default function AdminSettingsPanel() {
+export default function AdminSettingsPanel(props: {
+  /** Sous-ensemble à afficher ; défaut = tout. */
+  sections?: AdminSettingsSectionId[];
+  /** Masque le bandeau Administration / Paramètres (hub réglages). */
+  hideChrome?: boolean;
+}) {
+  const show = useMemo(() => {
+    const wanted = props.sections?.length ? props.sections : ALL_ADMIN_SECTIONS;
+    return new Set(wanted);
+  }, [props.sections]);
+  const hideChrome = props.hideChrome === true;
+
   const { user: currentUser, reload: reloadUser } = useCurrentUser();
   const { workspaceId } = useWorkspace();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
@@ -340,33 +372,48 @@ export default function AdminSettingsPanel() {
       )}
 
       <section className="space-y-4">
-        {/* ─── En-tête ─── */}
-        <div className="ui-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--foreground)]/50">
-              Administration
-            </p>
-            <h1 className="ui-heading mt-0.5 text-3xl font-semibold text-[var(--foreground)]">
-              Paramètres
-            </h1>
-            <p className="mt-1.5 text-sm text-[color:var(--foreground)]/65">
-              {loading ? (
-                <TuesdayLoader size={16} label="Chargement…" showLabel />
-              ) : (
-                `${stats.admins} collaborateurs · ${stats.companies} sociétés · ${stats.domains} domaines · ${stats.columns} colonnes`
-              )}
-            </p>
+        {!hideChrome && (
+          <div className="ui-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--foreground)]/50">
+                Administration
+              </p>
+              <h1 className="ui-heading mt-0.5 text-3xl font-semibold text-[var(--foreground)]">
+                Paramètres
+              </h1>
+              <p className="mt-1.5 text-sm text-[color:var(--foreground)]/65">
+                {loading ? (
+                  <TuesdayLoader size={16} label="Chargement…" showLabel />
+                ) : (
+                  `${stats.admins} collaborateurs · ${stats.companies} sociétés · ${stats.domains} domaines · ${stats.columns} colonnes`
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadAll()}
+              disabled={loading}
+              className="ui-transition flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-40"
+            >
+              {loading ? <TuesdayLoader size={16} label="Rafraîchissement…" /> : <RefreshCw className="h-4 w-4" />}
+              Rafraîchir
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadAll()}
-            disabled={loading}
-            className="ui-transition flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-40"
-          >
-            {loading ? <TuesdayLoader size={16} label="Rafraîchissement…" /> : <RefreshCw className="h-4 w-4" />}
-            Rafraîchir
-          </button>
-        </div>
+        )}
+
+        {hideChrome && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void loadAll()}
+              disabled={loading}
+              className="ui-transition flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--foreground)]/70 hover:bg-[var(--surface)] disabled:opacity-40"
+            >
+              {loading ? <TuesdayLoader size={16} label="Rafraîchissement…" /> : <RefreshCw className="h-4 w-4" />}
+              Rafraîchir
+            </button>
+          </div>
+        )}
 
         {loadErrors.length > 0 && (
           <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -380,6 +427,7 @@ export default function AdminSettingsPanel() {
         )}
 
         {/* ─── Agenda Outlook 365 ─── */}
+        {show.has("outlook") && (
         <Section
           icon={CalendarClock}
           title="Agenda Outlook 365"
@@ -387,8 +435,10 @@ export default function AdminSettingsPanel() {
         >
           <OutlookConnectionCard />
         </Section>
+        )}
 
         {/* ─── Pictogramme IDENA ─── */}
+        {show.has("identity") && (
         <Section
           icon={ImageIcon}
           title="Identité visuelle"
@@ -493,8 +543,10 @@ export default function AdminSettingsPanel() {
             </div>
           </div>
         </Section>
+        )}
 
         {/* ─── Mon profil ─── */}
+        {show.has("profile") && (
         <Section
           icon={UserCircle2}
           title="Mon profil"
@@ -553,12 +605,14 @@ export default function AdminSettingsPanel() {
             <p className="text-sm text-[color:var(--foreground)]/50">Connexion requise.</p>
           )}
         </Section>
+        )}
 
         {/* ─── Collaborateurs ─── */}
+        {show.has("collaborators") && (
         <Section
           icon={Users}
           title="Collaborateurs"
-          subtitle="Membres de l'équipe disponibles dans le formulaire de création de tâche."
+          subtitle="Personnes assignables sur les tâches (différent des comptes d'accès à l'espace)."
           badge={`${stats.admins} actifs`}
         >
           {/* Ajout */}
@@ -678,8 +732,10 @@ export default function AdminSettingsPanel() {
             Les couleurs sont assignées automatiquement par l&apos;application selon l&apos;ordre des collaborateurs.
           </p>
         </Section>
+        )}
 
         {/* ─── Sociétés ─── */}
+        {show.has("companies") && (
         <Section
           icon={Building2}
           title="Sociétés / Filiales"
@@ -811,8 +867,10 @@ export default function AdminSettingsPanel() {
             ))}
           </div>
         </Section>
+        )}
 
         {/* ─── Domaines ─── */}
+        {show.has("domains") && (
         <Section
           icon={Layers}
           title="Domaines d'action"
@@ -900,8 +958,10 @@ export default function AdminSettingsPanel() {
             ))}
           </div>
         </Section>
+        )}
 
         {/* ─── Colonnes ─── */}
+        {show.has("columns") && (
         <Section
           icon={PenLine}
           title="Colonnes / Statuts"
@@ -1038,20 +1098,25 @@ export default function AdminSettingsPanel() {
             ))}
           </div>
         </Section>
+        )}
 
         {/* ─── Archivage ─── */}
+        {show.has("archive") && (
         <Section
           icon={Archive}
           title="Archivage automatique"
-          subtitle="Les tâches passées en 'Terminé' depuis plus de 24h sont automatiquement archivées."
+          subtitle="Info seulement — ce délai n'est pas réglable."
         >
           <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <span className="text-lg">✅</span>
+            <span className="text-lg" aria-hidden>
+              ✅
+            </span>
             <p className="text-sm text-emerald-800">
-              <strong>Délai fixe : 24 heures.</strong> Toute tâche dans la colonne &quot;Terminé&quot; depuis plus d&apos;un jour est automatiquement déplacée dans les Archives. Ce comportement n&apos;est pas configurable.
+              <strong>Délai fixe : 24 heures.</strong> Toute tâche dans la colonne &quot;Terminé&quot; depuis plus d&apos;un jour est automatiquement déplacée dans les Archives.
             </p>
           </div>
         </Section>
+        )}
 
       </section>
     </>
