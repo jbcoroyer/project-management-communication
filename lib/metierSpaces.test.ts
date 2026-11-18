@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  GLOBAL_TASK_BOARD_SECTION,
   isMetierRoute,
   isMetierSpaceSlug,
   METIER_SPACE_META,
@@ -38,6 +39,20 @@ describe("metierSpaces", () => {
     ).toBe(true);
     expect(metierNavForSlug("communication")).toBeNull();
     expect(metierNavForSlug(null)).toBeNull();
+  });
+
+  it("expose le tableau des tâches global en tête de nav R&D et GdP", () => {
+    const kanbanHref = GLOBAL_TASK_BOARD_SECTION.items[0]?.href;
+    expect(kanbanHref).toBe("/v3/dashboard/kanban");
+
+    for (const slug of ["rd", "gestion-de-projet"] as const) {
+      const nav = metierNavForSlug(slug);
+      expect(nav?.[0]?.id).toBe("global-tasks");
+      expect(nav?.[0]?.items.some((i) => i.href === "/v3/dashboard/kanban")).toBe(true);
+      expect(nav?.flatMap((s) => s.items).filter((i) => i.href === "/v3/dashboard/kanban")).toHaveLength(
+        1,
+      );
+    }
   });
 
   it("détecte les routes métier", () => {

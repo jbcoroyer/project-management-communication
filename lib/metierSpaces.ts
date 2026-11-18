@@ -7,6 +7,7 @@ import {
   FolderKanban,
   Gavel,
   LayoutDashboard,
+  LayoutGrid,
   ListTodo,
   Milestone,
   Scale,
@@ -62,6 +63,24 @@ export type MetierNavSection = {
   id: string;
   label: string;
   items: MetierNavItem[];
+};
+
+/**
+ * Entrée permanente vers le Kanban org — visible dans tous les espaces métier
+ * (R&D, GdP, …) pour que le switcher métier ne masque plus le tableau des tâches.
+ * Communication garde sa nav boards inchangée (`metierNavForSlug` → null).
+ */
+export const GLOBAL_TASK_BOARD_SECTION: MetierNavSection = {
+  id: "global-tasks",
+  label: "Partagé",
+  items: [
+    {
+      href: "/v3/dashboard/kanban",
+      label: "Tableau des tâches",
+      hint: "Kanban principal",
+      icon: LayoutGrid,
+    },
+  ],
 };
 
 export const RD_NAV_SECTIONS: MetierNavSection[] = [
@@ -173,8 +192,8 @@ export const GDP_NAV_SECTIONS: MetierNavSection[] = [
 ];
 
 export function metierNavForSlug(slug: string | null): MetierNavSection[] | null {
-  if (slug === "rd") return RD_NAV_SECTIONS;
-  if (slug === "gestion-de-projet") return GDP_NAV_SECTIONS;
+  if (slug === "rd") return [GLOBAL_TASK_BOARD_SECTION, ...RD_NAV_SECTIONS];
+  if (slug === "gestion-de-projet") return [GLOBAL_TASK_BOARD_SECTION, ...GDP_NAV_SECTIONS];
   return null;
 }
 
