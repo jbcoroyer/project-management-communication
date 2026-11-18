@@ -26,4 +26,10 @@ describe("isModuleVisibleForService", () => {
     expect(isModuleVisibleForService("settings", "rd")).toBe(true);
     expect(isModuleVisibleForService(null, "adv")).toBe(true);
   });
+
+  it("masque les modules Communication pour gestion-de-projet", () => {
+    expect(isModuleVisibleForService("events", "gestion-de-projet")).toBe(false);
+    expect(isModuleVisibleForService("idees", "gestion-de-projet")).toBe(false);
+    expect(isModuleVisibleForService("stock", "gestion-de-projet")).toBe(false);
+  });
 });
