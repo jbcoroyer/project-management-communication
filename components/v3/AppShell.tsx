@@ -391,25 +391,37 @@ export default function V3AppShell({ children, toolbarRight, searchSlot }: V3App
         ) : null}
 
         <div className="min-w-0 lg:pl-[16.75rem]">
-          <header className="mb-6 flex h-10 items-center gap-2.5 border-b border-[var(--line)]/60 pb-4">
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 lg:hidden"
-              aria-label="Ouvrir le menu"
-              aria-expanded={mobileNavOpen}
+          <header className="mb-6">
+            <div
+              className={[
+                "flex min-h-12 items-center gap-2.5 rounded-2xl px-2 py-1.5 sm:gap-3 sm:px-2.5",
+                "border border-[var(--line)]/80 bg-[var(--surface)]/90",
+                "shadow-[0_1px_0_rgba(20,17,13,0.03),0_10px_28px_rgba(20,17,13,0.04)]",
+                "backdrop-blur-md",
+              ].join(" ")}
             >
-              <Menu className="h-4 w-4" aria-hidden />
-            </button>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="ui-transition inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)] lg:hidden"
+                aria-label="Ouvrir le menu"
+                aria-expanded={mobileNavOpen}
+              >
+                <Menu className="h-4 w-4" aria-hidden />
+              </button>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <WorkspaceSwitcher variant="toolbar" />
-            </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <WorkspaceSwitcher variant="toolbar" />
+              </div>
 
-            <div className="min-w-0 flex-1">
-              {searchSlot ?? <V3GlobalSearch />}
+              <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-[var(--line)]/80 sm:block" aria-hidden />
+
+              <div className="min-w-0 flex-1">
+                {searchSlot ?? <V3GlobalSearch />}
+              </div>
+
+              <div className="flex h-10 shrink-0 items-center gap-1.5">{toolbarRight}</div>
             </div>
-            <div className="flex h-9 shrink-0 items-center gap-1.5">{toolbarRight}</div>
           </header>
 
           <main className="pb-10">{children}</main>

@@ -22,13 +22,19 @@ function formatNotifTime(at: number): string {
 
 type PanelPos = { top: number; right: number; width: number; maxHeight: number };
 
-export default function DashboardNotificationBell() {
+type DashboardNotificationBellProps = {
+  /** `compact` : hauteur alignée sur la top bar V3 (h-10). */
+  size?: "default" | "compact";
+};
+
+export default function DashboardNotificationBell({ size = "default" }: DashboardNotificationBellProps) {
   const { history, markHistoryRead, clearHistory, unreadCount } = useInAppNotifications();
   const [open, setOpen] = useState(false);
   const mounted = useIsClient();
   const [panelPos, setPanelPos] = useState<PanelPos>({ top: 0, right: 16, width: 380, maxHeight: 420 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const compact = size === "compact";
 
   const updatePanelPosition = useCallback(() => {
     const btn = buttonRef.current;
@@ -163,9 +169,14 @@ export default function DashboardNotificationBell() {
           title="Notifications"
           aria-expanded={open}
           aria-haspopup="dialog"
-          className="ui-transition relative flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] text-[color:var(--foreground)]/75 shadow-[0_8px_22px_rgba(20,17,13,0.08)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+          className={[
+            "ui-transition relative flex items-center justify-center",
+            compact
+              ? "h-10 w-10 rounded-xl bg-[var(--surface)] text-[color:var(--foreground)]/60 ring-1 ring-[var(--line)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+              : "h-10 w-10 rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] text-[color:var(--foreground)]/75 shadow-[0_8px_22px_rgba(20,17,13,0.08)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
+          ].join(" ")}
         >
-          <Bell className="h-5 w-5" strokeWidth={2} aria-hidden />
+          <Bell className={compact ? "h-4 w-4" : "h-5 w-5"} strokeWidth={compact ? 1.85 : 2} aria-hidden />
           {unreadCount > 0 ? (
             <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--foreground)] px-1 text-[10px] font-bold text-[var(--accent-contrast)]">
               {unreadCount > 9 ? "9+" : unreadCount}

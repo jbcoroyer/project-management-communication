@@ -995,37 +995,63 @@ export default function V2DashboardHomePage() {
             type="button"
             onClick={() => setIsCommandOpen(true)}
             className={[
-              "ui-transition flex h-9 w-full items-center gap-2 border border-[var(--line)] bg-[var(--surface)]/80 text-left hover:border-[color:var(--foreground)]/20",
-              isLightUi ? "max-w-md rounded-lg px-3" : "max-w-md rounded-xl px-3 shadow-sm",
+              "ui-transition flex w-full items-center gap-2 text-left",
+              isLightUi
+                ? [
+                    "h-10 max-w-xl rounded-xl px-3",
+                    "bg-[var(--surface-soft)]/55 ring-1 ring-[var(--line)]/90",
+                    "hover:bg-[var(--surface)] hover:ring-[var(--line-strong)]",
+                  ].join(" ")
+                : "h-9 max-w-md rounded-xl border border-[var(--line)] bg-[var(--surface)]/80 px-3 shadow-sm hover:border-[color:var(--foreground)]/20",
             ].join(" ")}
           >
             <Search className="h-3.5 w-3.5 text-[color:var(--foreground)]/40" aria-hidden />
-            <span className="flex-1 truncate text-sm text-[color:var(--foreground)]/40">
+            <span
+              className={[
+                "flex-1 truncate",
+                isLightUi ? "text-[13px] text-[color:var(--foreground)]/38" : "text-sm text-[color:var(--foreground)]/40",
+              ].join(" ")}
+            >
               Rechercher…
             </span>
-            <kbd className="hidden items-center gap-0.5 text-[10px] text-[color:var(--foreground)]/35 sm:inline-flex">
+            <kbd
+              className={[
+                "hidden items-center gap-0.5 sm:inline-flex",
+                isLightUi
+                  ? "rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-[color:var(--foreground)]/35 ring-1 ring-[var(--line)]"
+                  : "text-[10px] text-[color:var(--foreground)]/35",
+              ].join(" ")}
+            >
               <CommandIcon className="h-3 w-3" />K
             </kbd>
           </button>
         }
         toolbarRight={
-          <div className="flex h-9 shrink-0 items-center gap-1.5">
+          <div className={["flex shrink-0 items-center gap-1.5", isLightUi ? "h-10" : "h-9"].join(" ")}>
             {!isLightUi ? <PresenceBar members={presenceMembers} /> : null}
             <button
               type="button"
               onClick={() => celebrateTaskManually()}
               title="Lancer les confettis"
               aria-label="Lancer l’animation de confettis"
-              className="ui-transition inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--foreground)]/45 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+              className={[
+                "ui-transition inline-flex shrink-0 items-center justify-center text-[color:var(--foreground)]/45 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
+                isLightUi ? "h-10 w-10 rounded-xl" : "h-9 w-9 rounded-lg",
+              ].join(" ")}
             >
               <PartyPopper className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </button>
-            <DashboardNotificationBell />
+            <DashboardNotificationBell size={isLightUi ? "compact" : "default"} />
             <button
               type="button"
               onClick={handleOpenForm}
               title="Nouvelle tâche (N)"
-              className="ui-transition inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 text-[13px] font-medium text-[var(--accent-contrast)] hover:bg-[var(--accent-strong)]"
+              className={[
+                "ui-transition inline-flex items-center gap-1.5 font-medium text-[var(--accent-contrast)]",
+                isLightUi
+                  ? "h-10 rounded-xl bg-[var(--foreground)] px-3.5 text-[13px] shadow-[0_1px_0_rgba(20,17,13,0.08)] hover:opacity-90"
+                  : "h-9 rounded-lg bg-[var(--accent)] px-3 text-[13px] hover:bg-[var(--accent-strong)]",
+              ].join(" ")}
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Nouvelle tâche</span>

@@ -26,11 +26,24 @@ export default function V3GlobalSearch() {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hits, setHits] = useState<GlobalSearchHit[]>([]);
   const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const runSearch = useCallback(
     async (q: string) => {
@@ -170,10 +183,17 @@ export default function V3GlobalSearch() {
   };
 
   return (
-    <div ref={rootRef} className="relative w-full max-w-md">
-      <div className="flex h-9 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)]/80 px-3">
+    <div ref={rootRef} className="relative w-full max-w-xl">
+      <div
+        className={[
+          "ui-transition flex h-10 items-center gap-2 rounded-xl px-3",
+          "bg-[var(--surface-soft)]/55 ring-1 ring-[var(--line)]/90",
+          "focus-within:bg-[var(--surface)] focus-within:ring-[var(--line-strong)]",
+        ].join(" ")}
+      >
         <Search className="h-3.5 w-3.5 shrink-0 text-[color:var(--foreground)]/35" aria-hidden />
         <input
+          ref={inputRef}
           type="search"
           value={query}
           onChange={(e) => {
@@ -182,13 +202,16 @@ export default function V3GlobalSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Rechercher tâches, events, stock…"
+          placeholder="Rechercher tâches, salons, stock…"
           aria-label="Recherche globale"
           aria-autocomplete="list"
           aria-controls={listId}
           aria-expanded={open}
-          className="w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/40 focus:outline-none"
+          className="w-full bg-transparent text-[13px] text-[var(--foreground)] placeholder:text-[color:var(--foreground)]/38 focus:outline-none"
         />
+        <kbd className="hidden shrink-0 items-center rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-[color:var(--foreground)]/35 ring-1 ring-[var(--line)] sm:inline-flex">
+          ⌘K
+        </kbd>
       </div>
 
       {open && query.trim().length >= 2 ? (
