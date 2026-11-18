@@ -50,7 +50,7 @@ export default function V3GlobalSearch() {
             .ilike("project_name", `%${trimmed}%`)
             .limit(12),
           supabase
-            .from("events")
+            .from("salons")
             .select("id, name, location")
             .eq("organization_id", workspaceId)
             .ilike("name", `%${trimmed}%`)
@@ -91,8 +91,8 @@ export default function V3GlobalSearch() {
             id: row.id,
             kind: "event",
             title: row.name,
-            subtitle: row.location || "Événement",
-            href: `/v3/events/${row.id}`,
+            subtitle: row.location || "Salon",
+            href: `/v3/salons/${row.id}`,
           });
         }
         for (const row of stockRes.data ?? []) {

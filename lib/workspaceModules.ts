@@ -32,10 +32,10 @@ export const WORKSPACE_MODULE_META: Record<
     href: "/v3/deliverables",
   },
   events: {
-    label: "Événements",
+    label: "Salons",
     description:
-      "Préparez salons et événements : planning, budget, besoins matériels et retex.",
-    href: "/v3/events/dashboard",
+      "Portefeuille salons : dashboard, checklist datée, documents et budget (modes A/B/C).",
+    href: "/v3/salons",
   },
   medias: {
     label: "Médias",
@@ -89,7 +89,7 @@ export function moduleKeyForHref(href: string): WorkspaceModuleKey | "settings" 
     return "tableau";
   }
   if (href.startsWith("/v3/deliverables")) return "livrables";
-  if (href.startsWith("/v3/events")) return "events";
+  if (href.startsWith("/v3/events") || href.startsWith("/v3/salons")) return "events";
   if (href.startsWith("/v3/dam")) return "medias";
   if (href.startsWith("/v3/ideas")) return "idees";
   if (href.startsWith("/v3/stock")) return "stock";

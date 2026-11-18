@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function V3EventsIndexPage() {
-  redirect("/v3/events/dashboard");
+/** Wipe UX Events → nouvel espace Salons. */
+export default function V3EventsRedirect() {
+  redirect("/v3/salons");
 }

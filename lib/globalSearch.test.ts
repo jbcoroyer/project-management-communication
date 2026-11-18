@@ -21,7 +21,7 @@ const hits: GlobalSearchHit[] = [
     kind: "event",
     title: "SPACE 2026",
     subtitle: "Rennes",
-    href: "/v3/events/3",
+    href: "/v3/salons/3",
   },
 ];
 

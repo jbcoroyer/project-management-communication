@@ -1,0 +1,564 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type {
+  Salon,
+  SalonBudgetLine,
+  SalonChecklistItem,
+  SalonContact,
+  SalonDocCategory,
+  SalonDocument,
+  SalonMode,
+  SalonStatus,
+} from "./salonTypes";
+import {
+  checklistTemplateForMode,
+  contactsTemplateForMode,
+  dateFromDaysBeforeStart,
+} from "./salonTemplates";
+import { SALON_SEED_2026 } from "./salonSeed";
+
+type SalonRow = {
+  id: string;
+  organization_id: string;
+  name: string;
+  mode: string;
+  status: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  hall: string;
+  stand_number: string;
+  surface_m2: number | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ChecklistRow = {
+  id: string;
+  organization_id: string;
+  salon_id: string;
+  label: string;
+  due_date: string | null;
+  done: boolean;
+  sort_order: number;
+  document_id: string | null;
+};
+
+type DocRow = {
+  id: string;
+  organization_id: string;
+  salon_id: string;
+  category: string;
+  title: string;
+  url: string;
+  amount_ht: number | null;
+  amount_ttc: number | null;
+  due_date: string | null;
+};
+
+type ContactRow = {
+  id: string;
+  organization_id: string;
+  salon_id: string;
+  label: string;
+  value: string;
+  sort_order: number;
+};
+
+type BudgetRow = {
+  id: string;
+  organization_id: string;
+  salon_id: string;
+  label: string;
+  category: string;
+  amount_ht: number | string;
+  amount_ttc: number | string;
+  due_date: string | null;
+  paid: boolean;
+  document_id: string | null;
+};
+
+export function mapSalon(row: SalonRow): Salon {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    name: row.name,
+    mode: row.mode as SalonMode,
+    status: row.status as SalonStatus,
+    location: row.location ?? "",
+    startDate: row.start_date,
+    endDate: row.end_date,
+    hall: row.hall ?? "",
+    standNumber: row.stand_number ?? "",
+    surfaceM2: row.surface_m2 == null ? null : Number(row.surface_m2),
+    notes: row.notes ?? "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapChecklist(row: ChecklistRow): SalonChecklistItem {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    salonId: row.salon_id,
+    label: row.label,
+    dueDate: row.due_date,
+    done: Boolean(row.done),
+    sortOrder: row.sort_order,
+    documentId: row.document_id,
+  };
+}
+
+function mapDoc(row: DocRow): SalonDocument {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    salonId: row.salon_id,
+    category: row.category as SalonDocCategory,
+    title: row.title,
+    url: row.url ?? "",
+    amountHt: row.amount_ht == null ? null : Number(row.amount_ht),
+    amountTtc: row.amount_ttc == null ? null : Number(row.amount_ttc),
+    dueDate: row.due_date,
+  };
+}
+
+function mapContact(row: ContactRow): SalonContact {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    salonId: row.salon_id,
+    label: row.label,
+    value: row.value ?? "",
+    sortOrder: row.sort_order,
+  };
+}
+
+function mapBudget(row: BudgetRow): SalonBudgetLine {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    salonId: row.salon_id,
+    label: row.label,
+    category: row.category,
+    amountHt: Number(row.amount_ht) || 0,
+    amountTtc: Number(row.amount_ttc) || 0,
+    dueDate: row.due_date,
+    paid: Boolean(row.paid),
+    documentId: row.document_id,
+  };
+}
+
+export async function fetchSalons(supabase: SupabaseClient, organizationId: string): Promise<Salon[]> {
+  const { data, error } = await supabase
+    .from("salons")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("start_date", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as SalonRow[]).map(mapSalon);
+}
+
+export async function fetchSalonById(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+): Promise<Salon | null> {
+  const { data, error } = await supabase
+    .from("salons")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", salonId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapSalon(data as SalonRow) : null;
+}
+
+export async function fetchChecklist(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId?: string,
+): Promise<SalonChecklistItem[]> {
+  let q = supabase
+    .from("salon_checklist_items")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("sort_order", { ascending: true });
+  if (salonId) q = q.eq("salon_id", salonId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return ((data ?? []) as ChecklistRow[]).map(mapChecklist);
+}
+
+export async function fetchDocuments(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+): Promise<SalonDocument[]> {
+  const { data, error } = await supabase
+    .from("salon_documents")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("salon_id", salonId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as DocRow[]).map(mapDoc);
+}
+
+export async function fetchContacts(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+): Promise<SalonContact[]> {
+  const { data, error } = await supabase
+    .from("salon_contacts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("salon_id", salonId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as ContactRow[]).map(mapContact);
+}
+
+export async function fetchBudgetLines(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId?: string,
+): Promise<SalonBudgetLine[]> {
+  let q = supabase.from("salon_budget_lines").select("*").eq("organization_id", organizationId);
+  if (salonId) q = q.eq("salon_id", salonId);
+  const { data, error } = await q.order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as BudgetRow[]).map(mapBudget);
+}
+
+async function insertTemplateRows(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+  mode: SalonMode,
+  startDate: string,
+) {
+  const checklist = checklistTemplateForMode(mode).map((item, i) => ({
+    organization_id: organizationId,
+    salon_id: salonId,
+    label: item.label,
+    due_date: dateFromDaysBeforeStart(startDate, item.daysBeforeStart),
+    done: false,
+    sort_order: i,
+  }));
+  const contacts = contactsTemplateForMode(mode).map((c, i) => ({
+    organization_id: organizationId,
+    salon_id: salonId,
+    label: c.label,
+    value: c.value,
+    sort_order: i,
+  }));
+  if (checklist.length) {
+    const { error } = await supabase.from("salon_checklist_items").insert(checklist);
+    if (error) throw error;
+  }
+  if (contacts.length) {
+    const { error } = await supabase.from("salon_contacts").insert(contacts);
+    if (error) throw error;
+  }
+}
+
+export type CreateSalonInput = {
+  name: string;
+  mode: SalonMode;
+  location: string;
+  startDate: string;
+  endDate: string;
+  hall?: string;
+  standNumber?: string;
+  surfaceM2?: number | null;
+  notes?: string;
+};
+
+export async function createSalon(
+  supabase: SupabaseClient,
+  organizationId: string,
+  userId: string | null,
+  input: CreateSalonInput,
+): Promise<Salon> {
+  const { data, error } = await supabase
+    .from("salons")
+    .insert({
+      organization_id: organizationId,
+      name: input.name.trim(),
+      mode: input.mode,
+      status: "preparation",
+      location: input.location.trim(),
+      start_date: input.startDate,
+      end_date: input.endDate,
+      hall: input.hall?.trim() ?? "",
+      stand_number: input.standNumber?.trim() ?? "",
+      surface_m2: input.surfaceM2 ?? null,
+      notes: input.notes?.trim() ?? "",
+      created_by: userId,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Création salon impossible");
+  const salon = mapSalon(data as SalonRow);
+  await insertTemplateRows(supabase, organizationId, salon.id, salon.mode, salon.startDate);
+  return salon;
+}
+
+export async function updateSalon(
+  supabase: SupabaseClient,
+  salonId: string,
+  patch: Partial<{
+    name: string;
+    mode: SalonMode;
+    status: SalonStatus;
+    location: string;
+    startDate: string;
+    endDate: string;
+    hall: string;
+    standNumber: string;
+    surfaceM2: number | null;
+    notes: string;
+  }>,
+): Promise<Salon> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.name != null) row.name = patch.name;
+  if (patch.mode != null) row.mode = patch.mode;
+  if (patch.status != null) row.status = patch.status;
+  if (patch.location != null) row.location = patch.location;
+  if (patch.startDate != null) row.start_date = patch.startDate;
+  if (patch.endDate != null) row.end_date = patch.endDate;
+  if (patch.hall != null) row.hall = patch.hall;
+  if (patch.standNumber != null) row.stand_number = patch.standNumber;
+  if (patch.surfaceM2 !== undefined) row.surface_m2 = patch.surfaceM2;
+  if (patch.notes != null) row.notes = patch.notes;
+  const { data, error } = await supabase.from("salons").update(row).eq("id", salonId).select("*").single();
+  if (error || !data) throw error ?? new Error("Mise à jour impossible");
+  return mapSalon(data as SalonRow);
+}
+
+export async function deleteSalon(supabase: SupabaseClient, salonId: string): Promise<void> {
+  const { error } = await supabase.from("salons").delete().eq("id", salonId);
+  if (error) throw error;
+}
+
+export async function cloneSalon(
+  supabase: SupabaseClient,
+  organizationId: string,
+  userId: string | null,
+  source: Salon,
+  input: { name: string; startDate: string; endDate: string },
+): Promise<Salon> {
+  return createSalon(supabase, organizationId, userId, {
+    name: input.name,
+    mode: source.mode,
+    location: source.location,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    hall: source.hall,
+    standNumber: source.standNumber,
+    surfaceM2: source.surfaceM2,
+    notes: source.notes,
+  });
+}
+
+export async function updateChecklistItem(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<{ done: boolean; dueDate: string | null; label: string }>,
+): Promise<SalonChecklistItem> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.done != null) row.done = patch.done;
+  if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
+  if (patch.label != null) row.label = patch.label;
+  const { data, error } = await supabase
+    .from("salon_checklist_items")
+    .update(row)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Checklist impossible");
+  return mapChecklist(data as ChecklistRow);
+}
+
+export async function addChecklistItem(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+  label: string,
+  dueDate: string | null,
+  sortOrder: number,
+): Promise<SalonChecklistItem> {
+  const { data, error } = await supabase
+    .from("salon_checklist_items")
+    .insert({
+      organization_id: organizationId,
+      salon_id: salonId,
+      label: label.trim(),
+      due_date: dueDate,
+      done: false,
+      sort_order: sortOrder,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Ajout impossible");
+  return mapChecklist(data as ChecklistRow);
+}
+
+export async function addDocument(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+  input: {
+    category: SalonDocCategory;
+    title: string;
+    url?: string;
+    amountHt?: number | null;
+    amountTtc?: number | null;
+    dueDate?: string | null;
+  },
+): Promise<SalonDocument> {
+  const { data, error } = await supabase
+    .from("salon_documents")
+    .insert({
+      organization_id: organizationId,
+      salon_id: salonId,
+      category: input.category,
+      title: input.title.trim(),
+      url: input.url?.trim() ?? "",
+      amount_ht: input.amountHt ?? null,
+      amount_ttc: input.amountTtc ?? null,
+      due_date: input.dueDate ?? null,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Document impossible");
+  return mapDoc(data as DocRow);
+}
+
+export async function deleteDocument(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("salon_documents").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addContact(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+  label: string,
+  value: string,
+  sortOrder: number,
+): Promise<SalonContact> {
+  const { data, error } = await supabase
+    .from("salon_contacts")
+    .insert({
+      organization_id: organizationId,
+      salon_id: salonId,
+      label: label.trim(),
+      value: value.trim(),
+      sort_order: sortOrder,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Contact impossible");
+  return mapContact(data as ContactRow);
+}
+
+export async function addBudgetLine(
+  supabase: SupabaseClient,
+  organizationId: string,
+  salonId: string,
+  input: {
+    label: string;
+    category?: string;
+    amountHt: number;
+    amountTtc: number;
+    dueDate?: string | null;
+    paid?: boolean;
+  },
+): Promise<SalonBudgetLine> {
+  const { data, error } = await supabase
+    .from("salon_budget_lines")
+    .insert({
+      organization_id: organizationId,
+      salon_id: salonId,
+      label: input.label.trim(),
+      category: input.category ?? "autre",
+      amount_ht: input.amountHt,
+      amount_ttc: input.amountTtc,
+      due_date: input.dueDate ?? null,
+      paid: input.paid ?? false,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Ligne budget impossible");
+  return mapBudget(data as BudgetRow);
+}
+
+export async function updateBudgetLine(
+  supabase: SupabaseClient,
+  id: string,
+  patch: Partial<{ paid: boolean; amountHt: number; amountTtc: number; label: string }>,
+): Promise<SalonBudgetLine> {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.paid != null) row.paid = patch.paid;
+  if (patch.amountHt != null) row.amount_ht = patch.amountHt;
+  if (patch.amountTtc != null) row.amount_ttc = patch.amountTtc;
+  if (patch.label != null) row.label = patch.label;
+  const { data, error } = await supabase
+    .from("salon_budget_lines")
+    .update(row)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw error ?? new Error("Budget impossible");
+  return mapBudget(data as BudgetRow);
+}
+
+export async function deleteBudgetLine(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error } = await supabase.from("salon_budget_lines").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function seedSalons2026(
+  supabase: SupabaseClient,
+  organizationId: string,
+  userId: string | null,
+): Promise<number> {
+  const existing = await fetchSalons(supabase, organizationId);
+  const names = new Set(existing.map((s) => s.name.toLowerCase()));
+  let created = 0;
+  for (const seed of SALON_SEED_2026) {
+    if (names.has(seed.name.toLowerCase())) continue;
+    await createSalon(supabase, organizationId, userId, {
+      name: seed.name,
+      mode: seed.mode,
+      location: seed.location,
+      startDate: seed.startDate,
+      endDate: seed.endDate,
+      hall: seed.hall,
+      standNumber: seed.standNumber,
+      surfaceM2: seed.surfaceM2,
+      notes: seed.notes,
+    });
+    created += 1;
+  }
+  return created;
+}
+
+export function checklistProgress(items: SalonChecklistItem[]): number {
+  if (!items.length) return 0;
+  const done = items.filter((i) => i.done).length;
+  return Math.round((done / items.length) * 100);
+}
+
+export function datesOverlap(
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string,
+): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}
