@@ -16,7 +16,7 @@ export type ServiceMembership = {
   role: ServiceRole;
 };
 
-/** Affinité soft des modules legacy → service (espaces métier dédiés). */
+/** Affinité soft des modules Communication → service Communication. */
 export const MODULE_SERVICE_AFFINITY: Partial<
   Record<WorkspaceModuleKey, string>
 > = {

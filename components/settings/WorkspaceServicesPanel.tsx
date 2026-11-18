@@ -6,8 +6,7 @@ import { getSupabaseBrowser } from "../../lib/supabaseBrowser";
 import { useWorkspace } from "../../lib/useWorkspace";
 import { useServices } from "../../lib/servicesContext";
 import { toastError, toastSuccess } from "../../lib/toast";
-import type { OrgService, ServiceRole } from "../../lib/services";
-import { METIER_SPACE_META, isMetierSpaceSlug } from "../../lib/metierSpaces";
+import type { ServiceRole } from "../../lib/services";
 
 type OrgMember = {
   userId: string;
@@ -16,13 +15,6 @@ type OrgMember = {
 
 /** serviceId → userId → role | null */
 type MembershipMap = Record<string, Record<string, ServiceRole | null>>;
-
-function serviceLabel(service: OrgService): string {
-  if (isMetierSpaceSlug(service.slug)) {
-    return METIER_SPACE_META[service.slug].label;
-  }
-  return service.name;
-}
 
 export default function WorkspaceServicesPanel() {
   const supabase = useMemo(() => getSupabaseBrowser(), []);
@@ -126,9 +118,8 @@ export default function WorkspaceServicesPanel() {
           Services par personne — {workspace.name}
         </h2>
         <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-          Une ligne par membre : cochez les services / métiers qu’il utilise
-          (Communication, R&amp;D, Gestion de Projet, ADV…). La navigation se
-          filtre ensuite selon le service actif.
+          Une ligne par membre : cochez les services auxquels il appartient
+          (ex. Communication). Les services inactifs n’apparaissent plus ici.
         </p>
       </header>
 
@@ -186,7 +177,7 @@ export default function WorkspaceServicesPanel() {
                       const role = matrix[service.id]?.[m.userId] ?? null;
                       const on = role != null;
                       const key = `${m.userId}:${service.id}`;
-                      const label = serviceLabel(service);
+                      const label = service.name;
                       const color = service.color || "var(--accent)";
                       return (
                         <button

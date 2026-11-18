@@ -20,6 +20,7 @@ import {
   type ServiceMembership,
   type ServiceRole,
 } from "./services";
+import { isStrippedServiceSlug } from "./strippedMetier";
 
 type ServicesContextValue = {
   services: OrgService[];
@@ -98,14 +99,17 @@ export function ServicesProvider({ children }: { children: ReactNode }) {
 
       if (svcRes.error) throw svcRes.error;
 
-      const list: OrgService[] = ((svcRes.data ?? []) as ServiceRow[]).map((row) => ({
-        id: String(row.id),
-        name: String(row.name),
-        slug: String(row.slug),
-        color: row.color ?? null,
-        sortOrder: Number(row.sort_order) || 0,
-        isActive: row.is_active !== false,
-      }));
+      const list: OrgService[] = ((svcRes.data ?? []) as ServiceRow[])
+        .map((row) => ({
+          id: String(row.id),
+          name: String(row.name),
+          slug: String(row.slug),
+          color: row.color ?? null,
+          sortOrder: Number(row.sort_order) || 0,
+          isActive: row.is_active !== false,
+        }))
+        // Masque ADV / Export / R&D / GdP même si encore is_active en base.
+        .filter((s) => !isStrippedServiceSlug(s.slug));
       setServices(list);
       setOrgLabels(parseOrgLabels(orgRes.data?.org_labels));
 

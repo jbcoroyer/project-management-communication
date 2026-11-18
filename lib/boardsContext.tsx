@@ -19,6 +19,7 @@ import {
   type BoardFieldType,
   type OrgBoard,
 } from "./boards";
+import { isStrippedBoard } from "./strippedMetier";
 
 type BoardsContextValue = {
   boards: OrgBoard[];
@@ -50,7 +51,15 @@ type BoardRow = {
   capabilities: unknown;
   is_default: boolean;
   sort_order: number;
+  services?: { slug: string | null } | { slug: string | null }[] | null;
 };
+
+function serviceSlugFromRow(row: BoardRow): string | null {
+  const raw = row.services;
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw[0]?.slug ?? null;
+  return raw.slug ?? null;
+}
 
 function mapBoard(row: BoardRow): OrgBoard {
   return {
@@ -67,11 +76,24 @@ function mapBoard(row: BoardRow): OrgBoard {
   };
 }
 
+function keepCoreBoard(row: BoardRow): boolean {
+  if (row.is_default) return true;
+  return !isStrippedBoard({
+    slug: row.slug,
+    name: row.name,
+    serviceSlug: serviceSlugFromRow(row),
+  });
+}
+
 export function BoardsProvider({ children }: { children: ReactNode }) {
   const workspace = useWorkspaceOptional();
   const services = useServicesOptional();
   const workspaceId = workspace?.workspaceId ?? null;
   const activeServiceId = services?.activeServiceId ?? null;
+  const activeServiceIds = useMemo(
+    () => new Set((services?.services ?? []).map((s) => s.id)),
+    [services?.services],
+  );
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const [boards, setBoards] = useState<OrgBoard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,12 +109,13 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("boards")
         .select(
-          "id, organization_id, service_id, name, slug, description, icon, capabilities, is_default, sort_order",
+          "id, organization_id, service_id, name, slug, description, icon, capabilities, is_default, sort_order, services(slug)",
         )
         .eq("organization_id", workspaceId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      setBoards(((data ?? []) as BoardRow[]).map(mapBoard));
+      const rows = ((data ?? []) as BoardRow[]).filter(keepCoreBoard);
+      setBoards(rows.map(mapBoard));
     } catch (err) {
       console.error("boards reload failed", err);
       setBoards([]);
@@ -172,11 +195,19 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
   );
 
   const visibleBoards = useMemo(() => {
-    if (!activeServiceId) return boards;
-    return boards.filter(
+    // Boards déjà filtrés hors ADV/R&D/GdP au chargement ; soft-filter service actif.
+    const kept = boards.filter(
+      (b) =>
+        b.isDefault ||
+        b.serviceId == null ||
+        activeServiceIds.size === 0 ||
+        activeServiceIds.has(b.serviceId),
+    );
+    if (!activeServiceId) return kept;
+    return kept.filter(
       (b) => b.serviceId == null || b.serviceId === activeServiceId || b.isDefault,
     );
-  }, [activeServiceId, boards]);
+  }, [activeServiceId, activeServiceIds, boards]);
 
   const value = useMemo<BoardsContextValue>(
     () => ({
