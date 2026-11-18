@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
+  ChevronRight,
   Home,
   Palette,
-  Smile,
+  UserCircle2,
   UsersRound,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -26,49 +27,37 @@ const INTENTS: {
   id: SettingsIntent;
   title: string;
   blurb: string;
-  hint: string;
-  icon: typeof Smile;
-  accent: string;
+  icon: typeof UserCircle2;
 }[] = [
   {
     id: "me",
-    title: "Mon coin",
-    blurb: "Profil, agenda, app bureau et zone sensible.",
-    hint: "Ce qui ne concerne que vous",
-    icon: Smile,
-    accent: "from-[#ffe8c8] to-[#ffd4a8]",
+    title: "Compte",
+    blurb: "Profil, agenda Outlook, application bureau et suppression de compte.",
+    icon: UserCircle2,
   },
   {
     id: "look",
     title: "Apparence",
-    blurb: "Cinq thèmes : typo, couleurs, coins, boutons.",
-    hint: "Changez le look de Tuesday",
+    blurb: "Thèmes d’interface : typographie, couleurs et contrôles.",
     icon: Palette,
-    accent: "from-[#fff3c4] to-[#ffe08a]",
   },
   {
     id: "team",
-    title: "L’équipe",
-    blurb: "Comptes d’accès et personnes assignables.",
-    hint: "Qui peut entrer · qui apparaît sur les tâches",
+    title: "Équipe",
+    blurb: "Accès à l’espace et personnes assignables sur les tâches.",
     icon: UsersRound,
-    accent: "from-[#d8f0ff] to-[#b8e0f8]",
   },
   {
     id: "space",
-    title: "L’espace",
-    blurb: "Modules, rattachements et vocabulaire.",
-    hint: "Comment Tuesday parle et se présente",
+    title: "Espace",
+    blurb: "Modules, rattachements aux services, vocabulaire et identité.",
     icon: Home,
-    accent: "from-[#e2f5d8] to-[#c8e8b4]",
   },
   {
     id: "lists",
-    title: "Les listes",
-    blurb: "Sociétés, domaines, colonnes — et un mot sur l’archivage.",
-    hint: "Les menus déroulants du quotidien",
+    title: "Référentiels",
+    blurb: "Sociétés, domaines, colonnes Kanban et archivage.",
     icon: BookOpen,
-    accent: "from-[#ffe0d6] to-[#ffc8b4]",
   },
 ];
 
@@ -97,13 +86,13 @@ export default function V2SettingsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-5">
+    <div className="space-y-5">
+      <section>
         {isModernUi ? (
           <V2PageHeader
             kicker="Outils"
             title="Réglages"
-            description="Cinq portes, pas un interminable formulaire. Choisissez ce que vous voulez régler."
+            description="Choisissez une section. Un sujet à la fois — sans formulaire interminable."
           />
         ) : (
           <header className="ui-surface rounded-2xl border-l-4 border-l-[var(--accent)] p-5">
@@ -112,44 +101,44 @@ export default function V2SettingsPage() {
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">Réglages</h1>
             <p className="mt-1 text-sm text-[color:var(--foreground)]/55">
-              Cinq portes, pas un interminable formulaire. Choisissez ce que vous voulez régler.
+              Choisissez une section. Un sujet à la fois — sans formulaire interminable.
             </p>
           </header>
         )}
       </section>
 
       {!active ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {INTENTS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setIntent(item.id)}
-                className="group ui-surface relative overflow-hidden rounded-2xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(20,17,13,0.08)]"
-              >
-                <div
-                  className={`pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-gradient-to-br ${item.accent} opacity-70 transition group-hover:scale-110`}
-                  aria-hidden
-                />
-                <div className="relative flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
-                    <Icon className="h-5 w-5 text-[var(--foreground)]" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/45">
-                      {item.hint}
-                    </p>
-                    <h2 className="mt-0.5 text-lg font-semibold text-[var(--foreground)]">
-                      {item.title}
-                    </h2>
-                    <p className="mt-1 text-sm text-[color:var(--foreground)]/60">{item.blurb}</p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="ui-surface overflow-hidden rounded-2xl">
+          <ul className="divide-y divide-[var(--line)]">
+            {INTENTS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setIntent(item.id)}
+                    className="ui-transition flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--surface-soft)]/70 sm:px-5"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface-soft)]">
+                      <Icon className="h-4 w-4 text-[color:var(--foreground)]/70" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-[var(--foreground)]">
+                        {item.title}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] leading-snug text-[color:var(--foreground)]/55">
+                        {item.blurb}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-[color:var(--foreground)]/35"
+                      aria-hidden
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : (
         <div className="space-y-5">
@@ -157,22 +146,17 @@ export default function V2SettingsPage() {
             <button
               type="button"
               onClick={() => setIntent(null)}
-              className="ui-btn inline-flex items-center gap-2"
+              className="ui-btn ui-btn-secondary inline-flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
-              Toutes les portes
+              Toutes les sections
             </button>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--foreground)]/45">
-                {active.hint}
-              </p>
-              <h2 className="text-xl font-semibold text-[var(--foreground)]">{active.title}</h2>
-            </div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">{active.title}</h2>
           </div>
 
           <nav
-            className="flex flex-wrap gap-2"
-            aria-label="Raccourcis des réglages"
+            className="flex flex-wrap gap-1.5 border-b border-[var(--line)] pb-3"
+            aria-label="Sections des réglages"
           >
             {INTENTS.map((item) => {
               const selected = item.id === intent;
@@ -182,10 +166,10 @@ export default function V2SettingsPage() {
                   type="button"
                   onClick={() => setIntent(item.id)}
                   className={[
-                    "rounded-xl border px-3 py-1.5 text-xs font-semibold transition",
+                    "rounded-lg px-2.5 py-1.5 text-xs font-semibold transition",
                     selected
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--accent-contrast)]"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)]",
+                      ? "bg-[var(--foreground)] text-[var(--accent-contrast)]"
+                      : "text-[color:var(--foreground)]/65 hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
                   ].join(" ")}
                 >
                   {item.title}
@@ -210,10 +194,11 @@ export default function V2SettingsPage() {
 
           {intent === "team" && (
             <div className="space-y-5">
-              <p className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)]/60 px-4 py-3 text-sm text-[color:var(--foreground)]/65">
-                <strong className="font-semibold text-[var(--foreground)]">Astuce :</strong>{" "}
-                <em>Membres</em> = qui se connecte à l’espace.{" "}
-                <em>Collaborateurs</em> = qui peut être assigné sur une tâche.
+              <p className="rounded-xl border border-[var(--line)] bg-[var(--surface-soft)]/50 px-4 py-3 text-sm text-[color:var(--foreground)]/65">
+                <strong className="font-semibold text-[var(--foreground)]">Membres</strong> =
+                comptes qui se connectent.{" "}
+                <strong className="font-semibold text-[var(--foreground)]">Collaborateurs</strong> =
+                noms assignables sur une tâche.
               </p>
               <WorkspaceMembersPanel />
               <AdminSettingsPanel hideChrome sections={["collaborators"]} />
