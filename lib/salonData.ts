@@ -42,6 +42,7 @@ type SalonRow = {
   surface_m2: number | null;
   notes: string;
   catalog_slug?: string | null;
+  logo_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -113,6 +114,7 @@ export function mapSalon(row: SalonRow): Salon {
     surfaceM2: row.surface_m2 == null ? null : Number(row.surface_m2),
     notes: row.notes ?? "",
     catalogSlug: row.catalog_slug ?? matchCatalogFromName(row.name)?.slug ?? null,
+    logoUrl: row.logo_url ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -384,6 +386,7 @@ export async function updateSalon(
     standNumber: string;
     surfaceM2: number | null;
     notes: string;
+    logoUrl: string | null;
   }>,
 ): Promise<Salon> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -397,6 +400,7 @@ export async function updateSalon(
   if (patch.standNumber != null) row.stand_number = patch.standNumber;
   if (patch.surfaceM2 !== undefined) row.surface_m2 = patch.surfaceM2;
   if (patch.notes != null) row.notes = patch.notes;
+  if (patch.logoUrl !== undefined) row.logo_url = patch.logoUrl;
   const { data, error } = await supabase.from("salons").update(row).eq("id", salonId).select("*").single();
   if (error || !data) throw error ?? new Error("Mise à jour impossible");
   return mapSalon(data as SalonRow);
