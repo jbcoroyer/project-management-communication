@@ -444,12 +444,12 @@ function FeaturedSalonCard({
 
   return (
     <>
-      <Link
-        href={href}
+      <article
         {...triggerProps}
         onClick={(e) => {
           if (consumeClickSuppression()) {
             e.preventDefault();
+            e.stopPropagation();
           }
         }}
         className={`${tile} group relative overflow-hidden p-5 sm:p-6 md:col-span-1 lg:col-span-8 lg:min-h-[220px]`}
@@ -458,42 +458,57 @@ function FeaturedSalonCard({
             "linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--surface)) 0%, var(--surface) 55%, var(--surface-soft) 100%)",
         }}
       >
-        <span className="inline-flex rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] font-semibold tracking-wide text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]">
-          Prochain salon
-        </span>
-        <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <SalonLogo
-              slug={salon.catalogSlug}
-              name={salon.name}
-              logoUrl={salon.logoUrl}
-              size={72}
-              editable
-              uploading={logoUploading}
-              onChangeLogo={onChangeLogo}
-              onResetLogo={onResetLogo}
-            />
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold leading-snug tracking-tight group-hover:underline sm:text-2xl lg:text-[1.75rem]">
-                {salon.name}
-              </h2>
-              <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-                {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
-                {salon.location ? ` · ${salon.location}` : ""}
-              </p>
-              <p className="mt-2 text-xs text-[color:var(--foreground)]/50">
-                {SALON_MODE_LABELS[salon.mode]}
-                {(salon.hall || salon.standNumber) &&
-                  ` · ${[salon.hall, salon.standNumber].filter(Boolean).join(" / ")}`}
-              </p>
-            </div>
-          </div>
-          <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)]">
-            Ouvrir
-            <ArrowRight className="h-4 w-4" aria-hidden />
+        {/* Lien plein cadre : le logo reste hors du <Link> pour l’upload. */}
+        <Link
+          href={href}
+          className="absolute inset-0 z-0"
+          aria-label={`Ouvrir ${salon.name}`}
+          onClick={(e) => {
+            if (consumeClickSuppression()) {
+              e.preventDefault();
+            }
+          }}
+        />
+        <div className="relative z-10 pointer-events-none">
+          <span className="inline-flex rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] font-semibold tracking-wide text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]">
+            Prochain salon
           </span>
+          <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+              <span className="pointer-events-auto">
+                <SalonLogo
+                  slug={salon.catalogSlug}
+                  name={salon.name}
+                  logoUrl={salon.logoUrl}
+                  size={72}
+                  editable
+                  uploading={logoUploading}
+                  onChangeLogo={onChangeLogo}
+                  onResetLogo={onResetLogo}
+                />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold leading-snug tracking-tight group-hover:underline sm:text-2xl lg:text-[1.75rem]">
+                  {salon.name}
+                </h2>
+                <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
+                  {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
+                  {salon.location ? ` · ${salon.location}` : ""}
+                </p>
+                <p className="mt-2 text-xs text-[color:var(--foreground)]/50">
+                  {SALON_MODE_LABELS[salon.mode]}
+                  {(salon.hall || salon.standNumber) &&
+                    ` · ${[salon.hall, salon.standNumber].filter(Boolean).join(" / ")}`}
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)]">
+              Ouvrir
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </span>
+          </div>
         </div>
-      </Link>
+      </article>
       <ContextMenu
         position={position}
         items={salonCardMenuItems({
@@ -538,53 +553,67 @@ function SalonCard({
 
   return (
     <>
-      <Link
-        href={href}
+      <article
         {...triggerProps}
         onClick={(e) => {
           if (consumeClickSuppression()) {
             e.preventDefault();
+            e.stopPropagation();
           }
         }}
-        className={`${tile} group flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]`}
+        className={`${tile} group relative flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]`}
       >
-        <div className="flex items-start gap-3">
-          <SalonLogo
-            slug={salon.catalogSlug}
-            name={salon.name}
-            logoUrl={salon.logoUrl}
-            size={52}
-            editable
-            uploading={logoUploading}
-            onChangeLogo={onChangeLogo}
-            onResetLogo={onResetLogo}
-          />
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-semibold tracking-tight group-hover:underline">
-              {salon.name}
-            </h3>
-            <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
-              {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
-            </p>
-            {salon.location ? (
-              <p className="mt-0.5 truncate text-xs text-[color:var(--foreground)]/45">
-                {salon.location}
+        <Link
+          href={href}
+          className="absolute inset-0 z-0"
+          aria-label={`Ouvrir ${salon.name}`}
+          onClick={(e) => {
+            if (consumeClickSuppression()) {
+              e.preventDefault();
+            }
+          }}
+        />
+        <div className="relative z-10 pointer-events-none flex h-full flex-col">
+          <div className="flex items-start gap-3">
+            <span className="pointer-events-auto">
+              <SalonLogo
+                slug={salon.catalogSlug}
+                name={salon.name}
+                logoUrl={salon.logoUrl}
+                size={52}
+                editable
+                uploading={logoUploading}
+                onChangeLogo={onChangeLogo}
+                onResetLogo={onResetLogo}
+              />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-base font-semibold tracking-tight group-hover:underline">
+                {salon.name}
+              </h3>
+              <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
+                {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
               </p>
-            ) : null}
+              {salon.location ? (
+                <p className="mt-0.5 truncate text-xs text-[color:var(--foreground)]/45">
+                  {salon.location}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 font-semibold">
+              {SALON_MODE_LABELS[salon.mode]}
+            </span>
+            <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
+              {SALON_STATUS_LABELS[salon.status]}
+            </span>
+            {engaged > 0 && (
+              <span className="ml-auto text-[color:var(--foreground)]/50">{formatMoney(engaged)}</span>
+            )}
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 font-semibold">
-            {SALON_MODE_LABELS[salon.mode]}
-          </span>
-          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-            {SALON_STATUS_LABELS[salon.status]}
-          </span>
-          {engaged > 0 && (
-            <span className="ml-auto text-[color:var(--foreground)]/50">{formatMoney(engaged)}</span>
-          )}
-        </div>
-      </Link>
+      </article>
       <ContextMenu
         position={position}
         items={salonCardMenuItems({

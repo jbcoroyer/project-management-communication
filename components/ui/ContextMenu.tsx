@@ -204,10 +204,13 @@ export function ContextMenu(props: {
                 ? "font-semibold text-rose-700 hover:bg-rose-50"
                 : "font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)]",
             ].join(" ")}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (disabled) return;
-              onClose();
+              // onSelect avant onClose : garde le geste user pour input.click() (file picker).
               item.onSelect();
+              onClose();
             }}
           >
             {item.icon ? (

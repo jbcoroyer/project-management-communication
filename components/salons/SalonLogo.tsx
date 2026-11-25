@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ImagePlus, RotateCcw } from "lucide-react";
 import {
   getCatalogEntry,
@@ -28,6 +29,19 @@ function resolveEntry(slug?: string | null, name?: string | null): SalonCatalogE
   return getCatalogEntry(slug) ?? (name ? matchCatalogFromName(name) : undefined);
 }
 
+/** Bloque la navigation du `<Link>` / parent (clic / mousedown / contextmenu). */
+function isolateFromParentNav(e: {
+  button?: number;
+  preventDefault: () => void;
+  stopPropagation: () => void;
+}) {
+  e.stopPropagation();
+  // preventDefault seulement clic primaire — ne pas casser le flux contextmenu.
+  if (e.button == null || e.button === 0) {
+    e.preventDefault();
+  }
+}
+
 /** Logo catalogue (SVG wordmark) ou custom ; fallback coloré si image absente. */
 export default function SalonLogo({
   slug,
@@ -43,7 +57,8 @@ export default function SalonLogo({
   const entry = resolveEntry(slug, name);
   const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
   const inputId = useId();
-  const { position, close, triggerProps, isOpen, consumeClickSuppression } = useContextMenu();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { position, close, triggerProps } = useContextMenu();
   const label = entry?.shortName ?? name?.replace(/\b20\d{2}\b/g, "").trim() ?? "?";
   const customSrc = logoUrl?.trim() || null;
   const catalogSrc = entry?.logoSrc ?? null;
@@ -52,16 +67,18 @@ export default function SalonLogo({
   const alt = entry?.name ?? name ?? "Logo salon";
   const canReset = Boolean(customSrc && onResetLogo);
 
+  const openFilePicker = useCallback(() => {
+    // Hors du Link parent (portail) : évite la navigation Next au clic programmatique.
+    inputRef.current?.click();
+  }, []);
+
   const menuItems = useMemo((): ContextMenuItem[] => {
     const changeItem: ContextMenuItem = {
       id: "change",
       label: "Changer le logo…",
       icon: <ImagePlus className="h-3.5 w-3.5" />,
       disabled: uploading || !onChangeLogo,
-      onSelect: () => {
-        const input = document.getElementById(inputId);
-        if (input instanceof HTMLInputElement) input.click();
-      },
+      onSelect: openFilePicker,
     };
     if (!canReset) return [changeItem];
     return [
@@ -76,7 +93,7 @@ export default function SalonLogo({
         },
       },
     ];
-  }, [canReset, inputId, onChangeLogo, onResetLogo, uploading]);
+  }, [canReset, onChangeLogo, onResetLogo, openFilePicker, uploading]);
 
   const shell = (
     <span
@@ -86,13 +103,25 @@ export default function SalonLogo({
       style={{ width: size, height: size }}
       title={editable ? "Clic droit pour changer le logo" : undefined}
       {...(editable ? triggerProps : {})}
+      onMouseDown={
+        editable
+          ? (e) => {
+              isolateFromParentNav(e);
+            }
+          : undefined
+      }
       onClick={
         editable
           ? (e) => {
-              if (consumeClickSuppression() || isOpen || uploading) {
-                e.preventDefault();
-                e.stopPropagation();
-              }
+              isolateFromParentNav(e);
+            }
+          : undefined
+      }
+      onPointerDown={
+        editable
+          ? (e) => {
+              // Ne pas bloquer le long-press tactile du ContextMenu, mais couper le Link.
+              e.stopPropagation();
             }
           : undefined
       }
@@ -126,21 +155,43 @@ export default function SalonLogo({
 
   if (!editable) return shell;
 
+  const fileInput =
+    typeof document !== "undefined"
+      ? createPortal(
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="file"
+            accept={SALON_LOGO_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onClick={(e) => {
+              // Sécurité si le portail n’est pas encore hors lien.
+              e.stopPropagation();
+            }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file && onChangeLogo) void onChangeLogo(file);
+            }}
+          />,
+          document.body,
+        )
+      : null;
+
   return (
-    <span className="relative inline-flex shrink-0">
+    <span
+      className="relative inline-flex shrink-0"
+      onMouseDown={isolateFromParentNav}
+      onClick={isolateFromParentNav}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
       {shell}
-      <input
-        id={inputId}
-        type="file"
-        accept={SALON_LOGO_ACCEPT}
-        className="sr-only"
-        tabIndex={-1}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file && onChangeLogo) void onChangeLogo(file);
-        }}
-      />
+      {fileInput}
       <ContextMenu
         position={position}
         items={menuItems}
