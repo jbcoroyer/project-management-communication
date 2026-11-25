@@ -35,6 +35,8 @@ export type Salon = {
   notes: string;
   /** Slug catalogue (SPACE, EuroTier…) — logos & création guidée. */
   catalogSlug: string | null;
+  /** Logo custom (upload) — prioritaire sur le catalogue. */
+  logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
