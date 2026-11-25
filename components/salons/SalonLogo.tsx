@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useId, useMemo, useState } from "react";
 import { ImagePlus, RotateCcw } from "lucide-react";
 import {
   getCatalogEntry,
@@ -9,6 +8,7 @@ import {
   type SalonCatalogEntry,
 } from "../../lib/salonCatalog";
 import { SALON_LOGO_ACCEPT } from "../../lib/salonLogoUpload";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 
 type Props = {
   slug?: string | null;
@@ -41,44 +41,42 @@ export default function SalonLogo({
   uploading = false,
 }: Props) {
   const entry = resolveEntry(slug, name);
-  const [broken, setBroken] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
+  const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
+  const inputId = useId();
+  const { position, close, triggerProps, isOpen, consumeClickSuppression } = useContextMenu();
   const label = entry?.shortName ?? name?.replace(/\b20\d{2}\b/g, "").trim() ?? "?";
   const customSrc = logoUrl?.trim() || null;
   const catalogSrc = entry?.logoSrc ?? null;
   const src = customSrc || catalogSrc;
-  const showImg = Boolean(src) && !broken;
+  const showImg = Boolean(src) && brokenSrc !== src;
   const alt = entry?.name ?? name ?? "Logo salon";
   const canReset = Boolean(customSrc && onResetLogo);
 
-  useEffect(() => {
-    setBroken(false);
-  }, [src]);
-
-  useEffect(() => {
-    if (!menu) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenu(null);
+  const menuItems = useMemo((): ContextMenuItem[] => {
+    const changeItem: ContextMenuItem = {
+      id: "change",
+      label: "Changer le logo…",
+      icon: <ImagePlus className="h-3.5 w-3.5" />,
+      disabled: uploading || !onChangeLogo,
+      onSelect: () => {
+        const input = document.getElementById(inputId);
+        if (input instanceof HTMLInputElement) input.click();
+      },
     };
-    const onPointer = (e: MouseEvent | PointerEvent) => {
-      if (menuRef.current?.contains(e.target as Node)) return;
-      setMenu(null);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", onPointer, true);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", onPointer, true);
-    };
-  }, [menu]);
-
-  const openPicker = () => {
-    setMenu(null);
-    fileRef.current?.click();
-  };
+    if (!canReset) return [changeItem];
+    return [
+      changeItem,
+      {
+        id: "reset",
+        label: "Logo catalogue",
+        icon: <RotateCcw className="h-3.5 w-3.5" />,
+        disabled: uploading,
+        onSelect: () => {
+          void onResetLogo?.();
+        },
+      },
+    ];
+  }, [canReset, inputId, onChangeLogo, onResetLogo, uploading]);
 
   const shell = (
     <span
@@ -87,20 +85,11 @@ export default function SalonLogo({
       } ${uploading ? "opacity-60" : ""} ${className}`}
       style={{ width: size, height: size }}
       title={editable ? "Clic droit pour changer le logo" : undefined}
-      onContextMenu={
-        editable
-          ? (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setMenu({ x: e.clientX, y: e.clientY });
-            }
-          : undefined
-      }
+      {...(editable ? triggerProps : {})}
       onClick={
         editable
           ? (e) => {
-              // Empêche le Link parent si on clique pendant upload / menu
-              if (menu || uploading) {
+              if (consumeClickSuppression() || isOpen || uploading) {
                 e.preventDefault();
                 e.stopPropagation();
               }
@@ -118,7 +107,7 @@ export default function SalonLogo({
           height={size}
           className="h-full w-full object-contain p-[8%]"
           draggable={false}
-          onError={() => setBroken(true)}
+          onError={() => setBrokenSrc(src)}
         />
       ) : (
         <span
@@ -137,63 +126,11 @@ export default function SalonLogo({
 
   if (!editable) return shell;
 
-  const menuNode =
-    menu && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            ref={menuRef}
-            id={menuId}
-            role="menu"
-            aria-label="Logo du salon"
-            className="fixed z-[80] min-w-[11.5rem] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] py-1 shadow-[0_12px_40px_rgba(20,17,13,0.14)]"
-            style={{
-              left: Math.min(menu.x, window.innerWidth - 200),
-              top: Math.min(menu.y, window.innerHeight - 120),
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
-              disabled={uploading || !onChangeLogo}
-              onClick={openPicker}
-            >
-              <ImagePlus className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-              Changer le logo…
-            </button>
-            {canReset ? (
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[color:var(--foreground)]/70 hover:bg-[var(--surface-soft)] disabled:opacity-50"
-                disabled={uploading}
-                onClick={() => {
-                  setMenu(null);
-                  void onResetLogo?.();
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                Logo catalogue
-              </button>
-            ) : null}
-          </div>,
-          document.body,
-        )
-      : null;
-
   return (
     <span className="relative inline-flex shrink-0">
       {shell}
       <input
-        ref={fileRef}
+        id={inputId}
         type="file"
         accept={SALON_LOGO_ACCEPT}
         className="sr-only"
@@ -204,7 +141,12 @@ export default function SalonLogo({
           if (file && onChangeLogo) void onChangeLogo(file);
         }}
       />
-      {menuNode}
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel="Logo du salon"
+      />
     </span>
   );
 }
