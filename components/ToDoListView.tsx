@@ -2,21 +2,27 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Archive,
   Building2,
   CalendarDays,
   CalendarRange,
   ChevronDown,
   ChevronRight,
+  Copy,
+  ExternalLink,
+  Pencil,
   UserCircle2,
 } from "lucide-react";
 import type { Task, AdminId } from "../lib/types";
 import { adminBadgeClassFor } from "../lib/kanbanStyles";
+import { copyText } from "../lib/copyText";
 import {
   loadCollapsedEventGroupIds,
   persistCollapsedEventGroupIds,
   toggleCollapsedEventGroup,
 } from "../lib/eventGroupCollapse";
 import { partitionTasksByEvent } from "../lib/eventTaskGroups";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ui/ContextMenu";
 
 /** Colonnes qui apparaissent dans la To-Do List */
 const TODO_COLUMNS = new Set(["En cours", "À faire", "En validation", "Backlog"]);
@@ -85,19 +91,63 @@ function TodoTaskRow(props: {
   task: Task;
   cat: DeadlineCategory;
   onTaskClick?: (task: Task) => void;
+  onArchiveTask?: (taskId: string) => void;
+  onEditTask?: (task: Task) => void;
 }) {
-  const { task, cat, onTaskClick } = props;
+  const { task, cat, onTaskClick, onArchiveTask, onEditTask } = props;
   const meta = CATEGORY_META[cat];
   const isOverdue = cat === "overdue";
   const isToday = cat === "today";
   const isUrgent = isOverdue || isToday;
   const subtaskCount = task.subtasks?.length ?? 0;
   const doneCount = task.subtasks?.filter((s) => s.column === "Terminé").length ?? 0;
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      disabled: !onTaskClick,
+      onSelect: () => onTaskClick?.(task),
+    },
+  ];
+  if (onEditTask) {
+    menuItems.push({
+      id: "edit",
+      label: "Modifier",
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      onSelect: () => onEditTask(task),
+    });
+  }
+  menuItems.push({
+    id: "copy",
+    label: "Copier le titre",
+    icon: <Copy className="h-3.5 w-3.5" />,
+    onSelect: () => {
+      void copyText(task.projectName || "Projet sans titre", "Titre copié");
+    },
+  });
+  if (onArchiveTask) {
+    menuItems.push(
+      { id: "sep", type: "separator" },
+      {
+        id: "archive",
+        label: "Archiver",
+        icon: <Archive className="h-3.5 w-3.5" />,
+        onSelect: () => onArchiveTask(task.id),
+      },
+    );
+  }
 
   return (
     <button
       type="button"
-      onClick={() => onTaskClick?.(task)}
+      {...triggerProps}
+      onClick={() => {
+        if (consumeClickSuppression()) return;
+        onTaskClick?.(task);
+      }}
       className={[
         "group w-full flex items-center gap-3 rounded-xl border bg-[var(--surface)] px-4 py-3 text-left transition hover:shadow-[0_6px_20px_rgba(20,17,13,0.10)]",
         isOverdue
@@ -108,6 +158,12 @@ function TodoTaskRow(props: {
         !onTaskClick ? "cursor-default" : "cursor-pointer",
       ].join(" ")}
     >
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions ${task.projectName || "tâche"}`}
+      />
       <div className={["h-9 w-1 shrink-0 rounded-full", meta.accentClass].join(" ")} />
 
       <div className="min-w-0 flex-1">
@@ -165,6 +221,8 @@ export default function ToDoListView(props: {
   admins: string[];
   currentUserName?: string | null;
   onTaskClick?: (task: Task) => void;
+  onArchiveTask?: (taskId: string) => void;
+  onEditTask?: (task: Task) => void;
 }) {
   const filterTouchedRef = useRef(false);
   const preferredAdmin = useMemo(
@@ -300,7 +358,14 @@ export default function ToDoListView(props: {
                 return (
                   <>
                     {standalone.map((task) => (
-                      <TodoTaskRow key={task.id} task={task} cat={cat} onTaskClick={props.onTaskClick} />
+                      <TodoTaskRow
+                        key={task.id}
+                        task={task}
+                        cat={cat}
+                        onTaskClick={props.onTaskClick}
+                        onArchiveTask={props.onArchiveTask}
+                        onEditTask={props.onEditTask}
+                      />
                     ))}
                     {groups.map(([eventId, evTasks]) => {
                       const collapsed = collapsedEventIds.has(eventId);
@@ -336,7 +401,14 @@ export default function ToDoListView(props: {
                           {!collapsed && (
                             <div className="space-y-1.5 border-t border-[var(--line)]/80 px-2 pb-2 pt-1.5">
                               {evTasks.map((task) => (
-                                <TodoTaskRow key={task.id} task={task} cat={cat} onTaskClick={props.onTaskClick} />
+                                <TodoTaskRow
+                                  key={task.id}
+                                  task={task}
+                                  cat={cat}
+                                  onTaskClick={props.onTaskClick}
+                                  onArchiveTask={props.onArchiveTask}
+                                  onEditTask={props.onEditTask}
+                                />
                               ))}
                             </div>
                           )}

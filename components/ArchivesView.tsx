@@ -4,14 +4,17 @@ import { useMemo, useState } from "react";
 import {
   ArchiveRestore,
   CalendarDays,
+  Copy,
   FolderArchive,
   SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
 import { domainTagStyles, adminBadgeClassFor } from "../lib/kanbanStyles";
+import { copyText } from "../lib/copyText";
 import AdminAvatar from "./AdminAvatar";
 import type { Task, AdminId } from "../lib/types";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ui/ContextMenu";
 
 const PERIODS = [
   { label: "30j", days: 30 },
@@ -268,76 +271,12 @@ export default function ArchivesView(props: {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {displayedTasks.map((task) => (
-            <article
+            <ArchivedTaskCard
               key={task.id}
-              className="flex flex-col rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_8px_18px_rgba(20,17,13,0.07)]"
-            >
-              <h3 className="text-base font-semibold tracking-tight text-[var(--foreground)]">
-                {task.projectName || "Sans titre"}
-              </h3>
-              <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/55">
-                {task.company}
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span
-                  className={[
-                    "rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-                    domainTagStyles[task.domain] ?? domainTagStyles.default,
-                  ].join(" ")}
-                >
-                  {task.domain}
-                </span>
-                <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/75">
-                  {task.column}
-                </span>
-                {task.admins.map((admin) => (
-                  <span
-                    key={admin}
-                    className={[
-                      "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-                      adminBadgeClassFor(admin),
-                    ].join(" ")}
-                  >
-                    <AdminAvatar admin={admin as AdminId} />
-                    {admin.split(" ")[0]}
-                  </span>
-                ))}
-              </div>
-
-              {task.deadline && (
-                <p className="mt-2 flex items-center gap-1 text-[11px] text-[color:var(--foreground)]/60">
-                  <CalendarDays className="h-3 w-3 shrink-0" />
-                  {task.deadline}
-                </p>
-              )}
-
-              {task.description && (
-                <p className="mt-1.5 line-clamp-2 text-xs text-[color:var(--foreground)]/65">
-                  {task.description}
-                </p>
-              )}
-
-              {/* Actions */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => props.onRestore(task.id)}
-                  className="ui-transition flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
-                >
-                  <ArchiveRestore className="h-3.5 w-3.5" />
-                  Restaurer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => props.onDelete(task.id)}
-                  className="ui-transition flex items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100"
-                  title="Supprimer définitivement"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </article>
+              task={task}
+              onRestore={props.onRestore}
+              onDelete={props.onDelete}
+            />
           ))}
         </div>
       )}
@@ -357,5 +296,123 @@ export default function ArchivesView(props: {
         </div>
       )}
     </div>
+  );
+}
+
+function ArchivedTaskCard(props: {
+  task: Task;
+  onRestore: (taskId: string) => void;
+  onDelete: (taskId: string) => void;
+}) {
+  const { task, onRestore, onDelete } = props;
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "restore",
+      label: "Restaurer",
+      icon: <ArchiveRestore className="h-3.5 w-3.5" />,
+      onSelect: () => onRestore(task.id),
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(task.projectName || "Sans titre", "Titre copié");
+      },
+    },
+    { id: "sep", type: "separator" },
+    {
+      id: "delete",
+      label: "Supprimer définitivement",
+      icon: <Trash2 className="h-3.5 w-3.5" />,
+      danger: true,
+      onSelect: () => onDelete(task.id),
+    },
+  ];
+
+  return (
+    <article
+      {...triggerProps}
+      onClickCapture={(e) => {
+        if (consumeClickSuppression()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      className="flex flex-col rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_8px_18px_rgba(20,17,13,0.07)]"
+    >
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions archive ${task.projectName || ""}`}
+      />
+      <h3 className="text-base font-semibold tracking-tight text-[var(--foreground)]">
+        {task.projectName || "Sans titre"}
+      </h3>
+      <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/55">
+        {task.company}
+      </p>
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <span
+          className={[
+            "rounded-md border px-2 py-0.5 text-[10px] font-semibold",
+            domainTagStyles[task.domain] ?? domainTagStyles.default,
+          ].join(" ")}
+        >
+          {task.domain}
+        </span>
+        <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/75">
+          {task.column}
+        </span>
+        {task.admins.map((admin) => (
+          <span
+            key={admin}
+            className={[
+              "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
+              adminBadgeClassFor(admin),
+            ].join(" ")}
+          >
+            <AdminAvatar admin={admin as AdminId} />
+            {admin.split(" ")[0]}
+          </span>
+        ))}
+      </div>
+
+      {task.deadline && (
+        <p className="mt-2 flex items-center gap-1 text-[11px] text-[color:var(--foreground)]/60">
+          <CalendarDays className="h-3 w-3 shrink-0" />
+          {task.deadline}
+        </p>
+      )}
+
+      {task.description && (
+        <p className="mt-1.5 line-clamp-2 text-xs text-[color:var(--foreground)]/65">
+          {task.description}
+        </p>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => onRestore(task.id)}
+          className="ui-transition flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--foreground)]/75 hover:bg-[var(--surface-soft)]"
+        >
+          <ArchiveRestore className="h-3.5 w-3.5" />
+          Restaurer
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(task.id)}
+          className="ui-transition flex items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+          title="Supprimer définitivement"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </article>
   );
 }

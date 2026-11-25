@@ -2,11 +2,17 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CalendarRange,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
   LayoutGrid,
+  Pencil,
   Plus,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import { TuesdayLoader } from "@/components/brand";
@@ -23,7 +29,10 @@ import {
   salonLogoPathFromUrl,
   uploadSalonLogoFile,
 } from "../../lib/salonLogoUpload";
+import { copyText } from "../../lib/copyText";
 import { toastError } from "../../lib/toast";
+import { useConfirm } from "../ui/ConfirmDialog";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", {
@@ -43,8 +52,19 @@ const tile =
   "rounded-[1.5rem] sm:rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] shadow-[0_1px_0_rgba(20,17,13,0.04)]";
 
 export default function SalonsDashboard() {
-  const { salons, budgetLines, loading, addSalon, patchSalon, workspaceId, supabase } =
-    useSalons();
+  const {
+    salons,
+    budgetLines,
+    loading,
+    addSalon,
+    patchSalon,
+    removeSalon,
+    duplicateSalon,
+    workspaceId,
+    supabase,
+  } = useSalons();
+  const confirm = useConfirm();
+  const router = useRouter();
   const [year, setYear] = useState(2027);
   const [createOpen, setCreateOpen] = useState(false);
   const [logoUploadingId, setLogoUploadingId] = useState<string | null>(null);
@@ -83,6 +103,53 @@ export default function SalonsDashboard() {
       if (previousPath) void removeSalonLogoFile(supabase, previousPath);
     },
     [patchSalon, supabase],
+  );
+
+  const renameSalon = useCallback(
+    async (salon: Salon) => {
+      const next = window.prompt("Nouveau nom du salon", salon.name);
+      if (next == null) return;
+      const trimmed = next.trim();
+      if (!trimmed || trimmed === salon.name) return;
+      await patchSalon(salon.id, { name: trimmed });
+    },
+    [patchSalon],
+  );
+
+  const cloneSalonCard = useCallback(
+    async (salon: Salon) => {
+      const name = window.prompt("Nom de la nouvelle édition", `${salon.name} (copie)`);
+      if (!name) return;
+      const start = window.prompt("Date début (YYYY-MM-DD)", salon.startDate);
+      if (!start) return;
+      const end = window.prompt("Date fin (YYYY-MM-DD)", salon.endDate);
+      if (!end) return;
+      const created = await duplicateSalon(salon, {
+        name,
+        startDate: start,
+        endDate: end,
+      });
+      if (created) router.push(`/v3/salons/${created.id}`);
+    },
+    [duplicateSalon, router],
+  );
+
+  const destroySalon = useCallback(
+    async (salon: Salon) => {
+      const ok = await confirm({
+        title: "Supprimer ce salon ?",
+        description: (
+          <>
+            « {salon.name} » et sa checklist / docs / budget seront supprimés.
+          </>
+        ),
+        confirmLabel: "Supprimer",
+        variant: "destructive",
+      });
+      if (!ok) return;
+      await removeSalon(salon.id);
+    },
+    [confirm, removeSalon],
   );
 
   const yearSalons = useMemo(
@@ -179,51 +246,16 @@ export default function SalonsDashboard() {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12 lg:gap-4">
         {/* Prochain salon */}
         {featuredSalon ? (
-          <Link
-            href={`/v3/salons/${featuredSalon.id}`}
-            className={`${tile} group relative overflow-hidden p-5 sm:p-6 md:col-span-1 lg:col-span-8 lg:min-h-[220px]`}
-            style={{
-              background:
-                "linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--surface)) 0%, var(--surface) 55%, var(--surface-soft) 100%)",
-            }}
-          >
-            <span className="inline-flex rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] font-semibold tracking-wide text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]">
-              Prochain salon
-            </span>
-            <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                <SalonLogo
-                  slug={featuredSalon.catalogSlug}
-                  name={featuredSalon.name}
-                  logoUrl={featuredSalon.logoUrl}
-                  size={72}
-                  editable
-                  uploading={logoUploadingId === featuredSalon.id}
-                  onChangeLogo={(file) => changeSalonLogo(featuredSalon, file)}
-                  onResetLogo={() => resetSalonLogo(featuredSalon)}
-                />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-semibold leading-snug tracking-tight group-hover:underline sm:text-2xl lg:text-[1.75rem]">
-                    {featuredSalon.name}
-                  </h2>
-                  <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-                    {formatShortDate(featuredSalon.startDate)} →{" "}
-                    {formatShortDate(featuredSalon.endDate)}
-                    {featuredSalon.location ? ` · ${featuredSalon.location}` : ""}
-                  </p>
-                  <p className="mt-2 text-xs text-[color:var(--foreground)]/50">
-                    {SALON_MODE_LABELS[featuredSalon.mode]}
-                    {(featuredSalon.hall || featuredSalon.standNumber) &&
-                      ` · ${[featuredSalon.hall, featuredSalon.standNumber].filter(Boolean).join(" / ")}`}
-                  </p>
-                </div>
-              </div>
-              <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)]">
-                Ouvrir
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </span>
-            </div>
-          </Link>
+          <FeaturedSalonCard
+            salon={featuredSalon}
+            logoUploading={logoUploadingId === featuredSalon.id}
+            onChangeLogo={(file) => changeSalonLogo(featuredSalon, file)}
+            onResetLogo={() => resetSalonLogo(featuredSalon)}
+            onRename={() => void renameSalon(featuredSalon)}
+            onClone={() => void cloneSalonCard(featuredSalon)}
+            onMarkDone={() => void patchSalon(featuredSalon.id, { status: "termine" })}
+            onDelete={() => void destroySalon(featuredSalon)}
+          />
         ) : (
           <section
             className={`${tile} relative overflow-hidden p-5 sm:p-6 md:col-span-1 lg:col-span-8`}
@@ -306,6 +338,10 @@ export default function SalonsDashboard() {
                     logoUploading={logoUploadingId === s.id}
                     onChangeLogo={(file) => changeSalonLogo(s, file)}
                     onResetLogo={() => resetSalonLogo(s)}
+                    onRename={() => void renameSalon(s)}
+                    onClone={() => void cloneSalonCard(s)}
+                    onMarkDone={() => void patchSalon(s.id, { status: "termine" })}
+                    onDelete={() => void destroySalon(s)}
                   />
                 </li>
               ))}
@@ -326,60 +362,242 @@ export default function SalonsDashboard() {
   );
 }
 
+function salonCardMenuItems(opts: {
+  salon: Salon;
+  onOpen: () => void;
+  onRename: () => void;
+  onClone: () => void;
+  onMarkDone: () => void;
+  onDelete: () => void;
+}): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: opts.onOpen,
+    },
+    {
+      id: "rename",
+      label: "Renommer…",
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      onSelect: opts.onRename,
+    },
+    {
+      id: "copy",
+      label: "Copier le nom",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(opts.salon.name, "Nom copié");
+      },
+    },
+    {
+      id: "clone",
+      label: "Cloner…",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: opts.onClone,
+    },
+  ];
+  if (opts.salon.status !== "termine") {
+    items.push({
+      id: "done",
+      label: "Marquer terminé",
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      onSelect: opts.onMarkDone,
+    });
+  }
+  items.push(
+    { id: "sep-danger", type: "separator" },
+    {
+      id: "delete",
+      label: "Supprimer",
+      icon: <Trash2 className="h-3.5 w-3.5" />,
+      danger: true,
+      onSelect: opts.onDelete,
+    },
+  );
+  return items;
+}
+
+function FeaturedSalonCard({
+  salon,
+  logoUploading,
+  onChangeLogo,
+  onResetLogo,
+  onRename,
+  onClone,
+  onMarkDone,
+  onDelete,
+}: {
+  salon: Salon;
+  logoUploading: boolean;
+  onChangeLogo: (file: File) => void;
+  onResetLogo: () => void;
+  onRename: () => void;
+  onClone: () => void;
+  onMarkDone: () => void;
+  onDelete: () => void;
+}) {
+  const router = useRouter();
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+  const href = `/v3/salons/${salon.id}`;
+
+  return (
+    <>
+      <Link
+        href={href}
+        {...triggerProps}
+        onClick={(e) => {
+          if (consumeClickSuppression()) {
+            e.preventDefault();
+          }
+        }}
+        className={`${tile} group relative overflow-hidden p-5 sm:p-6 md:col-span-1 lg:col-span-8 lg:min-h-[220px]`}
+        style={{
+          background:
+            "linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--surface)) 0%, var(--surface) 55%, var(--surface-soft) 100%)",
+        }}
+      >
+        <span className="inline-flex rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] font-semibold tracking-wide text-[color:var(--foreground)]/70 ring-1 ring-[var(--line)]">
+          Prochain salon
+        </span>
+        <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <SalonLogo
+              slug={salon.catalogSlug}
+              name={salon.name}
+              logoUrl={salon.logoUrl}
+              size={72}
+              editable
+              uploading={logoUploading}
+              onChangeLogo={onChangeLogo}
+              onResetLogo={onResetLogo}
+            />
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold leading-snug tracking-tight group-hover:underline sm:text-2xl lg:text-[1.75rem]">
+                {salon.name}
+              </h2>
+              <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
+                {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
+                {salon.location ? ` · ${salon.location}` : ""}
+              </p>
+              <p className="mt-2 text-xs text-[color:var(--foreground)]/50">
+                {SALON_MODE_LABELS[salon.mode]}
+                {(salon.hall || salon.standNumber) &&
+                  ` · ${[salon.hall, salon.standNumber].filter(Boolean).join(" / ")}`}
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)]">
+            Ouvrir
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </span>
+        </div>
+      </Link>
+      <ContextMenu
+        position={position}
+        items={salonCardMenuItems({
+          salon,
+          onOpen: () => router.push(href),
+          onRename,
+          onClone,
+          onMarkDone,
+          onDelete,
+        })}
+        onClose={close}
+        ariaLabel={`Actions salon ${salon.name}`}
+      />
+    </>
+  );
+}
+
 function SalonCard({
   salon,
   engaged,
   logoUploading,
   onChangeLogo,
   onResetLogo,
+  onRename,
+  onClone,
+  onMarkDone,
+  onDelete,
 }: {
   salon: Salon;
   engaged: number;
   logoUploading: boolean;
   onChangeLogo: (file: File) => void;
   onResetLogo: () => void;
+  onRename: () => void;
+  onClone: () => void;
+  onMarkDone: () => void;
+  onDelete: () => void;
 }) {
+  const router = useRouter();
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+  const href = `/v3/salons/${salon.id}`;
+
   return (
-    <Link
-      href={`/v3/salons/${salon.id}`}
-      className={`${tile} group flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]`}
-    >
-      <div className="flex items-start gap-3">
-        <SalonLogo
-          slug={salon.catalogSlug}
-          name={salon.name}
-          logoUrl={salon.logoUrl}
-          size={52}
-          editable
-          uploading={logoUploading}
-          onChangeLogo={onChangeLogo}
-          onResetLogo={onResetLogo}
-        />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold tracking-tight group-hover:underline">
-            {salon.name}
-          </h3>
-          <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
-            {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
-          </p>
-          {salon.location ? (
-            <p className="mt-0.5 truncate text-xs text-[color:var(--foreground)]/45">
-              {salon.location}
+    <>
+      <Link
+        href={href}
+        {...triggerProps}
+        onClick={(e) => {
+          if (consumeClickSuppression()) {
+            e.preventDefault();
+          }
+        }}
+        className={`${tile} group flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]`}
+      >
+        <div className="flex items-start gap-3">
+          <SalonLogo
+            slug={salon.catalogSlug}
+            name={salon.name}
+            logoUrl={salon.logoUrl}
+            size={52}
+            editable
+            uploading={logoUploading}
+            onChangeLogo={onChangeLogo}
+            onResetLogo={onResetLogo}
+          />
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-base font-semibold tracking-tight group-hover:underline">
+              {salon.name}
+            </h3>
+            <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
+              {formatShortDate(salon.startDate)} → {formatShortDate(salon.endDate)}
             </p>
-          ) : null}
+            {salon.location ? (
+              <p className="mt-0.5 truncate text-xs text-[color:var(--foreground)]/45">
+                {salon.location}
+              </p>
+            ) : null}
+          </div>
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 font-semibold">
-          {SALON_MODE_LABELS[salon.mode]}
-        </span>
-        <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
-          {SALON_STATUS_LABELS[salon.status]}
-        </span>
-        {engaged > 0 && (
-          <span className="ml-auto text-[color:var(--foreground)]/50">{formatMoney(engaged)}</span>
-        )}
-      </div>
-    </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 font-semibold">
+            {SALON_MODE_LABELS[salon.mode]}
+          </span>
+          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[color:var(--foreground)]/60">
+            {SALON_STATUS_LABELS[salon.status]}
+          </span>
+          {engaged > 0 && (
+            <span className="ml-auto text-[color:var(--foreground)]/50">{formatMoney(engaged)}</span>
+          )}
+        </div>
+      </Link>
+      <ContextMenu
+        position={position}
+        items={salonCardMenuItems({
+          salon,
+          onOpen: () => router.push(href),
+          onRename,
+          onClone,
+          onMarkDone,
+          onDelete,
+        })}
+        onClose={close}
+        ariaLabel={`Actions salon ${salon.name}`}
+      />
+    </>
   );
 }
