@@ -167,7 +167,12 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
 
       <header className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] p-5">
         <div className="flex flex-wrap items-start gap-4">
-          <SalonLogo slug={salon.catalogSlug} name={salon.name} size={64} />
+          <SalonLogo
+            slug={salon.catalogSlug}
+            name={salon.name}
+            logoUrl={salon.logoUrl}
+            size={64}
+          />
           <div className="min-w-0 flex-1">
             <input
               className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"

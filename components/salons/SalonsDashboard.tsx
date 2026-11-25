@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -18,6 +18,12 @@ import {
   SALON_STATUS_LABELS,
   type Salon,
 } from "../../lib/salonTypes";
+import {
+  removeSalonLogoFile,
+  salonLogoPathFromUrl,
+  uploadSalonLogoFile,
+} from "../../lib/salonLogoUpload";
+import { toastError } from "../../lib/toast";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("fr-FR", {
@@ -37,9 +43,47 @@ const tile =
   "rounded-[1.5rem] sm:rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] shadow-[0_1px_0_rgba(20,17,13,0.04)]";
 
 export default function SalonsDashboard() {
-  const { salons, budgetLines, loading, addSalon } = useSalons();
+  const { salons, budgetLines, loading, addSalon, patchSalon, workspaceId, supabase } =
+    useSalons();
   const [year, setYear] = useState(2027);
   const [createOpen, setCreateOpen] = useState(false);
+  const [logoUploadingId, setLogoUploadingId] = useState<string | null>(null);
+
+  const changeSalonLogo = useCallback(
+    async (salon: Salon, file: File) => {
+      if (!workspaceId) {
+        toastError("Aucun espace actif.");
+        return;
+      }
+      setLogoUploadingId(salon.id);
+      try {
+        const uploaded = await uploadSalonLogoFile(supabase, workspaceId, salon.id, file);
+        if ("error" in uploaded) {
+          toastError(uploaded.error);
+          return;
+        }
+        const previousPath = salonLogoPathFromUrl(salon.logoUrl);
+        const updated = await patchSalon(salon.id, { logoUrl: uploaded.publicUrl });
+        if (!updated) return;
+        if (previousPath && previousPath !== uploaded.storagePath) {
+          void removeSalonLogoFile(supabase, previousPath);
+        }
+      } finally {
+        setLogoUploadingId(null);
+      }
+    },
+    [patchSalon, supabase, workspaceId],
+  );
+
+  const resetSalonLogo = useCallback(
+    async (salon: Salon) => {
+      const previousPath = salonLogoPathFromUrl(salon.logoUrl);
+      const updated = await patchSalon(salon.id, { logoUrl: null });
+      if (!updated) return;
+      if (previousPath) void removeSalonLogoFile(supabase, previousPath);
+    },
+    [patchSalon, supabase],
+  );
 
   const yearSalons = useMemo(
     () =>
@@ -151,7 +195,12 @@ export default function SalonsDashboard() {
                 <SalonLogo
                   slug={featuredSalon.catalogSlug}
                   name={featuredSalon.name}
+                  logoUrl={featuredSalon.logoUrl}
                   size={72}
+                  editable
+                  uploading={logoUploadingId === featuredSalon.id}
+                  onChangeLogo={(file) => changeSalonLogo(featuredSalon, file)}
+                  onResetLogo={() => resetSalonLogo(featuredSalon)}
                 />
                 <div className="min-w-0">
                   <h2 className="text-xl font-semibold leading-snug tracking-tight group-hover:underline sm:text-2xl lg:text-[1.75rem]">
@@ -251,7 +300,13 @@ export default function SalonsDashboard() {
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {yearSalons.map((s) => (
                 <li key={s.id}>
-                  <SalonCard salon={s} engaged={budgetBySalon.get(s.id)?.engaged ?? 0} />
+                  <SalonCard
+                    salon={s}
+                    engaged={budgetBySalon.get(s.id)?.engaged ?? 0}
+                    logoUploading={logoUploadingId === s.id}
+                    onChangeLogo={(file) => changeSalonLogo(s, file)}
+                    onResetLogo={() => resetSalonLogo(s)}
+                  />
                 </li>
               ))}
             </ul>
@@ -271,14 +326,35 @@ export default function SalonsDashboard() {
   );
 }
 
-function SalonCard({ salon, engaged }: { salon: Salon; engaged: number }) {
+function SalonCard({
+  salon,
+  engaged,
+  logoUploading,
+  onChangeLogo,
+  onResetLogo,
+}: {
+  salon: Salon;
+  engaged: number;
+  logoUploading: boolean;
+  onChangeLogo: (file: File) => void;
+  onResetLogo: () => void;
+}) {
   return (
     <Link
       href={`/v3/salons/${salon.id}`}
       className={`${tile} group flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]`}
     >
       <div className="flex items-start gap-3">
-        <SalonLogo slug={salon.catalogSlug} name={salon.name} size={52} />
+        <SalonLogo
+          slug={salon.catalogSlug}
+          name={salon.name}
+          logoUrl={salon.logoUrl}
+          size={52}
+          editable
+          uploading={logoUploading}
+          onChangeLogo={onChangeLogo}
+          onResetLogo={onResetLogo}
+        />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold tracking-tight group-hover:underline">
             {salon.name}
