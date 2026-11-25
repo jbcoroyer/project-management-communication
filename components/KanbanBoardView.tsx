@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -15,16 +16,21 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import {
+  Archive,
   CalendarRange,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock3,
+  Copy,
+  ExternalLink,
   FolderInput,
   LayoutGrid,
   ListTodo,
+  Pencil,
   Plus,
   ShieldCheck,
+  Trash2,
   X,
 } from "lucide-react";
 import { KanbanCardUI } from "./KanbanCard";
@@ -43,6 +49,8 @@ import {
 } from "../lib/eventGroupCollapse";
 import { partitionTasksByEvent, sortTasksByDeadline } from "../lib/eventTaskGroups";
 import { folderTaskIdsNeedingMove } from "../lib/folderBulkMove";
+import { copyText } from "../lib/copyText";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ui/ContextMenu";
 
 /** Au-dessus de ce seuil, les cartes passent en mode compact (même en « vue détaillée »). */
 const KANBAN_AUTO_COMPACT_MIN = 8;
@@ -147,11 +155,13 @@ function DroppableColumn(props: {
 
 function DraggableCard(props: {
   task: Task;
+  columns: string[];
   companyLogoUrl?: string | null;
   onArchive: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onOpen: () => void;
+  onMove: (column: ColumnId) => void;
   isMyTask?: boolean;
   cardRef?: (el: HTMLDivElement | null) => void;
   cardVariant?: KanbanCardDisplayMode;
@@ -159,6 +169,52 @@ function DraggableCard(props: {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: props.task.id,
   });
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: props.onOpen,
+    },
+    {
+      id: "edit",
+      label: "Modifier",
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      onSelect: props.onEdit,
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(props.task.projectName || "Projet sans titre", "Titre copié");
+      },
+    },
+    { id: "sep-move", type: "separator" },
+    { id: "move-label", type: "label", label: "Déplacer vers" },
+    ...props.columns.map((col) => ({
+      id: `move-${col}`,
+      label: col,
+      disabled: col === props.task.column,
+      onSelect: () => props.onMove(col as ColumnId),
+    })),
+    { id: "sep-danger", type: "separator" },
+    {
+      id: "archive",
+      label: "Archiver",
+      icon: <Archive className="h-3.5 w-3.5" />,
+      onSelect: props.onArchive,
+    },
+    {
+      id: "delete",
+      label: "Supprimer",
+      icon: <Trash2 className="h-3.5 w-3.5" />,
+      danger: true,
+      onSelect: props.onDelete,
+    },
+  ];
 
   return (
     <div
@@ -169,7 +225,11 @@ function DraggableCard(props: {
       data-task-id={props.task.id}
       {...listeners}
       {...attributes}
-      onClick={props.onOpen}
+      {...triggerProps}
+      onClick={() => {
+        if (consumeClickSuppression()) return;
+        props.onOpen();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -189,6 +249,12 @@ function DraggableCard(props: {
         onArchive={props.onArchive}
         onEdit={props.onEdit}
         onDelete={props.onDelete}
+      />
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions tâche ${props.task.projectName || ""}`}
       />
     </div>
   );
@@ -213,6 +279,175 @@ function DraggableEventGroup(props: {
     >
       {props.children}
     </div>
+  );
+}
+
+function FolderGroupBlock(props: {
+  dragId: string;
+  column: string;
+  columns: string[];
+  collapsed: boolean;
+  tightColumn: boolean;
+  eventId: string;
+  sample?: Task;
+  taskCount: number;
+  folderMenuKey: string;
+  folderMoveOpen: boolean;
+  onToggleCollapse: () => void;
+  onToggleFolderMoveMenu: () => void;
+  onMoveEntireFolder: (column: ColumnId) => void;
+  onCopyFolderName: () => void;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+  const salonHref = props.sample?.salonId
+    ? `/v3/salons/${props.sample.salonId}`
+    : `/v3/salons`;
+  const folderLabel = props.sample?.salonName ?? props.sample?.eventName ?? "Salon";
+  const canBulkMove = Boolean(props.sample && (props.sample.salonId || props.sample.eventId));
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open-salon",
+      label: "Ouvrir le salon",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => router.push(salonHref),
+    },
+    {
+      id: "toggle",
+      label: props.collapsed ? "Déplier" : "Replier",
+      icon: props.collapsed ? (
+        <ChevronRight className="h-3.5 w-3.5" />
+      ) : (
+        <ChevronDown className="h-3.5 w-3.5" />
+      ),
+      onSelect: props.onToggleCollapse,
+    },
+    {
+      id: "copy-name",
+      label: "Copier le nom",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: props.onCopyFolderName,
+    },
+  ];
+
+  if (canBulkMove) {
+    menuItems.push(
+      { id: "sep-move", type: "separator" },
+      { id: "move-label", type: "label", label: "Tout déplacer vers" },
+      ...props.columns.map((targetCol) => ({
+        id: `folder-move-${targetCol}`,
+        label: targetCol,
+        disabled: targetCol === props.column,
+        onSelect: () => props.onMoveEntireFolder(targetCol as ColumnId),
+      })),
+    );
+  }
+
+  return (
+    <DraggableEventGroup dragId={props.dragId}>
+      <div
+        {...triggerProps}
+        onClickCapture={(e) => {
+          if (consumeClickSuppression()) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+        className={[
+          "rounded-2xl border border-[var(--line)]/85 bg-[var(--surface-soft)]",
+          props.tightColumn ? "p-1.5" : "p-2",
+          props.collapsed ? "" : props.tightColumn ? "space-y-1" : "space-y-2",
+        ].join(" ")}
+      >
+        <div className="flex items-center gap-1.5 px-0.5 pb-1 pt-0.5">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => props.onToggleCollapse()}
+            className="ui-transition flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75"
+            title={
+              props.collapsed
+                ? "Déplier les tâches du salon"
+                : "Replier (nom du salon seulement)"
+            }
+            aria-expanded={!props.collapsed}
+          >
+            {props.collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+          <Link
+            href={salonHref}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 hover:underline"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CalendarRange className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{folderLabel}</span>
+          </Link>
+          <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/55">
+            {props.taskCount} tâche{props.taskCount > 1 ? "s" : ""}
+          </span>
+          {canBulkMove && (
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onToggleFolderMoveMenu();
+                }}
+                className="ui-transition flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75"
+                title="Déplacer tout le dossier vers une colonne"
+                aria-haspopup="menu"
+                aria-expanded={props.folderMoveOpen}
+              >
+                <FolderInput className="h-3.5 w-3.5" />
+              </button>
+              {props.folderMoveOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-[0_12px_28px_rgba(20,17,13,0.12)]"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
+                    Tout déplacer vers
+                  </p>
+                  {props.columns.map((targetCol) => (
+                    <button
+                      key={targetCol}
+                      type="button"
+                      role="menuitem"
+                      disabled={targetCol === props.column}
+                      onClick={() => props.onMoveEntireFolder(targetCol as ColumnId)}
+                      className={[
+                        "ui-transition flex w-full items-center rounded-lg px-2 py-1.5 text-left text-[12px] font-medium",
+                        targetCol === props.column
+                          ? "cursor-default text-[color:var(--foreground)]/35"
+                          : "text-[color:var(--foreground)]/80 hover:bg-[var(--surface-soft)]",
+                      ].join(" ")}
+                    >
+                      {targetCol}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {props.children}
+      </div>
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions dossier ${folderLabel}`}
+      />
+    </DraggableEventGroup>
   );
 }
 
@@ -514,6 +749,7 @@ export default function KanbanBoardView(props: {
                     <DraggableCard
                       key={task.id}
                       task={task}
+                      columns={props.columns}
                       companyLogoUrl={companyLogoMap[task.company] ?? null}
                       isMyTask={
                         props.currentUserName
@@ -523,6 +759,7 @@ export default function KanbanBoardView(props: {
                       onArchive={() => props.onArchiveTask(task.id)}
                       onEdit={() => props.onEditTask(task)}
                       onDelete={() => props.onDeleteTask(task.id)}
+                      onMove={(column) => props.onMoveTask(task.id, column)}
                       onOpen={() => {
                         props.lastFocusedTaskIdRef.current = task.id;
                         props.onOpenTask(task.id);
@@ -540,127 +777,64 @@ export default function KanbanBoardView(props: {
                     const sample = evTasks[0];
                     const folderMoveOpen = folderMoveMenuId === folderMenuKey;
                     return (
-                      <DraggableEventGroup key={eventId} dragId={eventDragId}>
-                        <div
-                          className={[
-                            "rounded-2xl border border-[var(--line)]/85 bg-[var(--surface-soft)]",
-                            tightColumn ? "p-1.5" : "p-2",
-                            collapsed ? "" : tightColumn ? "space-y-1" : "space-y-2",
-                          ].join(" ")}
-                        >
-                          <div className="flex items-center gap-1.5 px-0.5 pb-1 pt-0.5">
-                            <button
-                              type="button"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onClick={() => toggleEventGroupCollapse(eventId)}
-                              className="ui-transition flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75"
-                              title={collapsed ? "Déplier les tâches du salon" : "Replier (nom du salon seulement)"}
-                              aria-expanded={!collapsed}
-                            >
-                              {collapsed ? (
-                                <ChevronRight className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </button>
-                            <Link
-                              href={
-                                sample?.salonId
-                                  ? `/v3/salons/${sample.salonId}`
-                                  : `/v3/salons`
-                              }
-                              className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 hover:underline"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <CalendarRange className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">
-                                {sample?.salonName ?? sample?.eventName ?? "Salon"}
-                              </span>
-                            </Link>
-                            <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--foreground)]/55">
-                              {evTasks.length} tâche{evTasks.length > 1 ? "s" : ""}
-                            </span>
-                            {sample && (sample.salonId || sample.eventId) && (
-                              <div className="relative shrink-0">
-                                <button
-                                  type="button"
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setFolderMoveMenuId((prev) =>
-                                      prev === folderMenuKey ? null : folderMenuKey,
-                                    );
-                                  }}
-                                  className="ui-transition flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[color:var(--foreground)]/55 hover:bg-[var(--surface-soft)] hover:text-[color:var(--foreground)]/75"
-                                  title="Déplacer tout le dossier vers une colonne"
-                                  aria-haspopup="menu"
-                                  aria-expanded={folderMoveOpen}
-                                >
-                                  <FolderInput className="h-3.5 w-3.5" />
-                                </button>
-                                {folderMoveOpen && (
-                                  <div
-                                    role="menu"
-                                    className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-[0_12px_28px_rgba(20,17,13,0.12)]"
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                  >
-                                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/45">
-                                      Tout déplacer vers
-                                    </p>
-                                    {props.columns.map((targetCol) => (
-                                      <button
-                                        key={targetCol}
-                                        type="button"
-                                        role="menuitem"
-                                        disabled={targetCol === col}
-                                        onClick={() =>
-                                          moveEntireFolder(sample, targetCol as ColumnId)
-                                        }
-                                        className={[
-                                          "ui-transition flex w-full items-center rounded-lg px-2 py-1.5 text-left text-[12px] font-medium",
-                                          targetCol === col
-                                            ? "cursor-default text-[color:var(--foreground)]/35"
-                                            : "text-[color:var(--foreground)]/80 hover:bg-[var(--surface-soft)]",
-                                        ].join(" ")}
-                                      >
-                                        {targetCol}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                      <FolderGroupBlock
+                        key={eventId}
+                        dragId={eventDragId}
+                        column={col}
+                        columns={props.columns}
+                        collapsed={collapsed}
+                        tightColumn={tightColumn}
+                        eventId={eventId}
+                        sample={sample}
+                        taskCount={evTasks.length}
+                        folderMenuKey={folderMenuKey}
+                        folderMoveOpen={folderMoveOpen}
+                        onToggleCollapse={() => toggleEventGroupCollapse(eventId)}
+                        onToggleFolderMoveMenu={() =>
+                          setFolderMoveMenuId((prev) =>
+                            prev === folderMenuKey ? null : folderMenuKey,
+                          )
+                        }
+                        onMoveEntireFolder={(targetCol) =>
+                          sample ? moveEntireFolder(sample, targetCol) : undefined
+                        }
+                        onCopyFolderName={() => {
+                          void copyText(
+                            sample?.salonName ?? sample?.eventName ?? "Salon",
+                            "Nom copié",
+                          );
+                        }}
+                      >
+                        {!collapsed && (
+                          <div className="space-y-2">
+                            {evTasks.map((task) => (
+                              <DraggableCard
+                                key={task.id}
+                                task={task}
+                                columns={props.columns}
+                                companyLogoUrl={companyLogoMap[task.company] ?? null}
+                                isMyTask={
+                                  props.currentUserName
+                                    ? task.admins.includes(props.currentUserName)
+                                    : false
+                                }
+                                onArchive={() => props.onArchiveTask(task.id)}
+                                onEdit={() => props.onEditTask(task)}
+                                onDelete={() => props.onDeleteTask(task.id)}
+                                onMove={(column) => props.onMoveTask(task.id, column)}
+                                onOpen={() => {
+                                  props.lastFocusedTaskIdRef.current = task.id;
+                                  props.onOpenTask(task.id);
+                                }}
+                                cardRef={(el) => {
+                                  props.taskCardRefs.current[task.id] = el;
+                                }}
+                                cardVariant={columnDisplayMode}
+                              />
+                            ))}
                           </div>
-                          {!collapsed && (
-                            <div className="space-y-2">
-                              {evTasks.map((task) => (
-                                <DraggableCard
-                                  key={task.id}
-                                  task={task}
-                                  companyLogoUrl={companyLogoMap[task.company] ?? null}
-                                  isMyTask={
-                                    props.currentUserName
-                                      ? task.admins.includes(props.currentUserName)
-                                      : false
-                                  }
-                                  onArchive={() => props.onArchiveTask(task.id)}
-                                  onEdit={() => props.onEditTask(task)}
-                                  onDelete={() => props.onDeleteTask(task.id)}
-                                  onOpen={() => {
-                                    props.lastFocusedTaskIdRef.current = task.id;
-                                    props.onOpenTask(task.id);
-                                  }}
-                                  cardRef={(el) => {
-                                    props.taskCardRefs.current[task.id] = el;
-                                  }}
-                                  cardVariant={columnDisplayMode}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </DraggableEventGroup>
+                        )}
+                      </FolderGroupBlock>
                     );
                   })}
                   {!columnExpanded && hiddenCount > 0 && (

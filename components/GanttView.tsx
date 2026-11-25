@@ -15,10 +15,12 @@ import {
   startOfWeek,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, GanttChart } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, GanttChart } from "lucide-react";
 import AdminAvatar from "./AdminAvatar";
 import type { AdminId, Task } from "../lib/types";
 import { adminSolidColorFor } from "../lib/kanbanStyles";
+import { copyText } from "../lib/copyText";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ui/ContextMenu";
 
 type GanttViewProps = {
   tasks: Task[];
@@ -281,14 +283,89 @@ export default function GanttView({
                 const barWidth = Math.max(dayWidth - 8, (clippedEnd - clippedStart + 1) * dayWidth - 8);
 
                 return (
-                  <div
+                  <GanttRowBlock
                     key={row.task.id}
+                    row={row}
+                    days={days}
+                    dayWidth={dayWidth}
+                    chartWidth={chartWidth}
+                    rangeStart={rangeStart}
+                    today={today}
+                    barLeft={barLeft}
+                    barWidth={barWidth}
+                    visible={visible}
+                    onSelectTask={onSelectTask}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GanttRowBlock(props: {
+  row: GanttRow;
+  days: Date[];
+  dayWidth: number;
+  chartWidth: number;
+  rangeStart: Date;
+  today: Date;
+  barLeft: number;
+  barWidth: number;
+  visible: boolean;
+  onSelectTask: (taskId: string) => void;
+}) {
+  const {
+    row,
+    days,
+    dayWidth,
+    chartWidth,
+    rangeStart,
+    today,
+    barLeft,
+    barWidth,
+    visible,
+    onSelectTask,
+  } = props;
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => onSelectTask(row.task.id),
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(row.task.projectName || "Sans titre", "Titre copié");
+      },
+    },
+  ];
+
+  return (
+                  <div
+                    {...triggerProps}
                     className="flex border-b border-[var(--line)]/50 hover:bg-[var(--surface-soft)]/40"
                     style={{ height: ROW_H }}
                   >
+                    <ContextMenu
+                      position={position}
+                      items={menuItems}
+                      onClose={close}
+                      ariaLabel={`Actions ${row.task.projectName || "tâche"}`}
+                    />
                     <button
                       type="button"
-                      onClick={() => onSelectTask(row.task.id)}
+                      onClick={() => {
+                        if (consumeClickSuppression()) return;
+                        onSelectTask(row.task.id);
+                      }}
                       className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-[var(--line)] bg-[var(--surface)] px-3 text-left"
                       style={{ width: LABEL_W }}
                     >
@@ -331,7 +408,10 @@ export default function GanttView({
                         <button
                           type="button"
                           title={`${row.task.projectName} · ${format(row.start, "dd/MM")} → ${format(row.end, "dd/MM")}`}
-                          onClick={() => onSelectTask(row.task.id)}
+                          onClick={() => {
+                            if (consumeClickSuppression()) return;
+                            onSelectTask(row.task.id);
+                          }}
                           className="absolute top-1/2 flex h-7 -translate-y-1/2 items-center overflow-hidden rounded-md px-2 text-left text-[11px] font-semibold text-white shadow-sm transition hover:brightness-110"
                           style={{
                             left: barLeft,
@@ -346,12 +426,5 @@ export default function GanttView({
                       ) : null}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
   );
 }

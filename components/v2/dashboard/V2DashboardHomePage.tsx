@@ -1202,6 +1202,8 @@ export default function V2DashboardHomePage() {
               admins={filterAdmins}
               currentUserName={effectiveUser}
               onTaskClick={(task) => setSelectedTaskId(task.id)}
+              onArchiveTask={handleArchiveTask}
+              onEditTask={openEditForTask}
             />
           )}
 
@@ -1239,6 +1241,8 @@ export default function V2DashboardHomePage() {
               onInlineSave={handleInlineSave}
               onQuickAdd={handleQuickCreateForColumn}
               onEditTask={openEditForTask}
+              onArchiveTask={handleArchiveTask}
+              onDeleteTask={(taskId) => void handleDeleteTask(taskId)}
             />
           )}
 

@@ -13,11 +13,24 @@ import {
 } from "date-fns";
 import { useRouter } from "next/navigation";
 import { fr } from "date-fns/locale";
-import { Building2, ChevronLeft, ChevronRight, MapPin, Plus, Trash2, X } from "lucide-react";
+import {
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { createSalonFromCalendar } from "../app/actions/salons";
 import AdminAvatar from "./AdminAvatar";
 import type { Task, AdminId } from "../lib/types";
+import { copyText } from "../lib/copyText";
 import { toastError, toastSuccess } from "../lib/toast";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ui/ContextMenu";
 
 /** Bloc agenda « salon » — compatible EventRow legacy et Salon v3. */
 export type SalonCalendarItem = {
@@ -72,13 +85,37 @@ type CalendarEvent = {
   resource: CalendarEventResource;
 };
 
-function EventCard(props: { event: CalendarEvent }) {
-  const { event } = props;
+function EventCard(props: {
+  event: CalendarEvent;
+  onOpenTask: (taskId: string) => void;
+}) {
+  const { event, onOpenTask } = props;
   const { task, isDeadline, owner, ownerColor } = event.resource;
+  const { position, close, triggerProps } = useContextMenu();
   if (!task) return null;
 
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir la tâche",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => onOpenTask(task.id),
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(task.projectName || "Sans titre", "Titre copié");
+      },
+    },
+  ];
+
   return (
-    <div className="group relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1">
+    <div
+      {...triggerProps}
+      className="group relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1"
+    >
       <div className="mb-0.5 flex items-center gap-1">
         <AdminAvatar admin={owner} size="sm" />
         <span className="text-[10px] font-bold uppercase tracking-wide opacity-90">
@@ -100,14 +137,47 @@ function EventCard(props: { event: CalendarEvent }) {
         className="absolute bottom-0 left-0 right-0 h-[2px] opacity-50"
         style={{ backgroundColor: ownerColor }}
       />
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions ${task.projectName || "tâche"}`}
+      />
     </div>
   );
 }
 
-function ExtraEventCard(props: { event: CalendarEvent }) {
+function ExtraEventCard(props: {
+  event: CalendarEvent;
+  onEditExtra: (extra: CalendarExtraEvent) => void;
+}) {
   const ex = props.event.resource.extra;
+  const { position, close, triggerProps } = useContextMenu();
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "edit",
+      label: "Modifier",
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      disabled: !ex,
+      onSelect: () => {
+        if (ex) props.onEditExtra(ex);
+      },
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(props.event.title, "Titre copié");
+      },
+    },
+  ];
+
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1">
+    <div
+      {...triggerProps}
+      className="relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1"
+    >
       <div className="mb-0.5 flex items-center gap-1">
         <span className="rounded bg-white/25 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider">
           Agenda
@@ -121,15 +191,46 @@ function ExtraEventCard(props: { event: CalendarEvent }) {
         </p>
       )}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-200/80" />
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions ${props.event.title}`}
+      />
     </div>
   );
 }
 
-function SalonEventCard(props: { event: CalendarEvent }) {
+function SalonEventCard(props: {
+  event: CalendarEvent;
+  onOpenSalon: (salonId: string) => void;
+}) {
   const se = props.event.resource.salonEvent;
+  const { position, close, triggerProps } = useContextMenu();
   if (!se) return null;
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir le salon",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => props.onOpenSalon(se.id),
+    },
+    {
+      id: "copy",
+      label: "Copier le nom",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(se.name || props.event.title, "Nom copié");
+      },
+    },
+  ];
+
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1">
+    <div
+      {...triggerProps}
+      className="relative flex h-full w-full flex-col overflow-hidden rounded-md px-2 py-1"
+    >
       <div className="mb-0.5 flex items-center gap-1">
         <span className="rounded bg-white/25 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider">
           Salon
@@ -143,18 +244,29 @@ function SalonEventCard(props: { event: CalendarEvent }) {
         </p>
       ) : null}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-amber-200/90" />
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions salon ${se.name || ""}`}
+      />
     </div>
   );
 }
 
-function CalendarEventWrapper(props: { event: CalendarEvent }) {
+function CalendarEventWrapper(props: {
+  event: CalendarEvent;
+  onOpenTask: (taskId: string) => void;
+  onOpenSalon: (salonId: string) => void;
+  onEditExtra: (extra: CalendarExtraEvent) => void;
+}) {
   if (props.event.resource.kind === "extra") {
-    return <ExtraEventCard event={props.event} />;
+    return <ExtraEventCard event={props.event} onEditExtra={props.onEditExtra} />;
   }
   if (props.event.resource.kind === "salon") {
-    return <SalonEventCard event={props.event} />;
+    return <SalonEventCard event={props.event} onOpenSalon={props.onOpenSalon} />;
   }
-  return <EventCard event={props.event} />;
+  return <EventCard event={props.event} onOpenTask={props.onOpenTask} />;
 }
 
 function Toolbar(props: {
@@ -791,7 +903,17 @@ export default function CalendarView(props: {
             timeslots={2}
             components={{
               toolbar: CustomToolbar,
-              event: CalendarEventWrapper,
+              event: (p: { event: CalendarEvent }) => (
+                <CalendarEventWrapper
+                  event={p.event}
+                  onOpenTask={props.onSelectTask}
+                  onOpenSalon={(salonId) => router.push(`/v3/salons/${salonId}`)}
+                  onEditExtra={(extra) => {
+                    setEditingExtra(extra);
+                    setModalOpen(true);
+                  }}
+                />
+              ),
             }}
             onSelectEvent={(event: CalendarEvent) => {
               if (event.resource.kind === "extra" && event.resource.extra) {

@@ -4,15 +4,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
+  Archive,
   ChevronDown,
   ChevronRight,
+  Copy,
+  ExternalLink,
   MessageSquarePlus,
+  Pencil,
   Plus,
+  Trash2,
 } from "lucide-react";
 import AdminAvatar from "../../AdminAvatar";
 import CompanyAvatar from "../../CompanyAvatar";
 import type { ReferenceRecord } from "../../../lib/referenceData";
 import { columnStyles, adminFilterPillClassFor, adminSolidColorFor, domainTagStyles } from "../../../lib/kanbanStyles";
+import { copyText } from "../../../lib/copyText";
 import {
   priorities,
   type AdminId,
@@ -22,6 +28,7 @@ import {
   type Priority,
   type Task,
 } from "../../../lib/types";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "../../ui/ContextMenu";
 
 const PRIORITY_STYLES: Record<Priority, string> = {
   Haute: "bg-rose-100 text-rose-800 border-rose-200",
@@ -61,6 +68,8 @@ type V2ListViewProps = {
   onInlineSave: (taskId: string, patch: Partial<Task>, dbPatch: Record<string, unknown>) => void | Promise<void>;
   onQuickAdd: (title: string, column: ColumnId) => void | Promise<void>;
   onEditTask: (task: Task) => void;
+  onArchiveTask?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string) => void;
 };
 
 type ListColumnDef = {
@@ -228,6 +237,8 @@ function ListRow({
   onMoveTask,
   onInlineSave,
   onEditTask,
+  onArchiveTask,
+  onDeleteTask,
 }: {
   task: Task;
   columns: ColumnId[];
@@ -242,11 +253,14 @@ function ListRow({
   onMoveTask: (taskId: string, column: ColumnId) => void;
   onInlineSave: V2ListViewProps["onInlineSave"];
   onEditTask: (task: Task) => void;
+  onArchiveTask?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string) => void;
 }) {
   const companyLogo = companyRecords.find((c) => c.name === task.company)?.logoUrl ?? null;
   const deadlineMs = task.deadline ? new Date(task.deadline + "T23:59:59").getTime() : 0;
   const isOverdue = deadlineMs > 0 && now > deadlineMs && task.column !== "Terminé";
   const domainStyle = domainTagStyles[task.domain] ?? domainTagStyles.default;
+  const { position, close, triggerProps, consumeClickSuppression } = useContextMenu();
 
   const saveField = useCallback(
     (patch: Partial<Task>, dbPatch: Record<string, unknown>) => {
@@ -255,15 +269,79 @@ function ListRow({
     [onInlineSave, task.id],
   );
 
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "open",
+      label: "Ouvrir",
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      onSelect: () => onOpenTask(task.id),
+    },
+    {
+      id: "edit",
+      label: "Modifier",
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      onSelect: () => onEditTask(task),
+    },
+    {
+      id: "copy",
+      label: "Copier le titre",
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        void copyText(task.projectName || "Projet sans titre", "Titre copié");
+      },
+    },
+    { id: "sep-move", type: "separator" },
+    { id: "move-label", type: "label", label: "Déplacer vers" },
+    ...columns.map((col) => ({
+      id: `move-${col}`,
+      label: col,
+      disabled: col === task.column,
+      onSelect: () => onMoveTask(task.id, col),
+    })),
+  ];
+  if (onArchiveTask || onDeleteTask) {
+    menuItems.push({ id: "sep-danger", type: "separator" });
+    if (onArchiveTask) {
+      menuItems.push({
+        id: "archive",
+        label: "Archiver",
+        icon: <Archive className="h-3.5 w-3.5" />,
+        onSelect: () => onArchiveTask(task.id),
+      });
+    }
+    if (onDeleteTask) {
+      menuItems.push({
+        id: "delete",
+        label: "Supprimer",
+        icon: <Trash2 className="h-3.5 w-3.5" />,
+        danger: true,
+        onSelect: () => onDeleteTask(task.id),
+      });
+    }
+  }
+
   return (
     <div
       role="row"
+      {...triggerProps}
+      onClickCapture={(e) => {
+        if (consumeClickSuppression()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
       className={[
         "group grid min-h-[44px] items-center border-b border-[var(--line)] text-sm transition-colors hover:bg-[var(--surface-soft)]/80",
         selected ? "bg-[var(--accent)]/5" : "bg-[var(--surface)]",
       ].join(" ")}
       style={{ gridTemplateColumns: GRID_TEMPLATE }}
     >
+      <ContextMenu
+        position={position}
+        items={menuItems}
+        onClose={close}
+        ariaLabel={`Actions ${task.projectName || "tâche"}`}
+      />
       <div role="cell" className="flex items-center justify-center px-2">
         <input
           type="checkbox"
@@ -510,6 +588,8 @@ export default function V2ListView(props: V2ListViewProps) {
     onInlineSave,
     onQuickAdd,
     onEditTask,
+    onArchiveTask,
+    onDeleteTask,
   } = props;
 
   const filterTouchedRef = useRef(false);
@@ -726,6 +806,8 @@ export default function V2ListView(props: V2ListViewProps) {
                                 onMoveTask={onMoveTask}
                                 onInlineSave={onInlineSave}
                                 onEditTask={onEditTask}
+                                onArchiveTask={onArchiveTask}
+                                onDeleteTask={onDeleteTask}
                               />
                             ))}
                             {hidden > 0 ? (
