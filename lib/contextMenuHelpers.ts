@@ -24,6 +24,8 @@ export type SalonCardContextActionId =
 
 export type ArchiveContextActionId = "restore" | "copy-title" | "delete";
 
+export type SalonLogoContextActionId = "change" | "reset";
+
 export const TASK_CONTEXT_ACTIONS: readonly TaskContextActionId[] = [
   "open",
   "edit",
@@ -53,6 +55,11 @@ export const ARCHIVE_CONTEXT_ACTIONS: readonly ArchiveContextActionId[] = [
   "restore",
   "copy-title",
   "delete",
+] as const;
+
+export const SALON_LOGO_CONTEXT_ACTIONS: readonly SalonLogoContextActionId[] = [
+  "change",
+  "reset",
 ] as const;
 
 /** Colonnes cibles pour « Déplacer vers », en excluant la colonne courante. */
@@ -92,6 +99,76 @@ export function taskContextActionLabel(id: TaskContextActionId): string {
       return "Déplacer vers";
     case "archive":
       return "Archiver";
+    case "delete":
+      return "Supprimer";
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Libellés FR stables — menu logo salon (smoke TUE-37). */
+export function salonLogoContextActionLabel(id: SalonLogoContextActionId): string {
+  switch (id) {
+    case "change":
+      return "Changer le logo…";
+    case "reset":
+      return "Logo catalogue";
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Libellés FR stables — cartes salon dashboard. */
+export function salonCardContextActionLabel(id: SalonCardContextActionId): string {
+  switch (id) {
+    case "open":
+      return "Ouvrir";
+    case "rename":
+      return "Renommer…";
+    case "copy-name":
+      return "Copier le nom";
+    case "clone":
+      return "Cloner…";
+    case "mark-done":
+      return "Marquer terminé";
+    case "delete":
+      return "Supprimer";
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Libellés FR stables — dossiers board. */
+export function folderContextActionLabel(id: FolderContextActionId): string {
+  switch (id) {
+    case "open-salon":
+      return "Ouvrir le salon";
+    case "toggle-collapse":
+      return "Replier / Déplier";
+    case "copy-name":
+      return "Copier le nom";
+    case "move-all":
+      return "Tout déplacer vers";
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Libellés FR stables — archives. */
+export function archiveContextActionLabel(id: ArchiveContextActionId): string {
+  switch (id) {
+    case "restore":
+      return "Restaurer";
+    case "copy-title":
+      return "Copier le titre";
     case "delete":
       return "Supprimer";
     default: {
