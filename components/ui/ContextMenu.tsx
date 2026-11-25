@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { clampMenuPosition } from "../../lib/contextMenuHelpers";
+import { runContextMenuSelect } from "../../lib/isolateFromParentNav";
 
 export type ContextMenuPosition = { x: number; y: number };
 
@@ -207,10 +208,11 @@ export function ContextMenu(props: {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (disabled) return;
-              // onSelect avant onClose : garde le geste user pour input.click() (file picker).
-              item.onSelect();
-              onClose();
+              runContextMenuSelect({
+                disabled,
+                onSelect: item.onSelect,
+                onClose,
+              });
             }}
           >
             {item.icon ? (

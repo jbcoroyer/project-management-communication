@@ -8,6 +8,7 @@ import {
   matchCatalogFromName,
   type SalonCatalogEntry,
 } from "../../lib/salonCatalog";
+import { isolateFromParentNav } from "../../lib/isolateFromParentNav";
 import { SALON_LOGO_ACCEPT } from "../../lib/salonLogoUpload";
 import { ContextMenu, useContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 
@@ -27,19 +28,6 @@ type Props = {
 
 function resolveEntry(slug?: string | null, name?: string | null): SalonCatalogEntry | undefined {
   return getCatalogEntry(slug) ?? (name ? matchCatalogFromName(name) : undefined);
-}
-
-/** Bloque la navigation du `<Link>` / parent (clic / mousedown / contextmenu). */
-function isolateFromParentNav(e: {
-  button?: number;
-  preventDefault: () => void;
-  stopPropagation: () => void;
-}) {
-  e.stopPropagation();
-  // preventDefault seulement clic primaire — ne pas casser le flux contextmenu.
-  if (e.button == null || e.button === 0) {
-    e.preventDefault();
-  }
 }
 
 /** Logo catalogue (SVG wordmark) ou custom ; fallback coloré si image absente. */

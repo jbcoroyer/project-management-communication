@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   ARCHIVE_CONTEXT_ACTIONS,
+  archiveContextActionLabel,
   clampMenuPosition,
   FOLDER_CONTEXT_ACTIONS,
+  folderContextActionLabel,
   moveTargetColumns,
   SALON_CARD_CONTEXT_ACTIONS,
+  SALON_LOGO_CONTEXT_ACTIONS,
+  salonCardContextActionLabel,
+  salonLogoContextActionLabel,
   TASK_CONTEXT_ACTIONS,
   taskContextActionLabel,
 } from "./contextMenuHelpers";
@@ -57,5 +62,21 @@ describe("contextMenuHelpers", () => {
     expect(
       clampMenuPosition(-40, -10, { width: 400, height: 300 }, { width: 184, height: 220 }),
     ).toEqual({ x: 8, y: 8 });
+  });
+
+  it("couvre le menu logo salon (TUE-37)", () => {
+    expect([...SALON_LOGO_CONTEXT_ACTIONS]).toEqual(["change", "reset"]);
+    expect(salonLogoContextActionLabel("change")).toBe("Changer le logo…");
+    expect(salonLogoContextActionLabel("reset")).toBe("Logo catalogue");
+  });
+
+  it("libellés FR stables cartes salon / dossiers / archives", () => {
+    expect(salonCardContextActionLabel("rename")).toBe("Renommer…");
+    expect(salonCardContextActionLabel("clone")).toBe("Cloner…");
+    expect(salonCardContextActionLabel("mark-done")).toBe("Marquer terminé");
+    expect(folderContextActionLabel("open-salon")).toBe("Ouvrir le salon");
+    expect(folderContextActionLabel("move-all")).toBe("Tout déplacer vers");
+    expect(archiveContextActionLabel("restore")).toBe("Restaurer");
+    expect(archiveContextActionLabel("delete")).toBe("Supprimer");
   });
 });
