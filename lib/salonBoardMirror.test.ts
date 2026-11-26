@@ -1,9 +1,18 @@
+import type { Dispatch, SetStateAction } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   mirrorChecklistDeleteOntoTasks,
   mirrorChecklistItemOntoTasks,
 } from "./salonBoardMirror";
 import type { Task } from "./types";
+
+function asSetTasks(
+  fn: (updater: (prev: Task[]) => Task[]) => void,
+): Dispatch<SetStateAction<Task[]>> {
+  return ((value: SetStateAction<Task[]>) => {
+    if (typeof value === "function") fn(value);
+  }) as Dispatch<SetStateAction<Task[]>>;
+}
 
 function baseTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -31,10 +40,10 @@ function baseTask(overrides: Partial<Task> = {}): Task {
 }
 
 describe("salonBoardMirror", () => {
-  it("met à jour assignee / label / deadline / done sur la tâche liée", () => {
-    const setTasks = vi.fn((updater: (prev: Task[]) => Task[]) => {
+  it("met à jour multi-admins / label / deadline / done sur la tâche liée", () => {
+    const setTasks = asSetTasks((updater) => {
       const next = updater([baseTask(), baseTask({ id: "other" })]);
-      expect(next[0]?.admins).toEqual(["Alexandre Allorent"]);
+      expect(next[0]?.admins).toEqual(["Alexandre Allorent", "Jean-Baptiste COROYER"]);
       expect(next[0]?.projectName).toBe("Artwork / visuels");
       expect(next[0]?.deadline).toBe("2026-12-17");
       expect(next[0]?.column).toBe("Terminé");
@@ -45,29 +54,29 @@ describe("salonBoardMirror", () => {
       label: "Artwork / visuels",
       dueDate: "2026-12-17",
       done: true,
-      assignee: "Alexandre Allorent",
+      assignees: ["Alexandre Allorent", "Jean-Baptiste COROYER"],
     });
-    expect(setTasks).toHaveBeenCalledOnce();
   });
 
   it("no-op sans taskId", () => {
-    const setTasks = vi.fn();
-    mirrorChecklistItemOntoTasks(setTasks, {
+    const spy = vi.fn();
+    mirrorChecklistItemOntoTasks(asSetTasks(spy), {
       taskId: null,
       label: "x",
       dueDate: null,
       done: false,
-      assignee: "Alexandre Allorent",
+      assignees: ["Alexandre Allorent"],
     });
-    expect(setTasks).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("archive la tâche liée à la suppression", () => {
-    const setTasks = vi.fn((updater: (prev: Task[]) => Task[]) => {
-      const next = updater([baseTask()]);
-      expect(next[0]?.isArchived).toBe(true);
-    });
-    mirrorChecklistDeleteOntoTasks(setTasks, "task-1");
-    expect(setTasks).toHaveBeenCalledOnce();
+    mirrorChecklistDeleteOntoTasks(
+      asSetTasks((updater) => {
+        const next = updater([baseTask()]);
+        expect(next[0]?.isArchived).toBe(true);
+      }),
+      "task-1",
+    );
   });
 });

@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { TuesdayLoader } from "@/components/brand";
+import AssigneesPicker from "../AssigneesPicker";
 import { useConfirm } from "../ui/ConfirmDialog";
 import SalonLogo from "./SalonLogo";
 import { useSalonDetail, useSalons } from "../../lib/useSalons";
@@ -67,12 +68,15 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
   } = useSalonDetail(salonId);
   const { admins } = useReferenceData();
   const teamNames = useMemo(() => admins.map((a) => a.name).filter(Boolean), [admins]);
-  const defaultAssignee = creatorName || teamNames[0] || "";
+  const defaultAssignees = useMemo(() => {
+    const name = creatorName || teamNames[0] || "";
+    return name ? [name] : [];
+  }, [creatorName, teamNames]);
 
   const [tab, setTab] = useState<Tab>("checklist");
   const [newCheckLabel, setNewCheckLabel] = useState("");
   const [newCheckDue, setNewCheckDue] = useState("");
-  const [newCheckAssignee, setNewCheckAssignee] = useState("");
+  const [newCheckAssignees, setNewCheckAssignees] = useState<string[]>([]);
   const [draftLabels, setDraftLabels] = useState<Record<string, string>>({});
   const [docTitle, setDocTitle] = useState("");
   const [docDescription, setDocDescription] = useState("");
@@ -296,11 +300,8 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
         <section id="checklist" className="space-y-3">
           <ul className="space-y-2">
             {checklist.map((item) => {
-              const assigneeValue = item.assignee || defaultAssignee;
-              const assigneeOptions =
-                assigneeValue && !teamNames.includes(assigneeValue)
-                  ? [assigneeValue, ...teamNames]
-                  : teamNames;
+              const assignees =
+                item.assignees.length > 0 ? item.assignees : defaultAssignees;
               return (
                 <li
                   key={item.id}
@@ -338,28 +339,16 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
                     }}
                     aria-label="Libellé de la tâche"
                   />
-                  <select
-                    className="ui-input max-w-[11rem] text-xs"
-                    value={assigneeValue}
-                    onChange={(e) =>
-                      void patchChecklist(item.id, {
-                        assignee: e.target.value || null,
-                      }).catch((err) =>
+                  <AssigneesPicker
+                    value={assignees}
+                    options={teamNames}
+                    aria-label="Responsables"
+                    onChange={(next) =>
+                      void patchChecklist(item.id, { assignees: next }).catch((err) =>
                         toastError(err instanceof Error ? err.message : "Erreur"),
                       )
                     }
-                    aria-label="Responsable"
-                  >
-                    {assigneeOptions.length === 0 ? (
-                      <option value="">Équipe</option>
-                    ) : (
-                      assigneeOptions.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  />
                   <input
                     type="date"
                     className="ui-input text-xs"
@@ -398,16 +387,17 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
             })}
           </ul>
           <form
-            className="flex flex-wrap gap-2"
+            className="flex flex-wrap items-center gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               if (!newCheckLabel.trim()) return;
-              const assignee = newCheckAssignee || defaultAssignee || null;
-              void createChecklist(newCheckLabel, newCheckDue || null, assignee)
+              const assignees =
+                newCheckAssignees.length > 0 ? newCheckAssignees : defaultAssignees;
+              void createChecklist(newCheckLabel, newCheckDue || null, assignees)
                 .then(() => {
                   setNewCheckLabel("");
                   setNewCheckDue("");
-                  setNewCheckAssignee("");
+                  setNewCheckAssignees([]);
                   toastSuccess("Case ajoutée");
                 })
                 .catch((err) => toastError(err instanceof Error ? err.message : "Erreur"));
@@ -419,24 +409,12 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
               value={newCheckLabel}
               onChange={(e) => setNewCheckLabel(e.target.value)}
             />
-            <select
-              className="ui-input max-w-[11rem] text-xs"
-              value={newCheckAssignee || defaultAssignee}
-              onChange={(e) => setNewCheckAssignee(e.target.value)}
-              aria-label="Responsable"
-            >
-              {(defaultAssignee && !teamNames.includes(defaultAssignee)
-                ? [defaultAssignee, ...teamNames]
-                : teamNames
-              ).map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-              {teamNames.length === 0 && !defaultAssignee ? (
-                <option value="">Équipe</option>
-              ) : null}
-            </select>
+            <AssigneesPicker
+              value={newCheckAssignees.length > 0 ? newCheckAssignees : defaultAssignees}
+              options={teamNames}
+              aria-label="Responsables de la nouvelle case"
+              onChange={setNewCheckAssignees}
+            />
             <input
               type="date"
               className="ui-input text-xs"

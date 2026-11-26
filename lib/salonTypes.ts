@@ -54,8 +54,12 @@ export type SalonChecklistItem = {
   documentId: string | null;
   /** Tâche miroir sur le tableau / agenda (même échéance). */
   taskId: string | null;
-  /** Responsable (display_name team_members). Défaut = créateur du salon. */
-  assignee: string | null;
+  /**
+   * Responsables (display_name team_members), multi.
+   * Persistés en CSV dans `salon_checklist_items.assignee` (comme `tasks.admin`).
+   * Défaut = créateur du salon.
+   */
+  assignees: string[];
 };
 
 export type SalonDocument = {
