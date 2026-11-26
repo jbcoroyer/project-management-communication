@@ -10,6 +10,7 @@ import type {
   SalonMode,
   SalonStatus,
 } from "./salonTypes";
+import { SALON_MODE_LABELS } from "./salonTypes";
 import {
   checklistTemplateForMode,
   contactsTemplateForMode,
@@ -436,7 +437,17 @@ export async function updateSalon(
   if (patch.logoUrl !== undefined) row.logo_url = patch.logoUrl;
   const { data, error } = await supabase.from("salons").update(row).eq("id", salonId).select("*").single();
   if (error || !data) throw error ?? new Error("Mise à jour impossible");
-  return mapSalon(data as SalonRow);
+  const salon = mapSalon(data as SalonRow);
+  // Garder les cartes board alignées sur le type affiché (Salon · …).
+  if (patch.mode != null) {
+    const { error: taskErr } = await supabase
+      .from("tasks")
+      .update({ event_category: `Salon · ${SALON_MODE_LABELS[patch.mode]}` })
+      .eq("salon_id", salonId)
+      .eq("is_archived", false);
+    if (taskErr) console.error("salon mode→tasks", taskErr);
+  }
+  return salon;
 }
 
 export async function deleteSalon(supabase: SupabaseClient, salonId: string): Promise<void> {

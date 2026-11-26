@@ -26,6 +26,7 @@ import {
   docCategoriesForMode,
   type SalonDocCategory,
   type SalonDocKind,
+  type SalonMode,
   type SalonStatus,
 } from "../../lib/salonTypes";
 import { SALON_DOC_ACCEPT, salonDocFileError } from "../../lib/salonDocumentUpload";
@@ -196,12 +197,26 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
               {salon.surfaceM2 != null ? ` · ${salon.surfaceM2} m²` : ""}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold">
-                {SALON_MODE_LABELS[salon.mode]}
-              </span>
+              <select
+                className="ui-input text-xs"
+                value={salon.mode}
+                aria-label="Type de salon"
+                onChange={(e) =>
+                  void patchSalon({ mode: e.target.value as SalonMode }).catch((err) =>
+                    toastError(err instanceof Error ? err.message : "Type impossible à mettre à jour"),
+                  )
+                }
+              >
+                {(Object.keys(SALON_MODE_LABELS) as SalonMode[]).map((m) => (
+                  <option key={m} value={m}>
+                    {SALON_MODE_LABELS[m]}
+                  </option>
+                ))}
+              </select>
               <select
                 className="ui-input text-xs"
                 value={salon.status}
+                aria-label="Statut du salon"
                 onChange={(e) => void patchSalon({ status: e.target.value as SalonStatus })}
               >
                 {(Object.keys(SALON_STATUS_LABELS) as SalonStatus[]).map((st) => (
