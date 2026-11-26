@@ -20,6 +20,7 @@ import {
   cloneSalon,
   createSalon,
   deleteBudgetLine,
+  deleteChecklistItem,
   deleteDocument,
   deleteSalon,
   fetchBudgetLines,
@@ -27,6 +28,7 @@ import {
   fetchContacts,
   fetchDocuments,
   fetchSalons,
+  resolveSalonCreatorName,
   updateBudgetLine,
   updateChecklistItem,
   updateSalon,
@@ -188,6 +190,7 @@ export function useSalonDetail(salonId: string | null) {
   const [documents, setDocuments] = useState<SalonDocument[]>([]);
   const [contacts, setContacts] = useState<SalonContact[]>([]);
   const [budgetLines, setBudgetLines] = useState<SalonBudgetLine[]>([]);
+  const [creatorName, setCreatorName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
@@ -197,6 +200,7 @@ export function useSalonDetail(salonId: string | null) {
       setDocuments([]);
       setContacts([]);
       setBudgetLines([]);
+      setCreatorName(null);
       setLoading(false);
       return;
     }
@@ -208,18 +212,21 @@ export function useSalonDetail(salonId: string | null) {
         fetchContacts(supabase, workspaceId, salonId),
         fetchBudgetLines(supabase, workspaceId, salonId),
       ]);
-      setSalon(sList.find((x) => x.id === salonId) ?? null);
+      const found = sList.find((x) => x.id === salonId) ?? null;
+      setSalon(found);
       setChecklist(c);
       setDocuments(d);
       setContacts(k);
       setBudgetLines(b);
+      const creator = await resolveSalonCreatorName(supabase, found?.createdBy);
+      setCreatorName(creator || adminName || null);
     } catch (err) {
       console.error(err);
       toastError("Chargement fiche salon impossible", { id: "salon-detail-load" });
     } finally {
       setLoading(false);
     }
-  }, [salonId, supabase, workspaceId]);
+  }, [adminName, salonId, supabase, workspaceId]);
 
   useEffect(() => {
     setLoading(true);
@@ -236,8 +243,9 @@ export function useSalonDetail(salonId: string | null) {
   );
 
   const createChecklist = useCallback(
-    async (label: string, dueDate: string | null) => {
+    async (label: string, dueDate: string | null, assignee?: string | null) => {
       if (!workspaceId || !salonId || !salon) return null;
+      const defaultAssignee = assignee?.trim() || creatorName || adminName || null;
       const item = await addChecklistItem(
         supabase,
         workspaceId,
@@ -249,6 +257,7 @@ export function useSalonDetail(salonId: string | null) {
           salonName: salon.name,
           mode: salon.mode,
           adminName,
+          assignee: defaultAssignee,
           endDate: salon.endDate,
           status: salon.status,
         },
@@ -256,7 +265,15 @@ export function useSalonDetail(salonId: string | null) {
       setChecklist((prev) => [...prev, item]);
       return item;
     },
-    [adminName, checklist.length, salon, salonId, supabase, workspaceId],
+    [adminName, checklist.length, creatorName, salon, salonId, supabase, workspaceId],
+  );
+
+  const removeChecklist = useCallback(
+    async (id: string) => {
+      await deleteChecklistItem(supabase, id);
+      setChecklist((prev) => prev.filter((c) => c.id !== id));
+    },
+    [supabase],
   );
 
   const createDoc = useCallback(
@@ -338,11 +355,13 @@ export function useSalonDetail(salonId: string | null) {
     documents,
     contacts,
     budgetLines,
+    creatorName,
     loading,
     reload,
     patchSalon,
     patchChecklist,
     createChecklist,
+    removeChecklist,
     createDoc,
     removeDoc,
     createContact,

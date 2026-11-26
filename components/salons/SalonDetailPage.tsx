@@ -17,6 +17,7 @@ import { useConfirm } from "../ui/ConfirmDialog";
 import SalonLogo from "./SalonLogo";
 import { useSalonDetail, useSalons } from "../../lib/useSalons";
 import { checklistProgress } from "../../lib/salonData";
+import { useReferenceData } from "../../lib/referenceDataContext";
 import {
   SALON_DOC_CATEGORY_LABELS,
   SALON_DOC_KIND_LABELS,
@@ -50,10 +51,12 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
     documents,
     contacts,
     budgetLines,
+    creatorName,
     loading,
     patchSalon,
     patchChecklist,
     createChecklist,
+    removeChecklist,
     createDoc,
     removeDoc,
     createContact,
@@ -61,10 +64,15 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
     patchBudget,
     removeBudget,
   } = useSalonDetail(salonId);
+  const { admins } = useReferenceData();
+  const teamNames = useMemo(() => admins.map((a) => a.name).filter(Boolean), [admins]);
+  const defaultAssignee = creatorName || teamNames[0] || "";
 
   const [tab, setTab] = useState<Tab>("checklist");
   const [newCheckLabel, setNewCheckLabel] = useState("");
   const [newCheckDue, setNewCheckDue] = useState("");
+  const [newCheckAssignee, setNewCheckAssignee] = useState("");
+  const [draftLabels, setDraftLabels] = useState<Record<string, string>>({});
   const [docTitle, setDocTitle] = useState("");
   const [docDescription, setDocDescription] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -272,44 +280,119 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
       {tab === "checklist" && (
         <section id="checklist" className="space-y-3">
           <ul className="space-y-2">
-            {checklist.map((item) => (
-              <li
-                key={item.id}
-                className="ui-surface flex flex-wrap items-center gap-3 rounded-xl px-3 py-2"
-              >
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={(e) =>
-                    void patchChecklist(item.id, { done: e.target.checked }).catch((err) =>
-                      toastError(err instanceof Error ? err.message : "Erreur"),
-                    )
-                  }
-                  aria-label={item.label}
-                />
-                <span className={`flex-1 text-sm ${item.done ? "line-through opacity-50" : ""}`}>
-                  {item.label}
-                </span>
-                <input
-                  type="date"
-                  className="ui-input text-xs"
-                  value={item.dueDate ?? ""}
-                  onChange={(e) =>
-                    void patchChecklist(item.id, { dueDate: e.target.value || null })
-                  }
-                />
-              </li>
-            ))}
+            {checklist.map((item) => {
+              const assigneeValue = item.assignee || defaultAssignee;
+              const assigneeOptions =
+                assigneeValue && !teamNames.includes(assigneeValue)
+                  ? [assigneeValue, ...teamNames]
+                  : teamNames;
+              return (
+                <li
+                  key={item.id}
+                  className="ui-surface flex flex-wrap items-center gap-2 rounded-xl px-3 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.done}
+                    onChange={(e) =>
+                      void patchChecklist(item.id, { done: e.target.checked }).catch((err) =>
+                        toastError(err instanceof Error ? err.message : "Erreur"),
+                      )
+                    }
+                    aria-label={item.label}
+                  />
+                  <input
+                    className={`ui-input min-w-[10rem] flex-1 text-sm ${
+                      item.done ? "line-through opacity-50" : ""
+                    }`}
+                    value={draftLabels[item.id] ?? item.label}
+                    onChange={(e) =>
+                      setDraftLabels((prev) => ({ ...prev, [item.id]: e.target.value }))
+                    }
+                    onBlur={(e) => {
+                      const label = e.target.value.trim();
+                      setDraftLabels((prev) => {
+                        const next = { ...prev };
+                        delete next[item.id];
+                        return next;
+                      });
+                      if (!label || label === item.label) return;
+                      void patchChecklist(item.id, { label }).catch((err) =>
+                        toastError(err instanceof Error ? err.message : "Erreur"),
+                      );
+                    }}
+                    aria-label="Libellé de la tâche"
+                  />
+                  <select
+                    className="ui-input max-w-[11rem] text-xs"
+                    value={assigneeValue}
+                    onChange={(e) =>
+                      void patchChecklist(item.id, {
+                        assignee: e.target.value || null,
+                      }).catch((err) =>
+                        toastError(err instanceof Error ? err.message : "Erreur"),
+                      )
+                    }
+                    aria-label="Responsable"
+                  >
+                    {assigneeOptions.length === 0 ? (
+                      <option value="">Équipe</option>
+                    ) : (
+                      assigneeOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <input
+                    type="date"
+                    className="ui-input text-xs"
+                    value={item.dueDate ?? ""}
+                    onChange={(e) =>
+                      void patchChecklist(item.id, { dueDate: e.target.value || null })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="rounded-lg p-1.5 text-[color:var(--foreground)]/45 hover:bg-red-500/10 hover:text-red-600"
+                    title="Supprimer"
+                    aria-label={`Supprimer « ${item.label} »`}
+                    onClick={() =>
+                      void (async () => {
+                        const ok = await confirm({
+                          title: "Supprimer cette tâche ?",
+                          description: `« ${item.label} » sera retirée de la checklist.`,
+                          confirmLabel: "Supprimer",
+                          variant: "destructive",
+                        });
+                        if (!ok) return;
+                        try {
+                          await removeChecklist(item.id);
+                          toastSuccess("Tâche supprimée");
+                        } catch (err) {
+                          toastError(err instanceof Error ? err.message : "Erreur");
+                        }
+                      })()
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
           <form
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               if (!newCheckLabel.trim()) return;
-              void createChecklist(newCheckLabel, newCheckDue || null)
+              const assignee = newCheckAssignee || defaultAssignee || null;
+              void createChecklist(newCheckLabel, newCheckDue || null, assignee)
                 .then(() => {
                   setNewCheckLabel("");
                   setNewCheckDue("");
+                  setNewCheckAssignee("");
                   toastSuccess("Case ajoutée");
                 })
                 .catch((err) => toastError(err instanceof Error ? err.message : "Erreur"));
@@ -321,6 +404,24 @@ export default function SalonDetailPage({ salonId }: { salonId: string }) {
               value={newCheckLabel}
               onChange={(e) => setNewCheckLabel(e.target.value)}
             />
+            <select
+              className="ui-input max-w-[11rem] text-xs"
+              value={newCheckAssignee || defaultAssignee}
+              onChange={(e) => setNewCheckAssignee(e.target.value)}
+              aria-label="Responsable"
+            >
+              {(defaultAssignee && !teamNames.includes(defaultAssignee)
+                ? [defaultAssignee, ...teamNames]
+                : teamNames
+              ).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+              {teamNames.length === 0 && !defaultAssignee ? (
+                <option value="">Équipe</option>
+              ) : null}
+            </select>
             <input
               type="date"
               className="ui-input text-xs"

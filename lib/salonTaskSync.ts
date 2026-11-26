@@ -29,7 +29,13 @@ export async function syncChecklistItemsToBoard(params: {
   salonId: string;
   salonName: string;
   mode: SalonMode;
-  items: Array<{ id: string; label: string; dueDate: string | null; done: boolean }>;
+  items: Array<{
+    id: string;
+    label: string;
+    dueDate: string | null;
+    done: boolean;
+    assignee?: string | null;
+  }>;
   adminName: string;
   /** Si fourni et passé / statut terminé → no-op (évite de re-polluer le board). */
   endDate?: string | null;
@@ -39,10 +45,11 @@ export async function syncChecklistItemsToBoard(params: {
     return;
   }
   const boardId = await defaultBoardId(params.supabase, params.organizationId);
-  const admin = params.adminName.trim();
+  const fallbackAdmin = params.adminName.trim();
 
   for (const item of params.items) {
     const column = item.done ? COLUMN_DONE : COLUMN_TODO;
+    const admin = item.assignee?.trim() || fallbackAdmin;
     const row: Record<string, unknown> = {
       organization_id: params.organizationId,
       project_name: item.label,
@@ -88,7 +95,9 @@ export async function syncChecklistItemsToBoard(params: {
 
 export async function syncChecklistPatchToTask(
   supabase: SupabaseClient,
-  item: Pick<SalonChecklistItem, "taskId" | "done" | "dueDate" | "label">,
+  item: Pick<SalonChecklistItem, "taskId" | "done" | "dueDate" | "label"> & {
+    assignee?: string | null;
+  },
 ): Promise<void> {
   if (!item.taskId) return;
   const patch: Record<string, unknown> = {};
@@ -97,6 +106,11 @@ export async function syncChecklistPatchToTask(
   if (item.done != null) {
     patch.column_id = item.done ? COLUMN_DONE : COLUMN_TODO;
     patch.completed_at = item.done ? new Date().toISOString() : null;
+  }
+  if (item.assignee !== undefined) {
+    const admin = item.assignee?.trim() || "Équipe";
+    patch.admin = admin;
+    patch.lane = admin;
   }
   if (Object.keys(patch).length === 0) return;
   await supabase.from("tasks").update(patch).eq("id", item.taskId);
