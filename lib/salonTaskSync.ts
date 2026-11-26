@@ -113,7 +113,11 @@ export async function syncChecklistPatchToTask(
     patch.lane = admin;
   }
   if (Object.keys(patch).length === 0) return;
-  await supabase.from("tasks").update(patch).eq("id", item.taskId);
+  const { error } = await supabase.from("tasks").update(patch).eq("id", item.taskId);
+  if (error) {
+    console.error("salon→task patch", error);
+    throw error;
+  }
 }
 
 /** Relie les cases sans `task_id` aux tableaux (salons déjà créés). */

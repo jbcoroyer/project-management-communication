@@ -34,10 +34,17 @@ import {
   updateSalon,
   type CreateSalonInput,
 } from "./salonData";
+import {
+  mirrorChecklistDeleteOntoTasks,
+  mirrorChecklistItemOntoTasks,
+} from "./salonBoardMirror";
+import { useTasks } from "./tasksContext";
+
 export function useSalons() {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
   const { user } = useCurrentUser();
+  const { setTasks } = useTasks();
   const [salons, setSalons] = useState<Salon[]>([]);
   const [checklist, setChecklist] = useState<SalonChecklistItem[]>([]);
   const [budgetLines, setBudgetLines] = useState<SalonBudgetLine[]>([]);
@@ -154,13 +161,14 @@ export function useSalons() {
       try {
         const updated = await updateChecklistItem(supabase, id, { done });
         setChecklist((prev) => prev.map((c) => (c.id === id ? updated : c)));
+        mirrorChecklistItemOntoTasks(setTasks, updated);
         return updated;
       } catch (err) {
         toastError(err instanceof Error ? err.message : "Checklist impossible");
         return null;
       }
     },
-    [supabase],
+    [setTasks, supabase],
   );
 
   return {
@@ -184,6 +192,7 @@ export function useSalonDetail(salonId: string | null) {
   const supabase = getSupabaseBrowser();
   const { workspaceId } = useWorkspace();
   const { user } = useCurrentUser();
+  const { setTasks, loadTasks } = useTasks();
   const adminName = user?.teamMemberName ?? user?.displayName ?? user?.email ?? "";
   const [salon, setSalon] = useState<Salon | null>(null);
   const [checklist, setChecklist] = useState<SalonChecklistItem[]>([]);
@@ -237,9 +246,10 @@ export function useSalonDetail(salonId: string | null) {
     async (id: string, patch: Parameters<typeof updateChecklistItem>[2]) => {
       const updated = await updateChecklistItem(supabase, id, patch);
       setChecklist((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      mirrorChecklistItemOntoTasks(setTasks, updated);
       return updated;
     },
-    [supabase],
+    [setTasks, supabase],
   );
 
   const createChecklist = useCallback(
@@ -263,17 +273,32 @@ export function useSalonDetail(salonId: string | null) {
         },
       );
       setChecklist((prev) => [...prev, item]);
+      // Nouvelle tâche board créée côté sync — recharger pour l’afficher tout de suite.
+      if (item.taskId) {
+        void loadTasks().catch(() => {});
+      }
       return item;
     },
-    [adminName, checklist.length, creatorName, salon, salonId, supabase, workspaceId],
+    [
+      adminName,
+      checklist.length,
+      creatorName,
+      loadTasks,
+      salon,
+      salonId,
+      supabase,
+      workspaceId,
+    ],
   );
 
   const removeChecklist = useCallback(
     async (id: string) => {
+      const linked = checklist.find((c) => c.id === id);
       await deleteChecklistItem(supabase, id);
       setChecklist((prev) => prev.filter((c) => c.id !== id));
+      mirrorChecklistDeleteOntoTasks(setTasks, linked?.taskId);
     },
-    [supabase],
+    [checklist, setTasks, supabase],
   );
 
   const createDoc = useCallback(
