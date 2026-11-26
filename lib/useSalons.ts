@@ -253,9 +253,14 @@ export function useSalonDetail(salonId: string | null) {
   );
 
   const createChecklist = useCallback(
-    async (label: string, dueDate: string | null, assignee?: string | null) => {
+    async (label: string, dueDate: string | null, assignees?: string[]) => {
       if (!workspaceId || !salonId || !salon) return null;
-      const defaultAssignee = assignee?.trim() || creatorName || adminName || null;
+      const resolved =
+        assignees?.length
+          ? assignees
+          : creatorName || adminName
+            ? [creatorName || adminName]
+            : [];
       const item = await addChecklistItem(
         supabase,
         workspaceId,
@@ -267,7 +272,7 @@ export function useSalonDetail(salonId: string | null) {
           salonName: salon.name,
           mode: salon.mode,
           adminName,
-          assignee: defaultAssignee,
+          assignees: resolved,
           endDate: salon.endDate,
           status: salon.status,
         },

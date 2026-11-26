@@ -11,6 +11,7 @@ import type {
   SalonStatus,
 } from "./salonTypes";
 import { SALON_MODE_LABELS } from "./salonTypes";
+import { formatAssignees, parseAssignees } from "./salonAssignees";
 import {
   checklistTemplateForMode,
   contactsTemplateForMode,
@@ -135,7 +136,7 @@ function mapChecklist(row: ChecklistRow): SalonChecklistItem {
     sortOrder: row.sort_order,
     documentId: row.document_id,
     taskId: row.task_id ?? null,
-    assignee: row.assignee?.trim() || null,
+    assignees: parseAssignees(row.assignee),
   };
 }
 
@@ -398,7 +399,7 @@ export async function createSalon(
         label: c.label,
         dueDate: c.dueDate,
         done: c.done,
-        assignee: c.assignee,
+        assignees: c.assignees,
       })),
       adminName: input.adminName ?? "",
     });
@@ -482,15 +483,15 @@ export async function updateChecklistItem(
     done: boolean;
     dueDate: string | null;
     label: string;
-    assignee: string | null;
+    assignees: string[];
   }>,
 ): Promise<SalonChecklistItem> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.done != null) row.done = patch.done;
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
   if (patch.label != null) row.label = patch.label;
-  if (patch.assignee !== undefined) {
-    row.assignee = patch.assignee?.trim() || null;
+  if (patch.assignees !== undefined) {
+    row.assignee = formatAssignees(patch.assignees);
   }
   const { data, error } = await supabase
     .from("salon_checklist_items")
@@ -505,7 +506,7 @@ export async function updateChecklistItem(
     done: patch.done ?? item.done,
     dueDate: patch.dueDate !== undefined ? patch.dueDate : item.dueDate,
     label: patch.label ?? item.label,
-    assignee: patch.assignee !== undefined ? item.assignee : undefined,
+    assignees: patch.assignees !== undefined ? item.assignees : undefined,
   });
   return item;
 }
@@ -521,12 +522,17 @@ export async function addChecklistItem(
     salonName?: string;
     mode?: SalonMode;
     adminName?: string;
+    assignees?: string[];
+    /** @deprecated préférer `assignees` */
     assignee?: string | null;
     endDate?: string | null;
     status?: SalonStatus | null;
   },
 ): Promise<SalonChecklistItem> {
-  const assignee = (opts?.assignee ?? opts?.adminName)?.trim() || null;
+  const assignees =
+    opts?.assignees ??
+    parseAssignees(opts?.assignee ?? opts?.adminName ?? null);
+  const assigneeCsv = formatAssignees(assignees);
   const { data, error } = await supabase
     .from("salon_checklist_items")
     .insert({
@@ -536,7 +542,7 @@ export async function addChecklistItem(
       due_date: dueDate,
       done: false,
       sort_order: sortOrder,
-      assignee,
+      assignee: assigneeCsv,
     })
     .select("*")
     .single();
@@ -556,7 +562,7 @@ export async function addChecklistItem(
       checklistItemId: item.id,
       label: item.label,
       dueDate: item.dueDate,
-      adminName: item.assignee || opts.adminName || "",
+      adminName: formatAssignees(item.assignees) || opts.adminName || "",
     });
     if (taskId) return { ...item, taskId };
   }

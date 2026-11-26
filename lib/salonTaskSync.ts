@@ -34,6 +34,8 @@ export async function syncChecklistItemsToBoard(params: {
     label: string;
     dueDate: string | null;
     done: boolean;
+    assignees?: string[];
+    /** @deprecated */
     assignee?: string | null;
   }>;
   adminName: string;
@@ -49,7 +51,16 @@ export async function syncChecklistItemsToBoard(params: {
 
   for (const item of params.items) {
     const column = item.done ? COLUMN_DONE : COLUMN_TODO;
-    const admin = item.assignee?.trim() || fallbackAdmin;
+    const names =
+      item.assignees?.length
+        ? item.assignees
+        : item.assignee?.trim()
+          ? [item.assignee.trim()]
+          : fallbackAdmin
+            ? [fallbackAdmin]
+            : [];
+    const adminCsv = names.map((n) => n.trim()).filter(Boolean).join(", ") || "Équipe";
+    const lane = names.map((n) => n.trim()).find(Boolean) || "Équipe";
     const row: Record<string, unknown> = {
       organization_id: params.organizationId,
       project_name: item.label,
@@ -57,8 +68,8 @@ export async function syncChecklistItemsToBoard(params: {
       salon_id: params.salonId,
       company: defaultCompanies[0],
       domain: SALON_DOMAIN,
-      admin: admin || "Équipe",
-      lane: admin || "Équipe",
+      admin: adminCsv,
+      lane,
       is_client_request: false,
       client_name: "",
       deadline: item.dueDate,
@@ -96,7 +107,7 @@ export async function syncChecklistItemsToBoard(params: {
 export async function syncChecklistPatchToTask(
   supabase: SupabaseClient,
   item: Pick<SalonChecklistItem, "taskId" | "done" | "dueDate" | "label"> & {
-    assignee?: string | null;
+    assignees?: string[];
   },
 ): Promise<void> {
   if (!item.taskId) return;
@@ -107,10 +118,11 @@ export async function syncChecklistPatchToTask(
     patch.column_id = item.done ? COLUMN_DONE : COLUMN_TODO;
     patch.completed_at = item.done ? new Date().toISOString() : null;
   }
-  if (item.assignee !== undefined) {
-    const admin = item.assignee?.trim() || "Équipe";
-    patch.admin = admin;
-    patch.lane = admin;
+  if (item.assignees !== undefined) {
+    const names = item.assignees.map((n) => n.trim()).filter(Boolean);
+    const adminCsv = names.join(", ") || "Équipe";
+    patch.admin = adminCsv;
+    patch.lane = names[0] || "Équipe";
   }
   if (Object.keys(patch).length === 0) return;
   const { error } = await supabase.from("tasks").update(patch).eq("id", item.taskId);
@@ -184,7 +196,12 @@ export async function createTaskForChecklistItem(params: {
   adminName: string;
 }): Promise<string | null> {
   const boardId = await defaultBoardId(params.supabase, params.organizationId);
-  const admin = params.adminName.trim() || "Équipe";
+  const names = params.adminName
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean);
+  const admin = names.join(", ") || "Équipe";
+  const lane = names[0] || "Équipe";
   const { data: task, error } = await params.supabase
     .from("tasks")
     .insert({
@@ -195,7 +212,7 @@ export async function createTaskForChecklistItem(params: {
       company: defaultCompanies[0],
       domain: SALON_DOMAIN,
       admin,
-      lane: admin,
+      lane,
       is_client_request: false,
       client_name: "",
       deadline: params.dueDate,
