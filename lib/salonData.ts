@@ -43,6 +43,7 @@ type SalonRow = {
   notes: string;
   catalog_slug?: string | null;
   logo_url?: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -57,6 +58,7 @@ type ChecklistRow = {
   sort_order: number;
   document_id: string | null;
   task_id?: string | null;
+  assignee?: string | null;
 };
 
 type DocRow = {
@@ -115,6 +117,7 @@ export function mapSalon(row: SalonRow): Salon {
     notes: row.notes ?? "",
     catalogSlug: row.catalog_slug ?? matchCatalogFromName(row.name)?.slug ?? null,
     logoUrl: row.logo_url ?? null,
+    createdBy: row.created_by ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -131,7 +134,25 @@ function mapChecklist(row: ChecklistRow): SalonChecklistItem {
     sortOrder: row.sort_order,
     documentId: row.document_id,
     taskId: row.task_id ?? null,
+    assignee: row.assignee?.trim() || null,
   };
+}
+
+/** Nom d’équipe du créateur du salon (profiles → team_members), sinon null. */
+export async function resolveSalonCreatorName(
+  supabase: SupabaseClient,
+  createdBy: string | null | undefined,
+): Promise<string | null> {
+  if (!createdBy) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("display_name, team_members(display_name)")
+    .eq("id", createdBy)
+    .maybeSingle();
+  if (error || !data) return null;
+  const member = data.team_members as { display_name?: string | null } | null;
+  const name = member?.display_name?.trim() || data.display_name?.trim() || null;
+  return name || null;
 }
 
 function mapDoc(row: DocRow, signedUrl?: string | null): SalonDocument {
@@ -277,7 +298,9 @@ async function insertTemplateRows(
   salonId: string,
   mode: SalonMode,
   startDate: string,
+  assignee?: string | null,
 ) {
+  const defaultAssignee = assignee?.trim() || null;
   const checklist = checklistTemplateForMode(mode).map((item, i) => ({
     organization_id: organizationId,
     salon_id: salonId,
@@ -285,6 +308,7 @@ async function insertTemplateRows(
     due_date: dateFromDaysBeforeStart(startDate, item.daysBeforeStart),
     done: false,
     sort_order: i,
+    assignee: defaultAssignee,
   }));
   const contacts = contactsTemplateForMode(mode).map((c, i) => ({
     organization_id: organizationId,
@@ -349,7 +373,15 @@ export async function createSalon(
     .single();
   if (error || !data) throw error ?? new Error("Création salon impossible");
   const salon = mapSalon(data as SalonRow);
-  await insertTemplateRows(supabase, organizationId, salon.id, salon.mode, salon.startDate);
+  const creatorAssignee = input.adminName?.trim() || null;
+  await insertTemplateRows(
+    supabase,
+    organizationId,
+    salon.id,
+    salon.mode,
+    salon.startDate,
+    creatorAssignee,
+  );
   if (input.syncToBoard !== false) {
     const checklist = await fetchChecklist(supabase, organizationId, salon.id);
     await syncChecklistItemsToBoard({
@@ -365,6 +397,7 @@ export async function createSalon(
         label: c.label,
         dueDate: c.dueDate,
         done: c.done,
+        assignee: c.assignee,
       })),
       adminName: input.adminName ?? "",
     });
@@ -434,12 +467,20 @@ export async function cloneSalon(
 export async function updateChecklistItem(
   supabase: SupabaseClient,
   id: string,
-  patch: Partial<{ done: boolean; dueDate: string | null; label: string }>,
+  patch: Partial<{
+    done: boolean;
+    dueDate: string | null;
+    label: string;
+    assignee: string | null;
+  }>,
 ): Promise<SalonChecklistItem> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.done != null) row.done = patch.done;
   if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
   if (patch.label != null) row.label = patch.label;
+  if (patch.assignee !== undefined) {
+    row.assignee = patch.assignee?.trim() || null;
+  }
   const { data, error } = await supabase
     .from("salon_checklist_items")
     .update(row)
@@ -453,6 +494,7 @@ export async function updateChecklistItem(
     done: patch.done ?? item.done,
     dueDate: patch.dueDate !== undefined ? patch.dueDate : item.dueDate,
     label: patch.label ?? item.label,
+    assignee: patch.assignee !== undefined ? item.assignee : undefined,
   });
   return item;
 }
@@ -468,10 +510,12 @@ export async function addChecklistItem(
     salonName?: string;
     mode?: SalonMode;
     adminName?: string;
+    assignee?: string | null;
     endDate?: string | null;
     status?: SalonStatus | null;
   },
 ): Promise<SalonChecklistItem> {
+  const assignee = (opts?.assignee ?? opts?.adminName)?.trim() || null;
   const { data, error } = await supabase
     .from("salon_checklist_items")
     .insert({
@@ -481,6 +525,7 @@ export async function addChecklistItem(
       due_date: dueDate,
       done: false,
       sort_order: sortOrder,
+      assignee,
     })
     .select("*")
     .single();
@@ -500,11 +545,29 @@ export async function addChecklistItem(
       checklistItemId: item.id,
       label: item.label,
       dueDate: item.dueDate,
-      adminName: opts.adminName ?? "",
+      adminName: item.assignee || opts.adminName || "",
     });
     if (taskId) return { ...item, taskId };
   }
   return item;
+}
+
+export async function deleteChecklistItem(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<void> {
+  const { data, error: fetchErr } = await supabase
+    .from("salon_checklist_items")
+    .select("task_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+  const taskId = (data as { task_id?: string | null } | null)?.task_id ?? null;
+  const { error } = await supabase.from("salon_checklist_items").delete().eq("id", id);
+  if (error) throw error;
+  if (taskId) {
+    await supabase.from("tasks").update({ is_archived: true }).eq("id", taskId);
+  }
 }
 
 export type AddSalonDocumentInput = {

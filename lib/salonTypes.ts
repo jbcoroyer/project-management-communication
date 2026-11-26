@@ -37,6 +37,8 @@ export type Salon = {
   catalogSlug: string | null;
   /** Logo custom (upload) — prioritaire sur le catalogue. */
   logoUrl: string | null;
+  /** auth.users id du créateur (si connu). */
+  createdBy: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,6 +54,8 @@ export type SalonChecklistItem = {
   documentId: string | null;
   /** Tâche miroir sur le tableau / agenda (même échéance). */
   taskId: string | null;
+  /** Responsable (display_name team_members). Défaut = créateur du salon. */
+  assignee: string | null;
 };
 
 export type SalonDocument = {
